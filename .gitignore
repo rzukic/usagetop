@@ -1,0 +1,33 @@
+# Build output
+bin/
+obj/
+build/
+publish/
+.gradle/
+.kotlin/
+.vs/
+.idea/
+*.user
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+*.apk
+*.aab
+
+# Machine-specific or secret
+local.properties
+*.keystore
+.env
+
+# Screenshots and probes left behind while developing
+.scratch/
+
+# Server runtime state: database, sealed credentials, key
+my-usage-server/data/
+
+.DS_Store
+Thumbs.db
+
+# Screenshots taken while developing the Android app
+my-usage-android/*.png

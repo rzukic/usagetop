@@ -1,0 +1,74 @@
+using System.IO;
+using System.Text.Json;
+using AiUsage.Data;
+
+namespace AiUsage.Ui;
+
+/// <summary>
+/// The panel's own preferences, as the Mac app keeps them: how much of it is
+/// glass, how solid its tiles are, the order of the accounts and whether the
+/// overview puts the account closest to running out first. Kept in a small file
+/// beside the app's other state; a change is raised at once so the panel
+/// follows a slider while it moves.
+/// </summary>
+public sealed class PanelPrefs
+{
+    public static PanelPrefs Current { get; } = Load();
+
+    /// <summary>0 is a flat, opaque panel; 1 is the backdrop with only its tint.</summary>
+    public double Glass { get; set; } = 1;
+
+    /// <summary>0 is the faint, see-through tile; 1 is an opaque one.</summary>
+    public double Tiles { get; set; }
+
+    /// <summary>Account keys in the order wanted; accounts not in it follow, by provider.</summary>
+    public List<string> Order { get; set; } = [];
+
+    public bool OverviewByRisk { get; set; } = true;
+
+    /// <summary>
+    /// What the tray icon shows, the Windows side of the Mac's menu bar setting:
+    /// false is the combined level, true the one limit closest to running out.
+    /// </summary>
+    public bool TrayShowsClosest { get; set; }
+
+    /// <summary>The figure as a number in place of the ring: a 16px icon has no room beside it.</summary>
+    public bool TrayShowsNumber { get; set; }
+
+    public event Action? Changed;
+
+    private static string FilePath => Path.Combine(AppPaths.Root, "panel.json");
+
+    /// <summary>Saves and tells every open panel.</summary>
+    public void Update(Action<PanelPrefs> change)
+    {
+        change(this);
+        Glass = Math.Clamp(Glass, 0, 1);
+        Tiles = Math.Clamp(Tiles, 0, 1);
+        Changed?.Invoke();
+        try
+        {
+            AppPaths.Ensure();
+            File.WriteAllText(FilePath, JsonSerializer.Serialize(this));
+        }
+        catch (IOException)
+        {
+            // A preference that did not save is not worth interrupting anyone over.
+        }
+    }
+
+    private static PanelPrefs Load()
+    {
+        try
+        {
+            if (File.Exists(FilePath) && JsonSerializer.Deserialize<PanelPrefs>(File.ReadAllText(FilePath)) is { } loaded)
+            {
+                return loaded;
+            }
+        }
+        catch (Exception exception) when (exception is IOException or JsonException)
+        {
+        }
+        return new PanelPrefs();
+    }
+}

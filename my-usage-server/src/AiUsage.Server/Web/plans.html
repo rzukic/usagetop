@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>Plan history · usagetop</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header class="top">
+    <h1>Plan history</h1>
+    <span id="status" class="hint" role="status"></span>
+    <a class="quiet" href="/">Usage</a>
+  </header>
+
+  <main>
+    <!-- Shown until the browser has a token the server accepts. -->
+    <form id="gate" class="card" hidden>
+      <h2>Connect</h2>
+      <p class="hint">Paste the token that <code>aiusage-server token</code> prints. It is kept in this browser only.</p>
+      <div class="row">
+        <input id="gate-token" type="password" autocomplete="off" spellcheck="false" aria-label="API token" required>
+        <button type="submit">Connect</button>
+      </div>
+      <p id="gate-error" class="problem" role="alert"></p>
+    </form>
+
+    <div id="app" hidden>
+      <section id="totals" class="card raised" aria-label="All time"></section>
+
+      <section aria-labelledby="subs-title">
+        <h2 id="subs-title" class="section">By subscription</h2>
+        <p class="hint section-note">
+          Only cycles that have finished, and only the windows that last a day or more:
+          a five-hour limit refills four times a day and is a rate, not a plan.
+        </p>
+        <div id="subs" class="plans"></div>
+      </section>
+
+      <section aria-labelledby="months-title">
+        <h2 id="months-title" class="section">Month by month</h2>
+        <p class="hint section-note">
+          A cycle counts towards the month most of it fell in. A month still running is
+          left out until it is over.
+        </p>
+        <div id="months"></div>
+      </section>
+
+      <p class="foot"><button id="forget" class="link" type="button">Forget the token in this browser</button></p>
+    </div>
+  </main>
+
+  <script src="marks.js"></script>
+  <script src="plans.js"></script>
+</body>
+</html>

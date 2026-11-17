@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>aiusage-server</AssemblyName>
+    <RootNamespace>AiUsage.Server</RootNamespace>
+    <Version>0.1.0</Version>
+    <!-- Nothing here formats for a locale, and dropping ICU keeps the publish small. -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The providers, sign-in flows and arithmetic are the Windows app's own. -->
+    <ProjectReference Include="..\..\..\my-usage-win\src\AiUsage.Core\AiUsage.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The page travels inside the binary; see WebUi.cs. -->
+    <EmbeddedResource Include="Web\**\*" LogicalName="web/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AiUsage.Server.Tests" />
+  </ItemGroup>
+
+</Project>

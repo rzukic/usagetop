@@ -1,0 +1,57 @@
+package io.github.rzukic.usagetop.widget
+
+import android.appwidget.AppWidgetManager
+import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import io.github.rzukic.usagetop.R
+import io.github.rzukic.usagetop.data.UsageRepository
+import io.github.rzukic.usagetop.work.RefreshWorker
+
+class UsageWidgetProvider : AppWidgetProvider() {
+
+    override fun onUpdate(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetIds: IntArray,
+    ) {
+        render(context)
+        RefreshWorker.enqueueNow(context)
+    }
+
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        when (intent.action) {
+            ACTION_REFRESH -> RefreshWorker.enqueueNow(context)
+            ACTION_TICK -> {
+                if (WidgetTicker.isAwake(context)) render(context)
+                WidgetTicker.schedule(context)
+            }
+        }
+    }
+
+    override fun onDisabled(context: Context) {
+        super.onDisabled(context)
+        WidgetTicker.cancel(context)
+    }
+
+    companion object {
+        const val ACTION_REFRESH = "io.github.rzukic.usagetop.ACTION_REFRESH"
+        const val ACTION_TICK = "io.github.rzukic.usagetop.ACTION_TICK"
+
+        /** Pushes the cached snapshot into every placed widget. */
+        fun render(context: Context) {
+            val manager = AppWidgetManager.getInstance(context) ?: return
+            val ids = manager.getAppWidgetIds(
+                ComponentName(context, UsageWidgetProvider::class.java)
+            )
+            if (ids.isEmpty()) return
+
+            val snapshot = UsageRepository(context).cached()
+            manager.updateAppWidget(ids, WidgetRenderer.build(context, snapshot))
+            manager.notifyAppWidgetViewDataChanged(ids, R.id.widget_list)
+            WidgetTicker.schedule(context)
+        }
+    }
+}

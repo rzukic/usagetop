@@ -1,0 +1,26 @@
+<Window x:Class="AiUsage.Views.FlyoutWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="usagetop"
+        Width="440"
+        SizeToContent="Height"
+        MaxHeight="720"
+        WindowStyle="None"
+        ResizeMode="NoResize"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="True"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Ideal">
+
+    <!-- No AllowsTransparency: the system backdrop needs an ordinary window with
+         its frame extended over the client area. The chrome below gives it no
+         caption and no border to draw; the window manager rounds the corners. -->
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="0"
+                      GlassFrameThickness="-1"
+                      ResizeBorderThickness="0"
+                      CornerRadius="0"
+                      UseAeroCaptionButtons="False" />
+    </WindowChrome.WindowChrome>
+</Window>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Surfaces. A neutral black base with translucent white layers on top, so
+         cards read as light catching a dark pane rather than as grey boxes. -->
+    <color name="panel">#0A0A0A</color>
+    <color name="panel_raised">#141414</color>
+    <color name="card_fill">#0FFFFFFF</color>
+    <color name="card_fill_strong">#17FFFFFF</color>
+    <color name="hairline">#14FFFFFF</color>
+    <color name="control_fill">#1AFFFFFF</color>
+    <color name="segment_track">#0DFFFFFF</color>
+    <color name="segment_thumb">#26FFFFFF</color>
+    <color name="meter_track">#1AFFFFFF</color>
+    <color name="ripple">#1FFFFFFF</color>
+
+    <!-- Type. Solid greys instead of white alphas: alphas wash out over the
+         translucent cards, solid values stay legible at every layer. -->
+    <color name="text_primary">#F2F2F2</color>
+    <color name="text_secondary">#9B9B9B</color>
+    <color name="text_tertiary">#7A7A7A</color>
+
+    <!-- A limit is a muted blue until it warns, then amber, then red. Chrome is
+         grey, so a hue means data or an alarm. -->
+    <color name="meter_normal">#6B93C9</color>
+    <color name="meter_warning">#E0A33C</color>
+    <color name="meter_critical">#E05A50</color>
+
+    <!-- Older names, kept so the widget and existing code keep resolving. -->
+    <color name="widget_bg">#F00A0A0A</color>
+    <color name="widget_stroke">#14FFFFFF</color>
+    <color name="widget_text">@color/text_primary</color>
+    <color name="widget_text_dim">@color/text_secondary</color>
+    <color name="bar_track">@color/meter_track</color>
+    <color name="bar_fill">@color/meter_normal</color>
+    <color name="ok">@color/meter_normal</color>
+    <color name="warn">@color/meter_warning</color>
+    <color name="danger">@color/meter_critical</color>
+    <color name="surface">@color/panel</color>
+    <color name="surface_card">@color/card_fill</color>
+    <color name="on_surface">@color/text_primary</color>
+    <color name="on_surface_dim">@color/text_secondary</color>
+    <!-- The primary button, not the data: it stays neutral. -->
+    <color name="accent">@color/text_primary</color>
+    <!-- The launcher icon's tile: the dark glass of docs/usagetop.svg. -->
+    <color name="launcher_background">#18181D</color>
+</resources>

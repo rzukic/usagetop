@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+    <AssemblyName>AiUsage</AssemblyName>
+    <RootNamespace>AiUsage</RootNamespace>
+    <!-- Program.Main answers the installer before WPF starts (see Program.cs). -->
+    <StartupObject>AiUsage.Program</StartupObject>
+    <!-- The release version: pack.ps1 builds the installer and update packages for it. -->
+    <Version>1.1.0</Version>
+    <Product>usagetop</Product>
+    <AssemblyTitle>usagetop</AssemblyTitle>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- WinForms is here only for the tray icon. Its implicit usings would make
+         Color, Brush, Pen and Application ambiguous against the WPF ones, so they
+         are dropped and the tray file imports them itself. -->
+    <Using Remove="System.Drawing" />
+    <Using Remove="System.Windows.Forms" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Inter, the panel's typeface (SIL Open Font License, Assets/Fonts/OFL.txt). -->
+    <Resource Include="Assets\Fonts\*.ttf" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AiUsage.Core\AiUsage.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Velopack" Version="1.2.161" />
+  </ItemGroup>
+
+</Project>

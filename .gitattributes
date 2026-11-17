@@ -1,0 +1,7 @@
+# Text is stored with LF; Windows batch files keep CRLF, which cmd.exe needs,
+# and shell scripts keep LF wherever they are checked out.
+* text=auto
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.sh text eol=lf
+gradlew text eol=lf

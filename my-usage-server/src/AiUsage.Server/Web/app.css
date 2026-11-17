@@ -1,0 +1,394 @@
+/* The apps' own palette: see my-usage-win/src/AiUsage/Theme.xaml.
+   Neutral black and neutral greys, so nothing that is merely chrome carries a
+   hue. The three severity colours are the only ones left: a healthy line is a
+   muted blue, a warning amber, a critical red. A hue therefore means data or an
+   alarm, never decoration. */
+:root {
+  --panel: #0a0a0a;
+  --card: rgba(255, 255, 255, 0.06);
+  --card-strong: rgba(255, 255, 255, 0.09);
+  --hairline: rgba(255, 255, 255, 0.08);
+  --control: rgba(255, 255, 255, 0.10);
+  --track: rgba(255, 255, 255, 0.20);
+  --text: #f2f2f2;
+  --text-2: #9b9b9b;
+  --text-3: #7a7a7a;
+  --normal: #6b93c9;
+  --warning: #e0a33c;
+  --critical: #e05a50;
+}
+
+* { box-sizing: border-box; }
+
+html { background: var(--panel); }
+
+body {
+  margin: 0 auto;
+  padding: 0 16px 40px;
+  max-width: 1440px;
+  background: var(--panel);
+  color: var(--text);
+  font: 14px/1.45 "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+  -webkit-text-size-adjust: 100%;
+}
+
+h1, h2, h3, p { margin: 0; }
+
+.top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 0 16px;
+}
+
+/* ---- Layout ----
+   One column on a phone. On a desk: the combined chart large beside the
+   windows nearest to running out, then the subscriptions two or three across. */
+
+.hero { display: grid; gap: 12px; margin-bottom: 12px; }
+.hero > .card { margin-bottom: 0; }
+
+/* Every card in a row takes the tallest one's height, and the charts inside
+   grow into the slack, so the row ends on one line instead of a ragged edge. */
+.providers {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
+  align-items: stretch;
+}
+.providers > .card {
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+}
+.providers > .card > .window.charted {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+}
+.providers > .card > .window.charted > .chart { flex: 1 1 auto; }
+
+/* The accounts-together card is a summary with no charts to grow, so it keeps
+   its own height rather than stretching into an empty box. */
+.providers > .card.pool { align-self: start; }
+
+.signins {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 250px), 1fr));
+  align-items: start;
+}
+.signins > .card { margin-bottom: 0; }
+
+@media (min-width: 960px) {
+  body { padding: 0 32px 48px; }
+  .top { padding: 28px 0 20px; }
+  .top h1 { font-size: 24px; }
+  .hero { grid-template-columns: minmax(0, 2fr) minmax(280px, 1fr); }
+  .card { padding: 18px 20px; }
+  .figure { font-size: 44px; }
+  /* The combined chart takes whatever height the list beside it sets. */
+  #combined { display: flex; flex-direction: column; }
+  .chart.hero-chart { flex: 1 1 auto; height: auto; min-height: 260px; }
+  .chart { height: 150px; }
+}
+
+.top h1 { font-size: 20px; font-weight: 600; margin-right: auto; }
+
+.hint { color: var(--text-2); font-size: 12px; }
+.problem { color: var(--warning); font-size: 12px; }
+.problem:empty { display: none; }
+
+.section { font-size: 15px; font-weight: 600; margin: 28px 0 2px; }
+.section-note { margin-bottom: 12px; }
+
+.card {
+  background: var(--card);
+  border: 1px solid var(--hairline);
+  border-radius: 14px;
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+
+.card.raised { background: var(--card-strong); }
+
+.card h2, .card h3 { font-size: 14px; font-weight: 600; }
+
+/* ---- Combined ---- */
+
+.combined-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.combined-head > div { margin-right: auto; }
+
+.range {
+  display: inline-flex;
+  background: var(--control);
+  border-radius: 999px;
+  padding: 2px;
+}
+.range button {
+  border: none;
+  background: none;
+  padding: 4px 10px;
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.range button[aria-pressed="true"] { background: rgba(255, 255, 255, 0.14); color: var(--text); font-weight: 600; }
+
+/* ---- Closest to empty ---- */
+
+.lowest { list-style: none; margin: 10px 0 0; padding: 0; }
+.lowest li { padding: 9px 0; border-top: 1px solid var(--hairline); }
+.lowest li:first-child { border-top: none; }
+.lowest .row-head { display: flex; align-items: baseline; gap: 8px; }
+.lowest .name { font-size: 13px; font-weight: 600; }
+.lowest .name span { color: var(--text-2); font-weight: 400; }
+.lowest .reset { margin-right: auto; }
+.lowest .value { font-weight: 600; font-variant-numeric: tabular-nums; }
+.lowest .meter { height: 4px; margin-top: 5px; }
+.figure { font-size: 34px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ---- Provider cards ---- */
+
+.provider-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+
+/* A provider mark, drawn in the text colour like the apps draw it. */
+.provider-head .mark, .plan-head .mark { flex: none; align-self: center; }
+
+.plan {
+  font-size: 11px;
+  color: var(--text-2);
+  background: var(--control);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+
+.window { margin-top: 14px; }
+
+.window-head { display: flex; align-items: baseline; gap: 8px; }
+.window-head .label { font-weight: 600; font-size: 13px; }
+.window-head .reset { margin-right: auto; }
+.window-head .value { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+.meter {
+  height: 6px;
+  margin-top: 6px;
+  border-radius: 999px;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.meter > div { height: 100%; border-radius: 999px; }
+
+/* Where an even spread through the cycle would be. */
+.meter { position: relative; }
+.meter .pace-tick {
+  position: absolute;
+  top: -1px;
+  bottom: -1px;
+  width: 2px;
+  margin-left: -1px;
+  background: var(--text);
+  opacity: 0.7;
+}
+
+.window-head .pace { font-size: 11px; color: var(--text-3); white-space: nowrap; }
+.window-head .pace-ahead { color: var(--warning); }
+
+.chart .even { stroke: var(--text-3); stroke-width: 1; stroke-dasharray: 3 3; }
+
+.window > p.hint { margin-top: 4px; }
+
+.sev-normal { color: var(--text); }
+.sev-warning { color: var(--warning); }
+.sev-critical { color: var(--critical); }
+.fill-normal { background: var(--normal); }
+.fill-warning { background: var(--warning); }
+.fill-critical { background: var(--critical); }
+
+/* ---- Charts ---- */
+
+.chart { position: relative; margin-top: 10px; height: 132px; }
+.chart.empty { height: auto; color: var(--text-3); font-size: 12px; }
+.chart svg { display: block; width: 100%; height: 100%; touch-action: pan-y; }
+
+.chart .grid { stroke: var(--hairline); stroke-width: 1; }
+.chart .axis { fill: var(--text-3); font-size: 10px; }
+.chart .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .cross { stroke: var(--text-3); stroke-width: 1; }
+.chart .dot { stroke: var(--panel); stroke-width: 2; }
+
+.tip {
+  position: absolute;
+  top: 0;
+  pointer-events: none;
+  white-space: nowrap;
+  background: #1a1a1a;
+  border: 1px solid var(--hairline);
+  border-radius: 8px;
+  padding: 3px 8px;
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.tip b { color: var(--text); font-weight: 600; margin-right: 6px; }
+
+/* ---- Controls ---- */
+
+.row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.row input { flex: 1 1 220px; min-width: 0; }
+
+input {
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--control);
+  border: 1px solid transparent;
+  border-radius: 9px;
+  padding: 8px 10px;
+}
+
+button {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  background: var(--control);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  padding: 7px 14px;
+  cursor: pointer;
+}
+
+button:hover { background: rgba(255, 255, 255, 0.16); }
+button:disabled { opacity: 0.5; cursor: default; }
+button.quiet { font-weight: 400; color: var(--text-2); }
+
+/* A link that sits in the header beside the buttons and reads as one of them. */
+a.quiet {
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-2);
+  text-decoration: none;
+  background: var(--control);
+  border: 1px solid var(--hairline);
+  border-radius: 999px;
+  padding: 7px 14px;
+  white-space: nowrap;
+}
+a.quiet:hover { background: rgba(255, 255, 255, 0.16); color: var(--text); }
+
+button.link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--text-3);
+  text-decoration: underline;
+}
+
+input:focus-visible, button:focus-visible, a:focus-visible {
+  outline: 2px solid var(--text);
+  outline-offset: 2px;
+}
+
+a { color: var(--text); text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; }
+
+code {
+  font-family: ui-monospace, "Cascadia Mono", Consolas, monospace;
+  font-size: 12px;
+  background: var(--control);
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+
+.signin-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.signin-head h3 { flex: 1 1 100%; }
+.signin-head .hint { flex: 1 1 100%; margin-bottom: 4px; }
+
+.manage { display: flex; gap: 14px; margin-top: 8px; }
+.manage .link[hidden] { display: none; }
+
+.add-account { border-style: dashed; }
+.add-account h3 { font-size: 14px; font-weight: 600; }
+.add-form { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.add-form input { flex: 1 1 120px; min-width: 0; }
+
+select {
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--control);
+  border: 1px solid transparent;
+  border-radius: 9px;
+  padding: 7px 8px;
+}
+select option { background: #1a1a1a; color: var(--text); }
+select:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+
+.step { margin-top: 10px; font-size: 13px; }
+.step p + p { margin-top: 6px; }
+.user-code { font-size: 20px; font-weight: 600; letter-spacing: 0.08em; }
+
+.foot { margin-top: 24px; text-align: center; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .meter > div { transition: width 0.3s ease; }
+}
+
+/* ---- Burn rate and forecast ---- */
+
+.section-row { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; margin: 28px 0 12px; }
+.section-row .section { margin: 0 auto 0 0; }
+.range-label { align-self: center; padding: 0 6px 0 8px; font-size: 12px; color: var(--text-3); }
+
+.window .burn { margin-top: 4px; }
+.burn-empty { color: var(--warning); }
+
+.chart .forecast { fill: none; stroke-width: 1.5; stroke-dasharray: 5 4; stroke-linejoin: round; opacity: 0.85; }
+.chart .now-line { stroke: var(--text-3); stroke-width: 1; opacity: 0.6; }
+.chart .empty-dot { fill: var(--panel); stroke-width: 2; }
+.chart .empty-label { fill: var(--text); font-size: 10px; }
+
+/* ---- Accounts together ---- */
+
+.pool { border-color: rgba(255, 255, 255, 0.14); }
+.window-head .value .of { font-size: 12px; font-weight: 400; color: var(--text-3); }
+.meter.segmented { display: flex; gap: 2px; background: var(--track); }
+.meter.segmented > div { border-radius: 0; }
+.meter.segmented > div:nth-child(even) { opacity: 0.6; }
+
+/* ---- Plan history ---- */
+
+.totals { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 18px; }
+.totals > div { display: flex; flex-direction: column; gap: 2px; }
+.totals .figure { font-size: 30px; }
+.totals .label { font-size: 12px; color: var(--text-2); }
+
+.plans > .card { margin-bottom: 10px; }
+
+.plan-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.plan-head .name { font-size: 14px; font-weight: 600; }
+.plan-head .tier { color: var(--text-2); font-weight: 400; font-size: 13px; }
+.plan-head .price { margin-left: auto; display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-2); }
+.plan-head .price input { width: 76px; }
+.plan-head .assumed { color: var(--text-3); font-size: 11px; }
+
+.plan-figures { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.plan-figures .unused { color: var(--warning); }
+.plan-figures .muted { color: var(--text-3); }
+
+.plan-bar { height: 6px; border-radius: 999px; background: var(--track); margin-top: 10px; overflow: hidden; }
+.plan-bar > div { height: 100%; border-radius: 999px; }
+
+.month { margin-top: 20px; }
+.month > h3 { font-size: 13px; font-weight: 600; color: var(--text-2); margin-bottom: 4px; }
+
+.month-row { padding: 8px 0; border-top: 1px solid var(--hairline); }
+.month-row .head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.month-row .name { font-size: 13px; font-weight: 600; }
+.month-row .figures { margin-left: auto; display: flex; gap: 12px; flex-wrap: wrap; font-size: 12px; color: var(--text-2); font-variant-numeric: tabular-nums; }
+.month-row .unused { color: var(--warning); }
+.month-row .partial { color: var(--text-3); }
+.month-row .plan-bar { height: 4px; margin-top: 6px; }

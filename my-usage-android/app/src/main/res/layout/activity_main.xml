@@ -1,0 +1,503 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/panel"
+    android:fillViewport="true">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingStart="18dp"
+        android:paddingTop="20dp"
+        android:paddingEnd="18dp"
+        android:paddingBottom="28dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="32dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:fontFamily="sans-serif-medium"
+                android:letterSpacing="-0.02"
+                android:text="@string/app_name"
+                android:textColor="@color/text_primary"
+                android:textSize="20sp" />
+
+            <ImageView
+                android:id="@+id/btnRefresh"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:contentDescription="@string/refresh"
+                android:padding="6dp"
+                android:src="@drawable/ic_refresh" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="14dp"
+            android:background="@drawable/segment_track"
+            android:orientation="horizontal"
+            android:padding="3dp">
+
+            <TextView
+                android:id="@+id/tabUsage"
+                android:layout_width="0dp"
+                android:layout_height="30dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:letterSpacing="0.01"
+                android:text="@string/tab_usage"
+                android:textColor="@color/text_primary"
+                android:textSize="13sp" />
+
+            <TextView
+                android:id="@+id/tabSettings"
+                android:layout_width="0dp"
+                android:layout_height="30dp"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:letterSpacing="0.01"
+                android:text="@string/tab_settings"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp" />
+        </LinearLayout>
+
+        <!-- The way into the combined drawdown. Sits above the providers because
+             it summarises all of them. -->
+        <LinearLayout
+            android:id="@+id/allUsageCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/card_surface"
+            android:clickable="true"
+            android:focusable="true"
+            android:foreground="@drawable/card_ripple"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingTop="13dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="13dp">
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="-0.01"
+                    android:text="@string/all_usage"
+                    android:textColor="@color/text_primary"
+                    android:textSize="15sp" />
+
+                <TextView
+                    android:id="@+id/allUsageCaption"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+            <TextView
+                android:id="@+id/allUsagePercent"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="10dp"
+                android:fontFamily="sans-serif-medium"
+                android:fontFeatureSettings="tnum"
+                android:textColor="@color/text_primary"
+                android:textSize="20sp" />
+
+            <ImageView
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:layout_marginStart="6dp"
+                android:alpha="0.4"
+                android:importantForAccessibility="no"
+                android:src="@drawable/ic_chevron" />
+        </LinearLayout>
+
+        <!-- Filled in by MainActivity, one section per provider. -->
+        <LinearLayout
+            android:id="@+id/usageContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="vertical" />
+
+        <LinearLayout
+            android:id="@+id/settingsContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:orientation="vertical"
+            android:visibility="gone">
+
+            <!-- Server -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/card_surface"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <TextView
+                    style="@style/CardTitle"
+                    android:text="@string/server_title" />
+
+                <TextView
+                    android:id="@+id/serverStatus"
+                    style="@style/CardCaption"
+                    android:text="@string/server_off" />
+
+                <EditText
+                    android:id="@+id/serverUrl"
+                    style="@style/CompactField"
+                    android:layout_width="match_parent"
+                    android:layout_marginTop="10dp"
+                    android:hint="@string/server_address_hint"
+                    android:importantForAutofill="no"
+                    android:inputType="textUri"
+                    android:maxLines="1" />
+
+                <EditText
+                    android:id="@+id/serverToken"
+                    style="@style/CompactField"
+                    android:layout_width="match_parent"
+                    android:layout_marginTop="8dp"
+                    android:hint="@string/server_token_hint"
+                    android:importantForAutofill="no"
+                    android:inputType="textVisiblePassword"
+                    android:maxLines="2" />
+
+                <TextView
+                    style="@style/CardCaption"
+                    android:layout_marginTop="6dp"
+                    android:text="@string/server_caption"
+                    android:textSize="10sp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/serverWebsite"
+                    style="@style/PillButton.Tonal"
+                    android:layout_width="match_parent"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/server_website"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+            <!-- The server's accounts, shown instead of the cards below while an address is set -->
+            <LinearLayout
+                android:id="@+id/serverAccounts"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/card_surface"
+                android:orientation="vertical"
+                android:padding="14dp"
+                android:visibility="gone">
+
+                <TextView
+                    style="@style/CardTitle"
+                    android:text="@string/server_accounts_title" />
+
+                <TextView
+                    android:id="@+id/serverAccountsStatus"
+                    style="@style/CardCaption"
+                    android:text="@string/server_accounts_reading" />
+
+                <LinearLayout
+                    android:id="@+id/serverAccountRows"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical" />
+
+                <TextView
+                    style="@style/CardCaption"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/server_accounts_add" />
+
+                <LinearLayout
+                    android:id="@+id/serverAccountAdd"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="4dp"
+                    android:orientation="horizontal" />
+            </LinearLayout>
+
+            <!-- This app's own sign-ins: hidden while the server holds the accounts -->
+            <LinearLayout
+                android:id="@+id/localAccounts"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+            <!-- Claude -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/card_surface"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <TextView
+                    style="@style/CardTitle"
+                    android:text="Claude" />
+
+                <TextView
+                    android:id="@+id/claudeStatus"
+                    style="@style/CardCaption"
+                    android:text="@string/not_configured" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/claudeSignIn"
+                    style="@style/PillButton.Tonal"
+                    android:layout_width="match_parent"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/sign_in_claude" />
+
+                <EditText
+                    android:id="@+id/claudeToken"
+                    style="@style/CompactField"
+                    android:layout_width="match_parent"
+                    android:layout_marginTop="8dp"
+                    android:hint="OAuth access token"
+                    android:inputType="textVisiblePassword"
+                    android:maxLines="2" />
+
+                <TextView
+                    style="@style/CardCaption"
+                    android:layout_marginTop="6dp"
+                    android:text="Or paste from ~/.claude/.credentials.json → claudeAiOauth.accessToken"
+                    android:textSize="10sp" />
+            </LinearLayout>
+
+            <!-- ChatGPT -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/card_surface"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <TextView
+                    style="@style/CardTitle"
+                    android:text="ChatGPT / Codex" />
+
+                <TextView
+                    android:id="@+id/chatgptStatus"
+                    style="@style/CardCaption"
+                    android:text="@string/not_configured" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/chatgptSignIn"
+                    style="@style/PillButton.Tonal"
+                    android:layout_width="match_parent"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/sign_in_chatgpt" />
+
+                <EditText
+                    android:id="@+id/chatgptToken"
+                    style="@style/CompactField"
+                    android:layout_width="match_parent"
+                    android:layout_marginTop="8dp"
+                    android:hint="ChatGPT access token"
+                    android:inputType="textVisiblePassword"
+                    android:maxLines="2" />
+
+                <TextView
+                    style="@style/CardCaption"
+                    android:layout_marginTop="6dp"
+                    android:text="Or paste from ~/.codex/auth.json → tokens.access_token"
+                    android:textSize="10sp" />
+            </LinearLayout>
+
+            <!-- Mistral -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/card_surface"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <TextView
+                    style="@style/CardTitle"
+                    android:text="Mistral" />
+
+                <TextView
+                    android:id="@+id/mistralStatus"
+                    style="@style/CardCaption"
+                    android:text="@string/not_configured" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/mistralGetKey"
+                    style="@style/PillButton.Tonal"
+                    android:layout_width="match_parent"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/open_key_console" />
+
+                <EditText
+                    android:id="@+id/mistralToken"
+                    style="@style/CompactField"
+                    android:layout_width="match_parent"
+                    android:layout_marginTop="8dp"
+                    android:hint="API key"
+                    android:inputType="textVisiblePassword"
+                    android:maxLines="2" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:orientation="horizontal">
+
+                    <EditText
+                        android:id="@+id/mistralBudget"
+                        style="@style/CompactField"
+                        android:layout_width="0dp"
+                        android:layout_weight="1"
+                        android:hint="Monthly budget"
+                        android:inputType="numberDecimal" />
+
+                    <EditText
+                        android:id="@+id/mistralSpent"
+                        style="@style/CompactField"
+                        android:layout_width="0dp"
+                        android:layout_marginStart="8dp"
+                        android:layout_weight="1"
+                        android:hint="Spent so far"
+                        android:inputType="numberDecimal" />
+                </LinearLayout>
+
+                <TextView
+                    style="@style/CardCaption"
+                    android:layout_marginTop="6dp"
+                    android:text="Usage comes from Mistral's billing API. Budget and spend are only a fallback."
+                    android:textSize="10sp" />
+            </LinearLayout>
+
+            <!-- Kimi -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/card_surface"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <TextView
+                    style="@style/CardTitle"
+                    android:text="Kimi / Moonshot" />
+
+                <TextView
+                    android:id="@+id/kimiStatus"
+                    style="@style/CardCaption"
+                    android:text="@string/not_configured" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/kimiGetKey"
+                    style="@style/PillButton.Tonal"
+                    android:layout_width="match_parent"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/open_key_console" />
+
+                <EditText
+                    android:id="@+id/kimiToken"
+                    style="@style/CompactField"
+                    android:layout_width="match_parent"
+                    android:layout_marginTop="8dp"
+                    android:hint="Kimi Code API key"
+                    android:inputType="textVisiblePassword"
+                    android:maxLines="2" />
+
+                <Switch
+                    android:id="@+id/kimiRegion"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:minHeight="0dp"
+                    android:text="Use China endpoint (api.moonshot.cn)"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="11sp" />
+            </LinearLayout>
+
+            <!-- Muse -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/card_surface"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <TextView
+                    style="@style/CardTitle"
+                    android:text="Muse" />
+
+                <TextView
+                    android:id="@+id/museStatus"
+                    style="@style/CardCaption"
+                    android:text="@string/not_configured" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/museSignIn"
+                    style="@style/PillButton.Tonal"
+                    android:layout_width="match_parent"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/sign_in_muse" />
+
+                <EditText
+                    android:id="@+id/museToken"
+                    style="@style/CompactField"
+                    android:layout_width="match_parent"
+                    android:layout_marginTop="8dp"
+                    android:hint="Muse access token"
+                    android:inputType="textVisiblePassword"
+                    android:maxLines="2" />
+
+                <TextView
+                    style="@style/CardCaption"
+                    android:layout_marginTop="6dp"
+                    android:text="Or paste from ~/.config/muse/auth.json → providers.meta.access_token"
+                    android:textSize="10sp" />
+            </LinearLayout>
+            </LinearLayout>
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btnSave"
+                style="@style/PillButton"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:layout_marginTop="16dp"
+                android:text="@string/save_and_refresh" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/overallStatus"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:fontFeatureSettings="tnum"
+            android:paddingStart="4dp"
+            android:textColor="@color/text_tertiary"
+            android:textSize="11sp" />
+    </LinearLayout>
+</ScrollView>

@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>usagetop</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="app.css">
+</head>
+<body>
+  <header class="top">
+    <h1>usagetop</h1>
+    <span id="status" class="hint" role="status"></span>
+    <a class="quiet" href="/plans">Plan history</a>
+    <button id="refresh" class="quiet" type="button" hidden>Refresh</button>
+  </header>
+
+  <main>
+    <!-- Shown until the browser has a token the server accepts. -->
+    <form id="gate" class="card" hidden>
+      <h2>Connect</h2>
+      <p class="hint">Paste the token that <code>aiusage-server token</code> prints. It is kept in this browser only.</p>
+      <div class="row">
+        <input id="gate-token" type="password" autocomplete="off" spellcheck="false" aria-label="API token" required>
+        <button type="submit">Connect</button>
+      </div>
+      <p id="gate-error" class="problem" role="alert"></p>
+    </form>
+
+    <div id="app" hidden>
+      <div class="hero">
+        <section id="combined" class="card raised" aria-label="All usage"></section>
+        <section id="lowest" class="card" aria-labelledby="lowest-title">
+          <h2 id="lowest-title">Closest to empty</h2>
+          <ol id="lowest-list" class="lowest"></ol>
+        </section>
+      </div>
+
+      <div class="section-row">
+        <h2 class="section">Subscriptions</h2>
+        <div id="burn-range"></div>
+      </div>
+      <section id="providers" class="providers" aria-label="Subscriptions"></section>
+
+      <section aria-labelledby="signins-title">
+        <h2 id="signins-title" class="section">Sign-ins</h2>
+        <p class="hint section-note">The server holds these sessions itself. Signing in here does not touch the apps or the CLIs.</p>
+        <div id="signins" class="signins"></div>
+      </section>
+
+      <p class="foot"><button id="forget" class="link" type="button">Forget the token in this browser</button></p>
+    </div>
+  </main>
+
+  <script src="marks.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
