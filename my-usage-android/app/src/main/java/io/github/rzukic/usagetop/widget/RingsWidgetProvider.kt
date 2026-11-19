@@ -44,12 +44,14 @@ class RingsWidgetProvider : AppWidgetProvider() {
         fun build(context: Context, snapshot: Snapshot?, widgetId: Int): RemoteViews =
             build(context, snapshot, RingPicks.read(context, widgetId) ?: RingPicks.defaults(snapshot))
 
-        fun build(context: Context, snapshot: Snapshot?, picks: List<RingPicks.Pick>): RemoteViews {
+        fun build(context: Context, snapshot: Snapshot?, picks: List<RingPicks.Pick>): RemoteViews =
+            WidgetRenderer.squared { plain(context, snapshot, picks) }
+
+        /** One version, its panel filling whatever it is given: for pictures of it. */
+        fun plain(context: Context, snapshot: Snapshot?, picks: List<RingPicks.Pick>): RemoteViews {
             val rings = RingPicks.resolve(picks, snapshot)
             val stale = WidgetModel.staleAge(snapshot) != null
-            return WidgetRenderer.squared {
-                if (rings.size == 1) one(context, rings.single(), stale) else grid(context, rings, stale)
-            }
+            return if (rings.size == 1) one(context, rings.single(), stale) else grid(context, rings, stale)
         }
 
         private fun one(context: Context, ring: RingPicks.Ring, stale: Boolean): RemoteViews {

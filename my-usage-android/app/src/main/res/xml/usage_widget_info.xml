@@ -6,7 +6,7 @@
     android:initialLayout="@layout/widget_large"
     android:minHeight="110dp"
     android:minWidth="110dp"
-    android:previewLayout="@layout/widget_large"
+    android:previewImage="@drawable/widget_preview_usage"
     android:resizeMode="horizontal|vertical"
     android:targetCellHeight="4"
     android:targetCellWidth="4"

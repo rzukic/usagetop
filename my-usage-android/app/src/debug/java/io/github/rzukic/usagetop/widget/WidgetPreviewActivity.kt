@@ -20,6 +20,7 @@ import kotlin.math.roundToInt
  * reading, on a wallpaper-like backdrop: the rings at one and four picks, then
  * the usage widget at 2x2, 4x2 and 4x4. One theme at a time, for screenshots:
  * `adb shell am start -n <package>/io.github.rzukic.usagetop.widget.WidgetPreviewActivity --ez dark true`.
+ * With `--ez export true` it writes the widget list's preview pictures instead.
  */
 class WidgetPreviewActivity : Activity() {
 
@@ -28,6 +29,11 @@ class WidgetPreviewActivity : Activity() {
         val snapshot = UsageRepository(this).cached()
         val dark = intent.getBooleanExtra("dark", isDark())
         val themed = themed(dark)
+        if (intent.getBooleanExtra("export", false)) {
+            exportPreviews(snapshot)
+            finish()
+            return
+        }
 
         val column = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -56,6 +62,42 @@ class WidgetPreviewActivity : Activity() {
         fillList(themed, large)
         column.addView(large, LinearLayout.LayoutParams(width, width))
         setContentView(ScrollView(this).apply { addView(column) })
+    }
+
+    /**
+     * The pictures the launcher's widget list shows, drawn from the cached reading
+     * (the README's sample, not anyone's accounts) on a transparent backdrop, light
+     * and dark, into the app's files: `adb pull` them into res/drawable-nodpi and
+     * res/drawable-night-nodpi as widget_preview_*.png.
+     */
+    private fun exportPreviews(snapshot: io.github.rzukic.usagetop.data.Snapshot?) {
+        val folder = java.io.File(getExternalFilesDir(null), "previews").apply { mkdirs() }
+        listOf(false to "light", true to "dark").forEach { (dark, name) ->
+            val themed = themed(dark)
+            val parent = android.widget.FrameLayout(themed)
+            val rings = RingsWidgetProvider.plain(themed, snapshot, RingPicks.defaults(snapshot)).apply(themed, parent)
+            val total = WidgetRenderer.small(themed, snapshot).apply(themed, parent)
+            val usage = WidgetRenderer.large(themed, snapshot).apply(themed, parent).also { fillList(themed, it) }
+            save(rings, 170, 170, java.io.File(folder, "rings-$name.png"))
+            save(total, 170, 170, java.io.File(folder, "total-$name.png"))
+            save(usage, 340, 340, java.io.File(folder, "usage-$name.png"))
+        }
+    }
+
+    /** Lays [view] out at [widthDp] by [heightDp] and writes it as a PNG at two pixels a dp. */
+    private fun save(view: View, widthDp: Int, heightDp: Int, file: java.io.File) {
+        val w = dp(widthDp)
+        val h = dp(heightDp)
+        view.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY))
+        view.layout(0, 0, w, h)
+        // A second pass lets the list fill in the rows its first layout asked for.
+        view.measure(View.MeasureSpec.makeMeasureSpec(w, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(h, View.MeasureSpec.EXACTLY))
+        view.layout(0, 0, w, h)
+        val full = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
+        view.draw(android.graphics.Canvas(full))
+        val scale = 2f / resources.displayMetrics.density
+        val out = android.graphics.Bitmap.createScaledBitmap(full, (w * scale).toInt(), (h * scale).toInt(), true)
+        file.outputStream().use { out.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
     }
 
     private fun pair(left: View, right: View?, cell: Int) = LinearLayout(this).apply {
