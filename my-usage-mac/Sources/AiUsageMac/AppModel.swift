@@ -58,10 +58,18 @@ final class AppModel {
 
     // MARK: Hidden limits
 
-    var hiddenKeys: Set<String> { Set(settings.hiddenLimits) }
+    /// The server's list while reading from a server that keeps one, so a
+    /// limit hidden on one device is hidden on all; this Mac's own otherwise.
+    private(set) var serverHidden: [String]?
+
+    private var hidesOnServer: Bool { usesServer && serverHidden != nil && !isDemo }
+
+    var hiddenList: [String] { hidesOnServer ? serverHidden ?? [] : settings.hiddenLimits }
+
+    var hiddenKeys: Set<String> { Set(hiddenList) }
 
     func isHidden(_ usage: ProviderUsage, _ window: UsageWindow) -> Bool {
-        settings.hiddenLimits.contains(usage.seriesKey(window))
+        hiddenList.contains(usage.seriesKey(window))
     }
 
     /// The windows the overview and the menu bar show for an account.
@@ -89,9 +97,22 @@ final class AppModel {
     }
 
     func setHidden(_ hide: Bool, key: String) {
-        var keys = settings.hiddenLimits.filter { $0 != key }
+        var keys = hiddenList.filter { $0 != key }
         if hide { keys.append(key) }
-        settings.hiddenLimits = keys
+        guard hidesOnServer, let url = settings.baseURL else {
+            settings.hiddenLimits = keys
+            return
+        }
+        // At once here, then as the server has it.
+        serverHidden = keys
+        let client = ServerClient(baseURL: url, token: settings.token)
+        Task {
+            do {
+                serverHidden = try await client.setHidden(key, hide: hide)
+            } catch {
+                problem = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
+            }
+        }
     }
 
     /// The limits closest to running out, across every working subscription:
@@ -260,6 +281,7 @@ final class AppModel {
     }
 
     private func apply(_ state: StateResponse) {
+        serverHidden = usesServer ? state.hiddenLimits : nil
         snapshot = state.snapshot
         series = (state.series ?? [:]).mapValues(SeriesPoint.decode)
         combinedHistory = SeriesPoint.decode(state.combined)

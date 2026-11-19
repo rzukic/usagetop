@@ -94,6 +94,15 @@ struct ServerClient: Sendable {
         _ = try? await call("refresh", method: "POST", body: [:])
     }
 
+    /// Hides a limit ("account|label") in every app reading from this server,
+    /// or shows it again; returns the list as it now is.
+    func setHidden(_ limit: String, hide: Bool) async throws -> [String] {
+        var allowed = CharacterSet.alphanumerics
+        allowed.insert(charactersIn: "-._~")
+        let encoded = limit.addingPercentEncoding(withAllowedCharacters: allowed) ?? limit
+        return try decode([String].self, from: await call("hidden?limit=\(encoded)", method: hide ? "PUT" : "DELETE"))
+    }
+
     // MARK: Accounts
 
     func accounts() async throws -> [ServerAccount] {

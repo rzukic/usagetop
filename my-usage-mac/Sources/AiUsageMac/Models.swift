@@ -8,6 +8,9 @@ struct StateResponse: Decodable {
     let snapshot: Snapshot?
     let combined: [[Double]]?
     let series: [String: [[Double]]]?
+    /// The limits hidden from the overviews, kept by the server for every app.
+    /// Nil from a server that predates it, and from this Mac on its own.
+    var hiddenLimits: [String]? = nil
 }
 
 struct Snapshot: Decodable {
