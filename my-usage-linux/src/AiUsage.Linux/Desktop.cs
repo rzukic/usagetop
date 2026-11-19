@@ -70,6 +70,43 @@ public static class Desktop
         $"socket       {Ipc.SocketPath}",
     ]);
 
+    /// <summary>
+    /// Tells the window manager how much of a window, on each side, is only
+    /// room for its shadow. Without it a window manager that keeps windows on
+    /// the screen (GNOME's does) counts the shadow's room as window, and the
+    /// panel ends up that much further from the edge than it asked to be. GTK's
+    /// own property for its shadows, which Mutter and KWin read; anything else
+    /// ignores it. Sizes are in pixels.
+    /// </summary>
+    public static void SetShadowRoom(IntPtr window, int left, int right, int top, int bottom)
+    {
+        if (!OperatingSystem.IsLinux() || window == IntPtr.Zero) return;
+        try
+        {
+            var display = XOpenDisplay(null);
+            if (display == IntPtr.Zero) return;
+            try
+            {
+                var property = XInternAtom(display, "_GTK_FRAME_EXTENTS", false);
+                // Format 32 is an array of C longs, whatever their width here.
+                nint[] extents = [left, right, top, bottom];
+                XChangeProperty(display, window, property, XaCardinal, 32, PropModeReplace, extents, extents.Length);
+                XFlush(display);
+            }
+            finally
+            {
+                XCloseDisplay(display);
+            }
+        }
+        catch (Exception exception) when (exception is DllNotFoundException or EntryPointNotFoundException)
+        {
+            // No Xlib: not an X11 session, and nothing to tell.
+        }
+    }
+
+    private static readonly IntPtr XaCardinal = 6;
+    private const int PropModeReplace = 0;
+
     private static bool Has(string name) =>
         Name.Split(':', ';').Any(part => part.Trim().Equals(name, StringComparison.OrdinalIgnoreCase));
 
@@ -111,4 +148,11 @@ public static class Desktop
 
     [DllImport("libX11.so.6")]
     private static extern IntPtr XGetSelectionOwner(IntPtr display, IntPtr atom);
+
+    [DllImport("libX11.so.6")]
+    private static extern int XChangeProperty(
+        IntPtr display, IntPtr window, IntPtr property, IntPtr type, int format, int mode, nint[] data, int count);
+
+    [DllImport("libX11.so.6")]
+    private static extern int XFlush(IntPtr display);
 }

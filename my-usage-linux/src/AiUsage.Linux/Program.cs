@@ -114,6 +114,7 @@ public static class Program
     public static AppBuilder BuildAvaloniaApp() => AppBuilder.Configure<App>()
         .UsePlatformDetect()
         .WithInterFont()
-        .With(new X11PlatformOptions { WmClass = "usagetop" })
+        // It is one panel and a tray icon: nothing a session manager could restore.
+        .With(new X11PlatformOptions { WmClass = "usagetop", EnableSessionManagement = false })
         .LogToTrace();
 }

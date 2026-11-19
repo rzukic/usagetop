@@ -89,6 +89,11 @@ public sealed class PanelWindow : Window
 
         Opened += (_, _) =>
         {
+            if (_shaped && TryGetPlatformHandle() is { HandleDescriptor: "XID" } handle)
+            {
+                int Pixels(double units) => (int)Math.Round(units * RenderScaling);
+                Desktop.SetShadowRoom(handle.Handle, Pixels(ShadowRoom), Pixels(ShadowRoom), Pixels(ShadowAbove), Pixels(ShadowBelow));
+            }
             Place();
             if (Environment.GetEnvironmentVariable("USAGETOP_DEBUG") is { Length: > 0 })
             {
