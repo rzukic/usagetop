@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- One widget at three sizes: 2x2 is the combined figure, 4x2 adds the two accounts
      closest to empty, 4x4 adds the week and every account. It starts at 4x4. -->
+<!-- Its settings (long-press › Settings) choose which limits it shows; placed
+     without asking, it shows what the app shows. -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:configure="io.github.rzukic.usagetop.widget.UsageConfigActivity"
     android:description="@string/widget_description"
     android:initialLayout="@layout/widget_large"
     android:minHeight="110dp"
@@ -11,4 +14,5 @@
     android:targetCellHeight="4"
     android:targetCellWidth="4"
     android:updatePeriodMillis="0"
-    android:widgetCategory="home_screen" />
+    android:widgetCategory="home_screen"
+    android:widgetFeatures="reconfigurable|configuration_optional" />

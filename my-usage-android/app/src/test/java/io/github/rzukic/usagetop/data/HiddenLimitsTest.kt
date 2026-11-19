@@ -64,6 +64,13 @@ class HiddenLimitsTest {
     }
 
     @Test
+    fun `the account's screen lists hidden limits after the shown ones, each group in its own order`() {
+        val hidden = setOf("antigravity|7d")
+        assertEquals(listOf("5h", "Claude & GPT 7d", "7d"), HiddenLimits.shownFirst(antigravity, hidden).map { it.label })
+        assertEquals(antigravity.windows, HiddenLimits.shownFirst(antigravity, emptySet()))
+    }
+
+    @Test
     fun `nothing hidden shows everything`() {
         assertEquals(antigravity.windows, HiddenLimits.visible(antigravity, emptySet()))
     }

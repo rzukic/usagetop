@@ -58,8 +58,10 @@ class WidgetPreviewActivity : Activity() {
         column.addView(gap())
         column.addView(WidgetRenderer.medium(themed, snapshot).apply(themed, column), LinearLayout.LayoutParams(width, cell))
         column.addView(gap())
-        val large = WidgetRenderer.large(themed, snapshot).apply(themed, column)
-        fillList(themed, large)
+        // --ei widgetId N draws the 4x4 with that widget's own choice of limits.
+        val widgetId = intent.getIntExtra("widgetId", -1).takeIf { it >= 0 }
+        val large = WidgetRenderer.large(themed, snapshot, widgetId).apply(themed, column)
+        fillList(themed, large, widgetId)
         column.addView(large, LinearLayout.LayoutParams(width, width))
         setContentView(ScrollView(this).apply { addView(column) })
     }
@@ -107,9 +109,9 @@ class WidgetPreviewActivity : Activity() {
     }
 
     /** The list needs a launcher behind it; here its rows are drawn directly. */
-    private fun fillList(context: Context, large: View) {
+    private fun fillList(context: Context, large: View, widgetId: Int? = null) {
         val list = large.findViewById<ListView>(R.id.widget_list) ?: return
-        val entries = WidgetRenderer.entries(context, UsageRepository(context).cached())
+        val entries = WidgetRenderer.entries(context, UsageRepository(context).cached(), widgetId)
         large.findViewById<View>(R.id.widget_empty)?.visibility = if (entries.isEmpty()) View.VISIBLE else View.GONE
         list.adapter = object : BaseAdapter() {
             override fun getCount() = entries.size

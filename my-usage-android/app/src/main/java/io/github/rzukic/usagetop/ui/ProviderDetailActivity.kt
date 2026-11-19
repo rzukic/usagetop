@@ -93,7 +93,8 @@ class ProviderDetailActivity : AppCompatActivity() {
         binding.detailUpdated.text = describe(usage)
 
         binding.windowContainer.removeAllViews()
-        val windows = usage?.windows.orEmpty()
+        // The shown limits in their usual order, then the hidden ones.
+        val windows = usage?.let { HiddenLimits.shownFirst(it, hiddenLimits.all()) }.orEmpty()
         if (windows.isEmpty()) {
             binding.windowContainer.addView(note(usage))
         } else {

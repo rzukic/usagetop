@@ -107,6 +107,16 @@
         </receiver>
 
         <activity
+            android:name=".widget.UsageConfigActivity"
+            android:exported="true"
+            android:label="@string/usage_config_title"
+            android:theme="@style/Theme.AiUsage">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
+        <activity
             android:name=".widget.RingsConfigActivity"
             android:exported="true"
             android:label="@string/rings_widget_label"

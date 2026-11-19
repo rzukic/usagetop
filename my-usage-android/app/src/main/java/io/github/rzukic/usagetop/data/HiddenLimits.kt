@@ -24,6 +24,12 @@ object HiddenLimits {
     fun visible(usage: ProviderUsage, hidden: Set<String>): List<UsageWindow> =
         usage.windows.filter { !isHidden(hidden, usage, it) }
 
+    /** Every window of the account: the shown ones in their own order, then the hidden ones. */
+    fun shownFirst(usage: ProviderUsage, hidden: Set<String>): List<UsageWindow> {
+        val (hiddenOnes, shown) = usage.windows.partition { isHidden(hidden, usage, it) }
+        return shown + hiddenOnes
+    }
+
     /** How many of the account's windows are hidden. */
     fun hiddenCount(usage: ProviderUsage, hidden: Set<String>): Int =
         usage.windows.count { isHidden(hidden, usage, it) }

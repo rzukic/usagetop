@@ -17,6 +17,11 @@
     <string name="widget_ahead">Ahead of pace</string>
     <string name="total_widget_label">usagetop total</string>
     <string name="total_widget_description">What is left across all your subscriptions</string>
+    <string name="usage_config_title">Widget limits</string>
+    <string name="usage_config_hint">Which limits this widget shows. It starts as the app shows them; a limit hidden in the app can be turned on here for this widget alone.</string>
+    <string name="usage_config_hidden_in_app">Hidden in the app</string>
+    <string name="usage_config_on">Shown in this widget</string>
+    <string name="usage_config_off">Not shown in this widget</string>
     <string name="rings_widget_label">usagetop rings</string>
     <string name="rings_widget_description">Up to four limits you choose, as rings</string>
     <string name="rings_title">Rings</string>

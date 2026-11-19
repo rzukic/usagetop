@@ -47,9 +47,18 @@ object WidgetRenderer {
         data class Out(val out: WidgetModel.Out) : Entry
     }
 
-    fun entries(context: Context, snapshot: Snapshot?): List<Entry> {
-        val accounts = WidgetModel.accounts(snapshot, hidden = HiddenLimitStore(context).all())
+    fun entries(context: Context, snapshot: Snapshot?, widgetId: Int? = null): List<Entry> {
+        val accounts = WidgetModel.accounts(snapshot, hidden = hiddenFor(context, widgetId))
         return accounts.lines.map { Entry.Line(it) } + accounts.out.map { Entry.Out(it) }
+    }
+
+    /**
+     * The limits a widget leaves out: the app's hidden ones, with the widget's own
+     * choices from its settings on top. Without a widget, the app's.
+     */
+    fun hiddenFor(context: Context, widgetId: Int?): Set<String> {
+        val app = HiddenLimitStore(context).all()
+        return if (widgetId == null) app else LimitPicks.hiddenFor(app, LimitPicks.read(context, widgetId))
     }
 
     /**
@@ -62,8 +71,8 @@ object WidgetRenderer {
             return RemoteViews(
                 mapOf(
                     SizeF(0f, 0f) to small(context, snapshot),
-                    SizeF(WIDE_DP, 0f) to medium(context, snapshot),
-                    SizeF(WIDE_DP, TALL_DP) to large(context, snapshot),
+                    SizeF(WIDE_DP, 0f) to medium(context, snapshot, id),
+                    SizeF(WIDE_DP, TALL_DP) to large(context, snapshot, id),
                 ),
             )
         }
@@ -71,8 +80,8 @@ object WidgetRenderer {
         val width = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH)
         val height = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT)
         return when {
-            width >= WIDE_DP && height >= TALL_DP -> large(context, snapshot)
-            width >= WIDE_DP -> medium(context, snapshot)
+            width >= WIDE_DP && height >= TALL_DP -> large(context, snapshot, id)
+            width >= WIDE_DP -> medium(context, snapshot, id)
             else -> small(context, snapshot)
         }
     }
@@ -108,7 +117,7 @@ object WidgetRenderer {
         return views
     }
 
-    fun medium(context: Context, snapshot: Snapshot?): RemoteViews {
+    fun medium(context: Context, snapshot: Snapshot?, widgetId: Int? = null): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_medium)
         val combined = snapshot?.let { CombinedUsage.of(it) }
         bindHero(context, views, combined?.percent, sizeDp = 30f, strokeDp = 3.2f)
@@ -119,14 +128,14 @@ object WidgetRenderer {
         bindStale(context, views, snapshot)
 
         views.removeAllViews(R.id.rows)
-        WidgetModel.accounts(snapshot, hidden = HiddenLimitStore(context).all()).lines.take(MEDIUM_ROWS).forEach { line ->
+        WidgetModel.accounts(snapshot, hidden = hiddenFor(context, widgetId)).lines.take(MEDIUM_ROWS).forEach { line ->
             views.addView(R.id.rows, rowViews(context, line, compact = true))
         }
         views.setOnClickPendingIntent(R.id.widget_root, openIntent(context))
         return views
     }
 
-    fun large(context: Context, snapshot: Snapshot?): RemoteViews {
+    fun large(context: Context, snapshot: Snapshot?, widgetId: Int? = null): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_large)
         val now = Instant.now()
         val combined = snapshot?.let { CombinedUsage.of(it) }
@@ -155,7 +164,7 @@ object WidgetRenderer {
         )
         views.setViewVisibility(R.id.next_lift, if (lift == null) View.GONE else View.VISIBLE)
 
-        views.setRemoteAdapter(R.id.widget_list, Intent(context, UsageWidgetService::class.java))
+        views.setRemoteAdapter(R.id.widget_list, UsageWidgetService.intent(context, widgetId))
         views.setEmptyView(R.id.widget_list, R.id.widget_empty)
         views.setPendingIntentTemplate(R.id.widget_list, rowIntent(context))
         views.setOnClickPendingIntent(R.id.widget_root, openIntent(context))

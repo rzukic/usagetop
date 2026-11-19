@@ -41,6 +41,11 @@ class UsageWidgetProvider : AppWidgetProvider() {
         render(context)
     }
 
+    /** A widget taken off the home screen forgets its own choice of limits. */
+    override fun onDeleted(context: Context, appWidgetIds: IntArray) {
+        appWidgetIds.forEach { LimitPicks.forget(context, it) }
+    }
+
     override fun onDisabled(context: Context) {
         super.onDisabled(context)
         // The other widgets share the tick; stop it only when none is left.
