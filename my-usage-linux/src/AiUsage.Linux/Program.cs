@@ -11,6 +11,7 @@ public static class Program
           usagetop                 start, and show the panel (a second copy shows the first one's)
           usagetop --hidden        start as the tray icon alone: for autostart
           usagetop toggle          show the panel, or put it away: for a key binding
+                                   (--anchor x,y,w,h hangs it under that spot of the screen)
           usagetop show | hide
           usagetop refresh         ask every provider now
           usagetop status          the reading as text
@@ -30,7 +31,7 @@ public static class Program
     {
         var words = new List<string>();
         var flags = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        string? state = null, snapshot = null;
+        string? state = null, snapshot = null, anchor = null;
         for (var i = 0; i < args.Length; i++)
         {
             switch (args[i].ToLowerInvariant())
@@ -40,6 +41,9 @@ public static class Program
                     break;
                 case "--snapshot" when i + 1 < args.Length:
                     snapshot = args[++i];
+                    break;
+                case "--anchor" when i + 1 < args.Length:
+                    anchor = args[++i];
                     break;
                 case var flag when flag.StartsWith("--", StringComparison.Ordinal) || flag is "-h" or "-v":
                     flags.Add(flag);
@@ -86,7 +90,8 @@ public static class Program
 
             case "start" or "show" or "toggle":
                 // A running copy does it; with none, this becomes the app.
-                if (Ipc.Send(command == "start" ? "show" : command) != null) return 0;
+                var under = anchor == null ? "" : $" --anchor {anchor}";
+                if (Ipc.Send((command == "start" ? "show" : command) + under) != null) return 0;
                 App.Options = new StartOptions(Hidden: flags.Contains("--hidden"), Sample: sample, StateFile: state);
                 return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args, Avalonia.Controls.ShutdownMode.OnExplicitShutdown);
 

@@ -15,6 +15,9 @@ public static class Status
 {
     private static readonly JsonWriterOptions Json = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
+    /// <summary>How many limits a bar shows beside the combined level.</summary>
+    private const int BarLimits = 2;
+
     /// <summary>One shown limit of one account.</summary>
     public sealed record Limit(ProviderUsage Usage, UsageWindow Window)
     {
@@ -84,11 +87,37 @@ public static class Status
             else json.WriteNull("combined");
             json.WriteBoolean("sample", model.IsSample);
             if (model.Snapshot is { } snapshot) json.WriteString("readAt", snapshot.FetchedAt.ToString("O"));
+            // What a desktop's bar shows, decided here so that whatever draws it
+            // (the GNOME extension) need not know the rules: the combined level,
+            // then the limits closest to running out.
+            json.WriteStartArray("bar");
+            if (model.Combined?.Percent is { } level)
+            {
+                json.WriteStartObject();
+                json.WriteString("kind", "combined");
+                json.WriteNumber("percent", Math.Round(level, 1));
+                json.WriteString("text", Format.Percent(level));
+                json.WriteString("class", Class(level));
+                json.WriteEndObject();
+            }
+            foreach (var limit in Closest(model).Take(BarLimits))
+            {
+                json.WriteStartObject();
+                json.WriteString("kind", "limit");
+                json.WriteString("provider", ProviderCatalog.Of(limit.Usage.Id).Key);
+                json.WriteString("title", limit.Name);
+                json.WriteNumber("percent", Math.Round(limit.Window.RemainingPercent!.Value, 1));
+                json.WriteString("text", Format.Percent(limit.Window.RemainingPercent!.Value));
+                json.WriteString("class", Class(limit.Window.RemainingPercent));
+                json.WriteEndObject();
+            }
+            json.WriteEndArray();
             json.WriteStartArray("limits");
             foreach (var limit in Closest(model))
             {
                 json.WriteStartObject();
                 json.WriteString("account", limit.Usage.AccountKey);
+                json.WriteString("provider", ProviderCatalog.Of(limit.Usage.Id).Key);
                 json.WriteString("name", limit.Usage.DisplayName);
                 json.WriteString("limit", WindowName.Display(limit.Window.Label));
                 json.WriteNumber("percent", Math.Round(limit.Window.RemainingPercent!.Value, 1));

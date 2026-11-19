@@ -1,0 +1,7 @@
+{
+  "uuid": "usagetop@rzukic.github.io",
+  "name": "usagetop",
+  "description": "How much of each AI subscription is left, in the top bar. A click opens usagetop's panel under it. Needs the usagetop app.",
+  "shell-version": ["45", "46", "47", "48", "49", "50", "51"],
+  "url": "https://github.com/rzukic/usagetop"
+}

@@ -87,13 +87,17 @@ public sealed class PanelWindow : Window
             Content = View;
         }
 
+        // Said before the window is first shown, as GTK does: told about the
+        // shadow's room later, Mutter keeps the visible part the size the whole
+        // window was and grows the window round it.
+        if (_shaped && TryGetPlatformHandle() is { HandleDescriptor: "XID" } handle)
+        {
+            int Pixels(double units) => (int)Math.Round(units * RenderScaling);
+            Desktop.SetShadowRoom(handle.Handle, Pixels(ShadowRoom), Pixels(ShadowRoom), Pixels(ShadowAbove), Pixels(ShadowBelow));
+        }
+
         Opened += (_, _) =>
         {
-            if (_shaped && TryGetPlatformHandle() is { HandleDescriptor: "XID" } handle)
-            {
-                int Pixels(double units) => (int)Math.Round(units * RenderScaling);
-                Desktop.SetShadowRoom(handle.Handle, Pixels(ShadowRoom), Pixels(ShadowRoom), Pixels(ShadowAbove), Pixels(ShadowBelow));
-            }
             Place();
             if (Environment.GetEnvironmentVariable("USAGETOP_DEBUG") is { Length: > 0 })
             {
@@ -113,6 +117,16 @@ public sealed class PanelWindow : Window
     public PanelView View { get; }
 
     /// <summary>
+    /// What the panel hangs under, in screen pixels: the item in a desktop's
+    /// bar that was clicked to open it, when whatever owns that item says where
+    /// it is. Null puts the panel in a corner of the screen.
+    /// </summary>
+    public PixelRect? Anchor { get; set; }
+
+    /// <summary>The space kept between the bar's item and the panel under it.</summary>
+    private const double AnchorGap = 6;
+
+    /// <summary>
     /// Put away as soon as another window is clicked, as a menu is. Off where
     /// the focus follows the pointer: there the panel would vanish the moment
     /// the pointer left it.
@@ -120,8 +134,9 @@ public sealed class PanelWindow : Window
     public bool CloseOnBlur { get; set; } = !Desktop.IsTiling;
 
     /// <summary>Shown if hidden, hidden if shown: a click on the tray icon, or `usagetop toggle`.</summary>
-    public void Toggle()
+    public void Toggle(PixelRect? anchor = null)
     {
+        Anchor = anchor;
         if (IsVisible)
         {
             Hide();
@@ -130,6 +145,12 @@ public sealed class PanelWindow : Window
         // The click that asks for it also took the focus away, which has just
         // hidden the panel: that click meant "close", not "close and reopen".
         if (DateTimeOffset.UtcNow - _hiddenByBlurAt < TimeSpan.FromMilliseconds(300)) return;
+        Reveal();
+    }
+
+    public void Reveal(PixelRect? anchor)
+    {
+        Anchor = anchor;
         Reveal();
     }
 
@@ -147,6 +168,13 @@ public sealed class PanelWindow : Window
         var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
         if (screen == null) return;
         var height = screen.WorkingArea.Height / screen.Scaling;
+        if (Anchor is { } anchor)
+        {
+            // Hung under a bar's item: from there down to the screen's edge.
+            var below = (screen.WorkingArea.Bottom - anchor.Bottom) / screen.Scaling;
+            MaxHeight = below - AnchorGap - EdgeGap + (_shaped ? ShadowAbove + ShadowBelow : 0);
+            return;
+        }
         MaxHeight = Desktop.IsTiling
             ? height - TilingRoom
             : height - EdgeGap * 2 + (_shaped ? ShadowAbove + ShadowBelow : 0);
@@ -159,6 +187,11 @@ public sealed class PanelWindow : Window
     /// </summary>
     private void Place()
     {
+        if (Anchor is { } anchor)
+        {
+            PlaceUnder(anchor);
+            return;
+        }
         if (Desktop.IsTiling) return;
         var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
         if (screen == null) return;
@@ -177,6 +210,28 @@ public sealed class PanelWindow : Window
             ? area.Bottom - Pixels(Bounds.Height) + Pixels(below - EdgeGap)
             : area.Y + Pixels(EdgeGap - above);
         Position = new PixelPoint(x, y);
+    }
+
+    /// <summary>
+    /// Under the bar's item and centred on it, as a menu would be, but never
+    /// off the side of the screen the item is on.
+    /// </summary>
+    private void PlaceUnder(PixelRect anchor)
+    {
+        var screen = Screens.ScreenFromPoint(anchor.Center) ?? Screens.ScreenFromWindow(this) ?? Screens.Primary;
+        if (screen == null) return;
+        var area = screen.WorkingArea;
+        var scale = screen.Scaling;
+        int Pixels(double units) => (int)Math.Round(units * scale);
+
+        var side = _shaped ? ShadowRoom : 0;
+        var above = _shaped ? ShadowAbove : 0;
+        var panelWidth = Pixels(Bounds.Width - side * 2);
+
+        var left = anchor.Center.X - panelWidth / 2;
+        left = Math.Min(left, area.Right - Pixels(EdgeGap) - panelWidth);
+        left = Math.Max(left, area.X + Pixels(EdgeGap));
+        Position = new PixelPoint(left - Pixels(side), anchor.Bottom + Pixels(AnchorGap - above));
     }
 
     private void OnKey(object? sender, KeyEventArgs e)

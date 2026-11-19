@@ -1,0 +1,9 @@
+/* The item in the top bar: a ring, then a mark and a figure for each limit. */
+.usagetop-box { spacing: 9px; }
+.usagetop-item { spacing: 4px; }
+.usagetop-ring { width: 16px; height: 16px; }
+.usagetop-mark { icon-size: 13px; }
+.usagetop-figure { font-feature-settings: "tnum"; font-weight: 600; }
+.usagetop-warning { color: #f4cb7a; }
+.usagetop-critical { color: #f59088; }
+.usagetop-quiet { opacity: 0.6; }

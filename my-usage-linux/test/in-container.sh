@@ -64,6 +64,12 @@ check "see-through outside the panel" "$(xwd -id "$id" -silent | tail -c 4 | od 
 check "wide enough for the panel and its shadow" "$w" '^484$'
 check "8 from the right edge" "$(( 1600 - (x + w - 30) ))" '^8$'
 check "8 from the top" "$(( y + 22 ))" '^8$'
+# Hung under an item of a bar: what the GNOME extension asks for.
+"$U" hide; sleep 1; "$U" show --anchor 700,0,160,30; sleep 2
+read -r x y w h <<< "$(geometry "$id")"
+check "under a bar's item, 6 below it" "$(( y + 22 ))" '^36$'
+check "and centred on it" "$(( x + w / 2 ))" '^780$'
+check "the same size as before" "$w" '^484$'
 stop
 
 export XDG_CURRENT_DESKTOP=KDE

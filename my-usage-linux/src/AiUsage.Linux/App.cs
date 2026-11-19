@@ -138,7 +138,7 @@ public sealed class App : Application
             };
             // Where the desktop passes a click on, it toggles the panel; where a
             // click only ever opens the menu (GNOME's AppIndicator), "Open" does.
-            _tray.Clicked += (_, _) => Panel().Toggle();
+            _tray.Clicked += (_, _) => Panel().Toggle(null);
             TrayIcon.SetIcons(this, [_tray]);
         }
 
@@ -155,23 +155,46 @@ public sealed class App : Application
 
     // ---- The command line, from another copy ----
 
+    /// <summary>"x,y,width,height" in screen pixels; null for anything else.</summary>
+    private static PixelRect? ParseAnchor(string text)
+    {
+        var parts = text.Trim().Split(',');
+        if (parts.Length != 4) return null;
+        var numbers = new int[4];
+        for (var i = 0; i < 4; i++)
+        {
+            if (!int.TryParse(parts[i], out numbers[i])) return null;
+        }
+        return numbers[2] <= 0 || numbers[3] <= 0 ? null : new PixelRect(numbers[0], numbers[1], numbers[2], numbers[3]);
+    }
+
     private async Task<string> AnswerAsync(string command) =>
         await Dispatcher.UIThread.InvokeAsync(() => Answer(command));
 
     private string Answer(string command)
     {
+        // "toggle --anchor 1800,0,120,29": whatever owns a bar's item says where
+        // it is, and the panel opens under it.
+        PixelRect? anchor = null;
+        var at = command.IndexOf(" --anchor ", StringComparison.Ordinal);
+        if (at >= 0)
+        {
+            anchor = ParseAnchor(command[(at + " --anchor ".Length)..]);
+            command = command[..at];
+        }
+
         switch (command)
         {
             case "ping":
                 return "pong\n";
             case "show":
-                Panel().Reveal();
+                Panel().Reveal(anchor);
                 return "";
             case "hide":
                 _panel?.Hide();
                 return "";
             case "toggle":
-                Panel().Toggle();
+                Panel().Toggle(anchor);
                 return "";
             case "refresh":
                 _ = _model.RefreshAsync(force: true);
