@@ -16,11 +16,23 @@ namespace AiUsage.Views;
 /// </summary>
 public sealed class PanelWindow : Window
 {
-    /// <summary>Room round the panel for its shadow to fall in.</summary>
+    /// <summary>
+    /// Room round the panel for its shadow to fall in: the shadow falls
+    /// downward, so there is less of it above the panel and more below.
+    /// </summary>
     private const double ShadowRoom = 30;
+    private const double ShadowAbove = ShadowRoom - 8;
+    private const double ShadowBelow = ShadowRoom + 8;
 
     /// <summary>The gap kept to the screen's edges.</summary>
     private const double EdgeGap = 8;
+
+    /// <summary>
+    /// What a tiling window manager may put round a floating window and along
+    /// the screen, a title and its bar, which it does not always report as
+    /// taken: the panel stays this much shorter than the screen there.
+    /// </summary>
+    private const double TilingRoom = 96;
 
     private readonly AppModel _model;
     private readonly bool _shaped = Desktop.IsComposited;
@@ -35,7 +47,9 @@ public sealed class PanelWindow : Window
         ShowInTaskbar = false;
         Topmost = true;
         SizeToContent = SizeToContent.Height;
-        WindowStartupLocation = WindowStartupLocation.Manual;
+        // A tiling window manager places its floating windows itself, and puts
+        // one that names no place of its own in the corner: so it is centred.
+        WindowStartupLocation = Desktop.IsTiling ? WindowStartupLocation.CenterScreen : WindowStartupLocation.Manual;
         X11Properties.SetNetWmWindowType(this, X11NetWmWindowType.Utility);
         X11Properties.SetWmClass(this, "usagetop");
 
@@ -52,7 +66,7 @@ public sealed class PanelWindow : Window
             Width = PanelView.PanelWidth + ShadowRoom * 2;
             Content = new Border
             {
-                Margin = new Thickness(ShadowRoom, ShadowRoom - 8, ShadowRoom, ShadowRoom + 8),
+                Margin = new Thickness(ShadowRoom, ShadowAbove, ShadowRoom, ShadowBelow),
                 CornerRadius = new CornerRadius(PanelView.Radius),
                 BoxShadow = new BoxShadows(new BoxShadow
                 {
@@ -73,7 +87,14 @@ public sealed class PanelWindow : Window
             Content = View;
         }
 
-        Opened += (_, _) => Place();
+        Opened += (_, _) =>
+        {
+            Place();
+            if (Environment.GetEnvironmentVariable("USAGETOP_DEBUG") is { Length: > 0 })
+            {
+                Console.Error.WriteLine($"panel: shaped {_shaped}, transparency {ActualTransparencyLevel}, at {Position}, size {Bounds.Size}");
+            }
+        };
         SizeChanged += (_, _) => Place();
         Deactivated += (_, _) =>
         {
@@ -120,13 +141,16 @@ public sealed class PanelWindow : Window
     {
         var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
         if (screen == null) return;
-        MaxHeight = screen.WorkingArea.Height / screen.Scaling - EdgeGap * 2 + (_shaped ? ShadowRoom : 0);
+        var height = screen.WorkingArea.Height / screen.Scaling;
+        MaxHeight = Desktop.IsTiling
+            ? height - TilingRoom
+            : height - EdgeGap * 2 + (_shaped ? ShadowAbove + ShadowBelow : 0);
     }
 
     /// <summary>
     /// Into the corner the tray is in, as far as that can be known: the bottom
     /// right where the desktop's panel is at the bottom, the top right
-    /// otherwise. A tiling window manager places its floating windows itself.
+    /// otherwise. Under a tiling window manager it stays where that put it.
     /// </summary>
     private void Place()
     {
@@ -136,15 +160,18 @@ public sealed class PanelWindow : Window
 
         var area = screen.WorkingArea;
         var scale = screen.Scaling;
-        // The shadow's room may hang over the edge; the panel itself keeps the gap.
-        var room = _shaped ? ShadowRoom : 0;
-        var width = (int)Math.Round(Bounds.Width * scale);
-        var height = (int)Math.Round(Bounds.Height * scale);
-        var inset = (int)Math.Round((EdgeGap - room) * scale);
+        int Pixels(double units) => (int)Math.Round(units * scale);
 
-        var x = area.Right - width - inset;
-        var y = Desktop.PanelAtBottom ? area.Bottom - height - inset : area.Y + inset;
-        Position = new PixelPoint(x, Math.Max(y, area.Y - (int)Math.Round(room * scale)));
+        // The shadow's room may hang over the screen's edge; the panel itself keeps the gap.
+        var side = _shaped ? ShadowRoom : 0;
+        var above = _shaped ? ShadowAbove : 0;
+        var below = _shaped ? ShadowBelow : 0;
+
+        var x = area.Right - Pixels(Bounds.Width) + Pixels(side - EdgeGap);
+        var y = Desktop.PanelAtBottom
+            ? area.Bottom - Pixels(Bounds.Height) + Pixels(below - EdgeGap)
+            : area.Y + Pixels(EdgeGap - above);
+        Position = new PixelPoint(x, y);
     }
 
     private void OnKey(object? sender, KeyEventArgs e)
