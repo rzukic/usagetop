@@ -1,0 +1,8 @@
+<Project>
+  <!-- Every .NET project in the repository: a built file names its sources and
+       its symbol file by path, and without this that is the full path on the
+       machine that built it, user folder and all. -->
+  <PropertyGroup>
+    <PathMap>$(MSBuildThisFileDirectory)=/_/</PathMap>
+  </PropertyGroup>
+</Project>

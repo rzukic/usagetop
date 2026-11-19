@@ -37,6 +37,11 @@ fi
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN" "$APP/Contents/MacOS/AiUsageMac"
+# Without its debug symbols: they name every source and object file by its
+# full path on the machine that built it, home folder and all.
+if [[ "$CONFIG" == "release" ]]; then
+	strip -S "$APP/Contents/MacOS/AiUsageMac"
+fi
 cp Info.plist "$APP/Contents/Info.plist"
 # Settings shows the version as given; the bundle's build number is its three
 # numbers, which is all macOS accepts there.
