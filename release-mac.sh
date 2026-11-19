@@ -94,8 +94,11 @@ if [[ "$WHAT" != "image" ]]; then
 	# Signed with a Developer ID, the app goes to Apple's notary service, and
 	# the ticket that comes back is stapled to it, so it also opens offline;
 	# then the same for the disk image it is packed in.
+	# Read whole first: grep -q stops at the first match, and with pipefail the
+	# codesign it cut off would turn a signed app into an unsigned one.
 	SIGNED=""
-	codesign -dv "$APP" 2>&1 | grep -q '^TeamIdentifier=[A-Z0-9]\{10\}$' && SIGNED=1
+	SIGNATURE="$(codesign -dv "$APP" 2>&1)"
+	grep -q '^TeamIdentifier=[A-Z0-9]\{10\}$' <<<"$SIGNATURE" && SIGNED=1
 	PROFILE="${USAGETOP_NOTARY_PROFILE:-usagetop}"
 	notarize() {
 		xcrun notarytool submit "$1" --keychain-profile "$PROFILE" --wait | tee "$OUT/notary.log"
