@@ -1,0 +1,388 @@
+using System.Reflection;
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Controls.Shapes;
+using Avalonia.Layout;
+using Avalonia.Media;
+using AiUsage.Data;
+using AiUsage.Ui;
+
+namespace AiUsage.Views;
+
+/// <summary>Which page of the panel is showing.</summary>
+public abstract record Pane
+{
+    public sealed record Overview : Pane;
+
+    public sealed record Account(string Key) : Pane;
+
+    public sealed record Settings : Pane;
+}
+
+/// <summary>
+/// The panel, as on the Mac: a rail of subscriptions down the left, the page on
+/// the right between a header and a footer. Drawn again whenever a reading
+/// arrives, a preference changes or the clock moves on.
+/// </summary>
+public sealed class PanelView : Border
+{
+    public const double PanelWidth = 424;
+    public const double Radius = 26;
+    private const double RailWidth = 58;
+
+    private readonly AppModel _model;
+    private readonly bool _flat;
+    private ScrollViewer? _scroller;
+
+    /// <summary>
+    /// <paramref name="flat"/> lays the page out in full, without scrolling: for
+    /// drawing it to a file, where a scroll view would come out empty.
+    /// </summary>
+    public PanelView(AppModel model, bool flat = false)
+    {
+        _model = model;
+        _flat = flat;
+        Width = PanelWidth;
+        CornerRadius = new CornerRadius(Radius);
+        ClipToBounds = true;
+        BorderThickness = new Thickness(1);
+        Rebuild();
+    }
+
+    public Pane Pane { get; private set; } = new Pane.Overview();
+
+    public event Action? QuitRequested;
+
+    /// <summary>0 is opaque; above it the desktop shows through, for a compositor that blurs it.</summary>
+    public double Glass { get; set; }
+
+    public void Show(Pane pane)
+    {
+        Pane = pane;
+        Rebuild();
+        _scroller?.ScrollToHome();
+    }
+
+    public void Rebuild()
+    {
+        // An account that went away takes its page with it.
+        if (Pane is Pane.Account { Key: var key } && Usage(key) == null) Pane = new Pane.Overview();
+
+        var (top, bottom) = Look.Panel;
+        var opacity = 1 - Math.Clamp(Glass, 0, 1) * 0.45;
+        Background = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
+            Opacity = opacity,
+            GradientStops = { new GradientStop(top, 0), new GradientStop(bottom, 1) },
+        };
+        BorderBrush = Look.Ink(Look.Dark ? 0.13 : 0.1);
+
+        var now = DateTimeOffset.UtcNow;
+        var right = new Grid { RowDefinitions = new RowDefinitions(_flat ? "Auto,Auto,Auto" : "Auto,*,Auto") };
+
+        var header = Header();
+        header.Margin = new Thickness(14, 14, 14, 10);
+        right.Children.Add(header);
+
+        var page = Page(now);
+        page.Margin = new Thickness(12, 0, 12, 4);
+        if (_flat)
+        {
+            Grid.SetRow(page, 1);
+            right.Children.Add(page);
+        }
+        else
+        {
+            var offset = _scroller?.Offset ?? default;
+            _scroller = new ScrollViewer
+            {
+                Content = page,
+                HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
+                VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Hidden,
+                Offset = offset,
+            };
+            Grid.SetRow(_scroller, 1);
+            right.Children.Add(_scroller);
+        }
+
+        var footer = Footer();
+        footer.Margin = new Thickness(14, 12);
+        Grid.SetRow(footer, 2);
+        right.Children.Add(footer);
+
+        var body = new Grid { ColumnDefinitions = new ColumnDefinitions($"{RailWidth},*") };
+        body.Children.Add(Rail());
+        Grid.SetColumn(right, 1);
+        body.Children.Add(right);
+        Child = body;
+    }
+
+    private ProviderUsage? Usage(string key) => _model.Snapshot?.Usages.FirstOrDefault(u => u.AccountKey == key);
+
+    // ---- Rail ----
+
+    private Control Rail()
+    {
+        var accounts = _model.RailOrder();
+
+        var items = new StackPanel { Spacing = 6, Margin = new Thickness(0, 12) };
+        items.Children.Add(RailButton(new Pane.Overview(), "Overview  Ctrl+0", Icons.Glyph(Icons.Grid, 15, Look.Primary)));
+        items.Children.Add(new Border
+        {
+            Width = 18,
+            Height = 1.5,
+            CornerRadius = new CornerRadius(1),
+            Background = Look.Ink(0.12),
+            Margin = new Thickness(0, 3),
+        });
+        for (var i = 0; i < accounts.Count; i++)
+        {
+            var usage = accounts[i];
+            var help = i < 9 ? $"{usage.DisplayName}  Ctrl+{i + 1}" : usage.DisplayName;
+            items.Children.Add(RailButton(new Pane.Account(usage.AccountKey), help, RailRing(usage)));
+        }
+
+        var settings = RailButton(new Pane.Settings(), "Settings  Ctrl+,", Icons.Glyph(Icons.Gear, 16, Look.Primary));
+        settings.VerticalAlignment = VerticalAlignment.Bottom;
+        settings.Margin = new Thickness(0, 12, 0, 12);
+
+        var rail = new Grid { RowDefinitions = new RowDefinitions("Auto,*") };
+        rail.Children.Add(items);
+        Grid.SetRow(settings, 1);
+        rail.Children.Add(settings);
+
+        // A hairline between the rail and the page, short of both ends.
+        var edge = new Border
+        {
+            Width = 0.75,
+            Background = Look.Ink(0.08),
+            HorizontalAlignment = HorizontalAlignment.Right,
+            Margin = new Thickness(0, 14),
+        };
+        Grid.SetRowSpan(edge, 2);
+        rail.Children.Add(edge);
+        return rail;
+    }
+
+    private Control RailButton(Pane target, string help, Control label)
+    {
+        var selected = Pane == target;
+        label.Opacity = selected ? 1 : 0.62;
+        label.HorizontalAlignment = HorizontalAlignment.Center;
+        label.VerticalAlignment = VerticalAlignment.Center;
+
+        // No highlight of its own at rest: the soft disc is the selection.
+        var disc = new Border
+        {
+            Width = 42,
+            Height = 42,
+            CornerRadius = new CornerRadius(21),
+            Background = selected ? Look.Ink(0.13) : Brushes.Transparent,
+            BorderBrush = selected ? Look.Ink(0.14) : Brushes.Transparent,
+            BorderThickness = new Thickness(0.5),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            Child = label,
+        };
+        if (selected) Avalonia.Automation.AutomationProperties.SetItemStatus(disc, "Selected");
+        return Bits.Clickable(disc, help, () => Show(target), over =>
+        {
+            if (!selected) disc.Background = over ? Look.Ink(0.07) : Brushes.Transparent;
+            label.Opacity = selected || over ? 1 : 0.62;
+        });
+    }
+
+    /// <summary>A subscription in the rail: its mark inside a ring of what is left.</summary>
+    private Control RailRing(ProviderUsage usage)
+    {
+        var ok = usage.State == UsageState.Ok;
+        var level = ok ? _model.Tightest(usage)?.RemainingPercent : null;
+        var ring = new Ring(level, 32, 2.6, Icons.Glyph(ProviderArt.Logo(usage.Id), 14, Look.Primary))
+        {
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+        };
+
+        var box = new Panel { Width = 38, Height = 38 };
+        box.Children.Add(ring);
+        if (!ok)
+        {
+            box.Children.Add(Badge(Look.Solid(Look.Critical), Bits.Text("!", 9, FontWeight.Heavy, Brushes.White)));
+        }
+        else if (!string.IsNullOrWhiteSpace(usage.AccountName))
+        {
+            // The account's own first letter, in the case it was written in.
+            var tile = new SolidColorBrush(Look.Dark ? Color.FromRgb(0x3A, 0x3C, 0x44) : Color.FromRgb(0xFF, 0xFF, 0xFF));
+            box.Children.Add(Badge(tile, Bits.Text(usage.AccountName.Trim()[..1], 7.5, FontWeight.Heavy, Look.Primary)));
+        }
+        return box;
+    }
+
+    private static Border Badge(IBrush fill, TextBlock mark)
+    {
+        mark.HorizontalAlignment = HorizontalAlignment.Center;
+        mark.VerticalAlignment = VerticalAlignment.Center;
+        return new Border
+        {
+            Width = 13,
+            Height = 13,
+            CornerRadius = new CornerRadius(6.5),
+            Background = fill,
+            HorizontalAlignment = HorizontalAlignment.Right,
+            VerticalAlignment = VerticalAlignment.Bottom,
+            Child = mark,
+        };
+    }
+
+    // ---- Header and footer ----
+
+    private Grid Header()
+    {
+        var (title, subtitle) = Pane switch
+        {
+            Pane.Settings => ("Settings", "This app"),
+            Pane.Account { Key: var key } when Usage(key) is { } usage => (
+                usage.DisplayName,
+                usage.State != UsageState.Ok ? "Needs attention" : $"Read {Format.Ago(usage.FetchedAt)}"),
+            _ => ("Usage", OverviewSubtitle()),
+        };
+
+        var names = new StackPanel { Spacing = 1, VerticalAlignment = VerticalAlignment.Center };
+        names.Children.Add(Bits.Text(title, 17, FontWeight.Bold, Look.Primary));
+        if (subtitle != null) names.Children.Add(Bits.Text(subtitle, 11, FontWeight.Normal, Look.Secondary));
+
+        var header = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto,Auto") };
+        header.Children.Add(names);
+
+        if (_model.IsSample)
+        {
+            var chip = Bits.Chip("Sample", Look.Warning);
+            chip.Margin = new Thickness(8, 0, 0, 0);
+            Grid.SetColumn(chip, 1);
+            header.Children.Add(chip);
+        }
+
+        if (Pane is not Pane.Settings)
+        {
+            var refresh = Bits.IconButton(
+                Icons.Refresh,
+                _model.UsesServer ? "Ask the server to poll every provider now  Ctrl+R" : "Ask every provider now  Ctrl+R",
+                () => _ = _model.RefreshAsync(force: true));
+            refresh.Margin = new Thickness(10, 0, 0, 0);
+            Grid.SetColumn(refresh, 2);
+            header.Children.Add(refresh);
+        }
+        return header;
+    }
+
+    private string? OverviewSubtitle()
+    {
+        var usages = _model.Snapshot?.Usages ?? [];
+        if (usages.Count == 0) return null;
+        var broken = usages.Count(u => u.State != UsageState.Ok);
+        var count = $"{usages.Count} subscription{(usages.Count == 1 ? "" : "s")}";
+        return broken == 0 ? count : $"{count} · {broken} need{(broken == 1 ? "s" : "")} attention";
+    }
+
+    private Grid Footer()
+    {
+        var colour = StatusColour();
+        var dot = new Ellipse
+        {
+            Width = 6,
+            Height = 6,
+            Fill = Look.Solid(colour),
+            VerticalAlignment = VerticalAlignment.Center,
+            Margin = new Thickness(0, 0, 8, 0),
+            Effect = new DropShadowEffect { BlurRadius = 5, OffsetX = 0, OffsetY = 0, Color = colour, Opacity = 0.8 },
+        };
+
+        var footer = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
+        footer.Children.Add(dot);
+
+        var status = Bits.Text(_model.StatusLine, 11, FontWeight.Normal, Look.Secondary);
+        Grid.SetColumn(status, 1);
+        footer.Children.Add(status);
+
+        var quit = Bits.IconButton(Icons.Power, "Quit usagetop  Ctrl+Q", () => QuitRequested?.Invoke(), size: 26);
+        quit.Margin = new Thickness(6, 0, 0, 0);
+        Grid.SetColumn(quit, 2);
+        footer.Children.Add(quit);
+        return footer;
+    }
+
+    private Color StatusColour()
+    {
+        if (_model.IsSample) return Look.Warning;
+        if (_model.Problem != null) return Look.Critical;
+        if (_model.Snapshot is not { } snapshot) return Look.InkColor;
+        return DateTimeOffset.UtcNow - snapshot.FetchedAt > TimeSpan.FromMinutes(15) ? Look.Warning : Look.Fresh;
+    }
+
+    // ---- Pages ----
+
+    private Control Page(DateTimeOffset now)
+    {
+        switch (Pane)
+        {
+            case Pane.Settings:
+                return AboutCard();
+            case Pane.Account { Key: var key } when Usage(key) is { } usage:
+                return AccountPage.Build(_model, usage, now);
+        }
+
+        if ((_model.Snapshot?.Usages.Count ?? 0) == 0)
+        {
+            return _model.Problem is { } problem ? Notice(problem) : Onboarding();
+        }
+        return OverviewPage.Build(_model, now, key => Show(new Pane.Account(key)));
+    }
+
+    /// <summary>Before any account has been added.</summary>
+    private Control Onboarding()
+    {
+        var stack = new StackPanel { Spacing = 14 };
+        stack.Children.Add(new Ring(72, 54, 4.5) { HorizontalAlignment = HorizontalAlignment.Left });
+
+        var words = new StackPanel { Spacing = 5 };
+        words.Children.Add(Bits.Text("No subscriptions yet", 15, FontWeight.SemiBold, Look.Primary));
+        words.Children.Add(Bits.Paragraph(
+            "usagetop shows what is left of Claude, ChatGPT, Mistral, Kimi, Muse and Antigravity. " +
+            "Adding accounts is not in this build yet; the sample shows what it will look like.",
+            12, Look.Secondary));
+        stack.Children.Add(words);
+
+        var sample = Bits.SoftButton("Try with sample data", "Show made-up usage", () => SampleRequested?.Invoke(), prominent: true);
+        sample.HorizontalAlignment = HorizontalAlignment.Left;
+        stack.Children.Add(sample);
+        return Bits.Card(stack, padding: 16);
+    }
+
+    /// <summary>The onboarding card asks for the made-up usage.</summary>
+    public event Action? SampleRequested;
+
+    private static Control Notice(string problem)
+    {
+        var row = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*") };
+        var mark = Icons.Glyph(Icons.Warning, 13, Look.Solid(Look.Warning));
+        mark.Margin = new Thickness(0, 1, 10, 0);
+        mark.VerticalAlignment = VerticalAlignment.Top;
+        row.Children.Add(mark);
+        var words = Bits.Paragraph(problem, 12, Look.Secondary);
+        Grid.SetColumn(words, 1);
+        row.Children.Add(words);
+        return Bits.Card(row, padding: 14);
+    }
+
+    private static Control AboutCard()
+    {
+        var version = Assembly.GetExecutingAssembly()
+            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "";
+        var stack = new StackPanel { Spacing = 5 };
+        stack.Children.Add(Bits.Text($"usagetop {version}".TrimEnd(), 13, FontWeight.SemiBold, Look.Primary));
+        stack.Children.Add(Bits.Paragraph(
+            "Accounts, a server and the panel's look are set here once this build has them.", 12, Look.Secondary));
+        return Bits.Card(stack, padding: 14);
+    }
+}
