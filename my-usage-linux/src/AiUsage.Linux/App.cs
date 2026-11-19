@@ -217,7 +217,7 @@ public sealed class App : Application
                 return "";
             case "reload":
                 // The server was set from the command line: read from it now.
-                _model.ShowOwn();
+                _model.Reload();
                 _ = _model.RefreshAsync();
                 return "";
             case "quit":

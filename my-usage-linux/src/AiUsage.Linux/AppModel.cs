@@ -76,6 +76,17 @@ public sealed class AppModel
         Show(_real, sample: false);
     }
 
+    /// <summary>
+    /// Reads the credentials file again. The core reads it once and keeps it,
+    /// so a server set from the command line reaches a running app only this way.
+    /// </summary>
+    public void Reload()
+    {
+        _credentials = null;
+        _real = null;
+        if (!IsSample) ShowOwn();
+    }
+
     /// <summary>"Try with sample data".</summary>
     public void ShowSample() => Show(SampleRepository(null), sample: true);
 
