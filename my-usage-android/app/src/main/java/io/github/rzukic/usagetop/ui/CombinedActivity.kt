@@ -10,6 +10,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import io.github.rzukic.usagetop.R
 import io.github.rzukic.usagetop.data.CombinedUsage
+import io.github.rzukic.usagetop.data.HiddenLimitStore
+import io.github.rzukic.usagetop.data.HiddenLimits
 import io.github.rzukic.usagetop.data.ProviderId
 import io.github.rzukic.usagetop.data.ProviderUsage
 import io.github.rzukic.usagetop.data.Projection
@@ -178,9 +180,11 @@ class CombinedActivity : AppCompatActivity() {
         binding.combinedProviders.removeAllViews()
 
         var rows = 0
+        // Hidden limits leave the list; the figure above still counts them.
+        val hidden = HiddenLimitStore(this).all()
         usages.forEach { usage ->
             val id = usage.id
-            val windows = CombinedUsage.longWindows(usage)
+            val windows = CombinedUsage.longWindows(usage).filter { !HiddenLimits.isHidden(hidden, usage, it) }
             val percent = CombinedUsage.level(windows) ?: return@forEach
 
             val row = layoutInflater.inflate(

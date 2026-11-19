@@ -1,6 +1,7 @@
 package io.github.rzukic.usagetop.widget
 
 import io.github.rzukic.usagetop.data.CombinedUsage
+import io.github.rzukic.usagetop.data.HiddenLimits
 import io.github.rzukic.usagetop.data.ProviderUsage
 import io.github.rzukic.usagetop.data.Projection
 import io.github.rzukic.usagetop.data.Snapshot
@@ -70,20 +71,22 @@ object WidgetModel {
     /**
      * Every account worth a line, the one closest to running out first. Accounts
      * with nothing to read and no sign-in problem are left out entirely; ones that
-     * need a sign-in go last, as a single quiet line.
+     * need a sign-in go last, as a single quiet line. [hidden] limits are not
+     * shown: an account whose limits are all hidden has no line.
      */
-    fun accounts(snapshot: Snapshot?, now: Instant = Instant.now()): Accounts {
+    fun accounts(snapshot: Snapshot?, now: Instant = Instant.now(), hidden: Set<String> = emptySet()): Accounts {
         val usages = snapshot?.usages.orEmpty()
         val lines = usages
             .filter { it.state == UsageState.OK }
-            .mapNotNull { line(it, now) }
+            .mapNotNull { line(it, now, hidden) }
             .sortedBy { it.percent }
         val out = usages.filter { it.state == UsageState.ERROR }.map { Out(it) }
         return Accounts(lines, out)
     }
 
-    fun line(usage: ProviderUsage, now: Instant): Line? {
-        val rated = usage.windows.filter { it.remainingPercent != null }
+    /** The account's line from its visible limits; null when none can be shown. */
+    fun line(usage: ProviderUsage, now: Instant, hidden: Set<String> = emptySet()): Line? {
+        val rated = HiddenLimits.visible(usage, hidden).filter { it.remainingPercent != null }
         val lowest = rated.minByOrNull { it.remainingPercent!! } ?: return null
         val percent = lowest.remainingPercent!!
 

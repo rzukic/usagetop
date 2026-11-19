@@ -74,6 +74,30 @@ class WidgetModelTest {
     }
 
     @Test
+    fun `a hidden limit no longer decides the ring and is not mentioned`() {
+        val line = WidgetModel.line(claude, now, setOf("claude|7d"))!!
+        // Weekly 31% is hidden: the ring falls to the lowest visible, 5h at 38%.
+        assertEquals("5h", line.window.label)
+        assertEquals(38f, line.percent)
+        assertTrue(line.mentions.none { it.window.label == "7d" })
+    }
+
+    @Test
+    fun `an account whose limits are all hidden has no line`() {
+        val hidden = setOf("kimi|Weekly")
+        assertNull(WidgetModel.line(kimi, now, hidden))
+        val accounts = WidgetModel.accounts(snapshot(kimi, claude, chatgpt), now, hidden)
+        assertEquals(listOf(ProviderId.CLAUDE, ProviderId.CHATGPT), accounts.lines.map { it.usage.id })
+    }
+
+    @Test
+    fun `automatic rings leave hidden limits out`() {
+        val picks = RingPicks.defaults(snapshot(kimi, claude, chatgpt), setOf("kimi|Weekly", "claude|5h"))
+        assertTrue(picks.none { it.key == "kimi|Weekly" || it.key == "claude|5h" })
+        assertEquals("claude|7d", picks.first().key)
+    }
+
+    @Test
     fun `pace compares what is left with an even spread`() {
         // Half of a 5h window left with half the time to go: on pace.
         assertEquals(WidgetModel.Pace.ON, WidgetModel.pace(UsageWindow("5h", 50f, inHours(2.5)), now))

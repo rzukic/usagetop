@@ -55,6 +55,11 @@ class UsageRepository(context: Context) {
     fun serverProblem(): String? =
         prefs().getString(KEY_SERVER_PROBLEM, null).takeIf { usesServer() }
 
+    /** A server call outside a refresh failed (hiding a limit): said where refresh problems are. */
+    fun reportServerProblem(message: String?) {
+        prefs().edit().putString(KEY_SERVER_PROBLEM, message).apply()
+    }
+
     /**
      * The server's reading in place of our own. Nothing here touches a provider
      * or a token: while a server is set, it is the one holder of every session.
@@ -75,6 +80,7 @@ class UsageRepository(context: Context) {
             val state = ServerClient.fetch(url, credentials.serverToken(), since, force)
 
             UsageHistory(appContext).merge(state, Instant.now())
+            HiddenLimitStore(appContext).fromServer(state.hiddenLimits)
             prefs.edit()
                 .putString(KEY_CACHE, SnapshotCodec.encode(state.snapshot))
                 .putString(KEY_SERVER_SYNCED_URL, url)

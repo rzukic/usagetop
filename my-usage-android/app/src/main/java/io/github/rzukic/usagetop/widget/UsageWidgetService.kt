@@ -20,7 +20,7 @@ private class UsageViewsFactory(private val context: Context) :
     override fun onCreate() = Unit
 
     override fun onDataSetChanged() {
-        entries = WidgetRenderer.entries(UsageRepository(context).cached())
+        entries = WidgetRenderer.entries(context, UsageRepository(context).cached())
     }
 
     override fun onDestroy() {

@@ -10,6 +10,7 @@ import android.view.View
 import android.widget.RemoteViews
 import io.github.rzukic.usagetop.R
 import io.github.rzukic.usagetop.data.Accounts
+import io.github.rzukic.usagetop.data.HiddenLimitStore
 import io.github.rzukic.usagetop.data.Snapshot
 import io.github.rzukic.usagetop.data.UsageRepository
 import io.github.rzukic.usagetop.ui.ProviderArt
@@ -42,7 +43,11 @@ class RingsWidgetProvider : AppWidgetProvider() {
         }
 
         fun build(context: Context, snapshot: Snapshot?, widgetId: Int): RemoteViews =
-            build(context, snapshot, RingPicks.read(context, widgetId) ?: RingPicks.defaults(snapshot))
+            build(
+                context,
+                snapshot,
+                RingPicks.read(context, widgetId) ?: RingPicks.defaults(snapshot, HiddenLimitStore(context).all()),
+            )
 
         fun build(context: Context, snapshot: Snapshot?, picks: List<RingPicks.Pick>): RemoteViews =
             WidgetRenderer.squared { side -> plain(context, snapshot, picks, side) }

@@ -1,6 +1,7 @@
 package io.github.rzukic.usagetop.widget
 
 import android.content.Context
+import io.github.rzukic.usagetop.data.HiddenLimits
 import io.github.rzukic.usagetop.data.ProviderUsage
 import io.github.rzukic.usagetop.data.Snapshot
 import io.github.rzukic.usagetop.data.UsageState
@@ -47,9 +48,12 @@ object RingPicks {
         prefs(context).edit().remove(key(widgetId)).apply()
     }
 
-    /** Until something is picked: the windows closest to empty, as many as fit. */
-    fun defaults(snapshot: Snapshot?): List<Pick> = choices(snapshot)
-        .filter { (_, window) -> window.remainingPercent != null }
+    /**
+     * Until something is picked: the windows closest to empty, as many as fit,
+     * leaving out [hidden] ones. Picks someone made stay as made, hidden or not.
+     */
+    fun defaults(snapshot: Snapshot?, hidden: Set<String> = emptySet()): List<Pick> = choices(snapshot)
+        .filter { (usage, window) -> window.remainingPercent != null && !HiddenLimits.isHidden(hidden, usage, window) }
         .sortedBy { (_, window) -> window.remainingPercent }
         .take(MAX)
         .map { (usage, window) -> Pick.of(usage, window) }

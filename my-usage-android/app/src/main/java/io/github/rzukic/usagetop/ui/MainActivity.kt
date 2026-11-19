@@ -22,8 +22,11 @@ import io.github.rzukic.usagetop.R
 import io.github.rzukic.usagetop.auth.OAuthCallbackService
 import io.github.rzukic.usagetop.auth.OAuthConfig
 import io.github.rzukic.usagetop.auth.OAuthSession
+import io.github.rzukic.usagetop.data.Accounts
 import io.github.rzukic.usagetop.data.Credentials
 import io.github.rzukic.usagetop.data.CombinedUsage
+import io.github.rzukic.usagetop.data.HiddenLimitStore
+import io.github.rzukic.usagetop.data.HiddenLimits
 import io.github.rzukic.usagetop.data.ProviderId
 import io.github.rzukic.usagetop.data.ProviderUsage
 import io.github.rzukic.usagetop.BuildConfig
@@ -66,6 +69,7 @@ class MainActivity : AppCompatActivity() {
         )
     }
     private val repository by lazy { UsageRepository(this) }
+    private val hiddenLimits by lazy { HiddenLimitStore(this) }
     private var cacheWatcher: SharedPreferences.OnSharedPreferenceChangeListener? = null
     private var refreshing = false
 
@@ -319,6 +323,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun applySnapshot(snapshot: Snapshot?) {
         renderUsage(snapshot)
+        renderHiddenLimits(snapshot)
         renderCombined(snapshot)
         applyStatus(snapshot)
         binding.overallStatus.text = overallStatus(snapshot)
@@ -385,17 +390,18 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
+        val hidden = hiddenLimits.all()
         sections.forEachIndexed { index, (id, usage) ->
             val section = layoutInflater.inflate(R.layout.usage_section, binding.usageContainer, false)
             if (index > 0) {
                 (section.layoutParams as LinearLayout.LayoutParams).topMargin = dp(18)
             }
-            bindSection(section, id, usage)
+            bindSection(section, id, usage, hidden)
             binding.usageContainer.addView(section)
         }
     }
 
-    private fun bindSection(section: View, id: ProviderId, usage: ProviderUsage?) {
+    private fun bindSection(section: View, id: ProviderId, usage: ProviderUsage?, hidden: Set<String>) {
         section.findViewById<TextView>(R.id.section_name).text = usage?.displayName ?: id.displayName
         section.findViewById<ImageView>(R.id.section_logo).setImageResource(ProviderArt.logo(id))
 
@@ -423,10 +429,83 @@ class MainActivity : AppCompatActivity() {
         }
 
         val windows = usage?.windows.orEmpty()
-        if (windows.isEmpty()) {
+        if (usage == null || windows.isEmpty()) {
             card.addView(note(usage))
-        } else {
-            windows.forEach { card.addView(metricRow(it)) }
+            return
+        }
+        // Hidden limits stay off the list; the account's own screen still has them.
+        val visible = HiddenLimits.visible(usage, hidden)
+        val count = windows.size - visible.size
+        when {
+            visible.isEmpty() -> card.addView(quiet(getString(R.string.all_limits_hidden)))
+            else -> {
+                visible.forEach { card.addView(metricRow(it)) }
+                if (count > 0) card.addView(quiet(resources.getQuantityString(R.plurals.limits_hidden, count, count)))
+            }
+        }
+    }
+
+    /** A small dim line in an account's card: "2 hidden", "All limits hidden". */
+    private fun quiet(text: String): TextView = TextView(this).apply {
+        this.text = text
+        setTextColor(ContextCompat.getColor(context, R.color.text_tertiary))
+        textSize = 11f
+        setPadding(0, dp(6), 0, dp(2))
+    }
+
+    /**
+     * Shows a hidden limit again: at once on screen, then, with a server keeping
+     * the list, on the server, whose answer is drawn when it comes.
+     */
+    private fun changeHidden(key: String, hidden: Boolean) {
+        lifecycleScope.launch {
+            val redraw = {
+                val cached = repository.cached()
+                renderUsage(cached)
+                renderHiddenLimits(cached)
+                UsageWidgetProvider.render(this@MainActivity)
+            }
+            val problem = hiddenLimits.set(key, hidden, redraw)
+            if (problem != null) repository.reportServerProblem(problem)
+            redraw()
+        }
+    }
+
+    /** Settings › Hidden limits: each with Show, the card itself only while there are any. */
+    private fun renderHiddenLimits(snapshot: Snapshot?) {
+        val keys = hiddenLimits.all().sortedBy { it.lowercase() }
+        binding.hiddenLimitsCard.visibility = if (keys.isEmpty()) View.GONE else View.VISIBLE
+        binding.hiddenLimitsCaption.setText(
+            if (hiddenLimits.serverKeeps()) R.string.hidden_limits_caption_server else R.string.hidden_limits_caption,
+        )
+        binding.hiddenLimitsList.removeAllViews()
+        keys.forEach { key ->
+            val (account, label) = HiddenLimits.split(key) ?: return@forEach
+            val name = snapshot?.usages?.firstOrNull { it.accountKey == account }?.displayName
+                ?: Accounts.parse(account)?.let { (provider, slot) ->
+                    if (slot.isEmpty()) provider.displayName else "${provider.displayName} #$slot"
+                }
+                ?: account
+
+            val row = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                minimumHeight = dp(44)
+            }
+            row.addView(TextView(this).apply {
+                text = "$name · $label"
+                setTextColor(ContextCompat.getColor(context, R.color.text_primary))
+                textSize = 13f
+            }, LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f))
+            row.addView(TextView(this).apply {
+                text = getString(R.string.hidden_limit_show)
+                setTextColor(ContextCompat.getColor(context, R.color.meter_normal))
+                textSize = 13f
+                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+                setPadding(dp(12), dp(10), dp(4), dp(10))
+                setOnClickListener { changeHidden(key, hidden = false) }
+            })
+            binding.hiddenLimitsList.addView(row)
         }
     }
 

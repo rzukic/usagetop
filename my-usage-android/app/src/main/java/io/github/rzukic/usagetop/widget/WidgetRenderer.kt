@@ -11,6 +11,7 @@ import android.view.View
 import android.widget.RemoteViews
 import io.github.rzukic.usagetop.R
 import io.github.rzukic.usagetop.data.CombinedUsage
+import io.github.rzukic.usagetop.data.HiddenLimitStore
 import io.github.rzukic.usagetop.data.Projection
 import io.github.rzukic.usagetop.data.Snapshot
 import io.github.rzukic.usagetop.data.UsageHistory
@@ -46,8 +47,8 @@ object WidgetRenderer {
         data class Out(val out: WidgetModel.Out) : Entry
     }
 
-    fun entries(snapshot: Snapshot?): List<Entry> {
-        val accounts = WidgetModel.accounts(snapshot)
+    fun entries(context: Context, snapshot: Snapshot?): List<Entry> {
+        val accounts = WidgetModel.accounts(snapshot, hidden = HiddenLimitStore(context).all())
         return accounts.lines.map { Entry.Line(it) } + accounts.out.map { Entry.Out(it) }
     }
 
@@ -118,7 +119,7 @@ object WidgetRenderer {
         bindStale(context, views, snapshot)
 
         views.removeAllViews(R.id.rows)
-        WidgetModel.accounts(snapshot).lines.take(MEDIUM_ROWS).forEach { line ->
+        WidgetModel.accounts(snapshot, hidden = HiddenLimitStore(context).all()).lines.take(MEDIUM_ROWS).forEach { line ->
             views.addView(R.id.rows, rowViews(context, line, compact = true))
         }
         views.setOnClickPendingIntent(R.id.widget_root, openIntent(context))

@@ -47,7 +47,7 @@ class RingsConfigActivity : Activity() {
 
         val snapshot = UsageRepository(this).cached()
         val choices = RingPicks.choices(snapshot)
-        picks += (RingPicks.read(this, widgetId) ?: RingPicks.defaults(snapshot))
+        picks += (RingPicks.read(this, widgetId) ?: RingPicks.defaults(snapshot, io.github.rzukic.usagetop.data.HiddenLimitStore(this).all()))
             .filter { pick -> choices.any { (usage, window) -> RingPicks.Pick.of(usage, window) == pick } }
 
         val column = LinearLayout(this).apply {

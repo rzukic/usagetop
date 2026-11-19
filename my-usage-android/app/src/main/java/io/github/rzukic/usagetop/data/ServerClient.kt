@@ -15,6 +15,11 @@ data class ServerState(
     val serverTime: Instant,
     val combined: List<UsagePoint>,
     val series: Map<String, List<UsagePoint>>,
+    /**
+     * The limits hidden for every app, kept by the server; null from a server too
+     * old to keep them, which leaves this device's own list in charge.
+     */
+    val hiddenLimits: List<String>? = null,
 ) {
     companion object {
         /**
@@ -38,8 +43,12 @@ data class ServerState(
                 serverTime = Instant.ofEpochMilli(root.optLong("serverTime", System.currentTimeMillis())),
                 combined = points(root.optJSONArray("combined")),
                 series = series,
+                hiddenLimits = root.optJSONArray("hiddenLimits")?.let { strings(it) },
             )
         }
+
+        internal fun strings(array: JSONArray): List<String> =
+            (0 until array.length()).mapNotNull { array.optString(it).takeIf { s -> s.isNotEmpty() } }
 
         private fun points(array: JSONArray?): List<UsagePoint> {
             if (array == null) return emptyList()
@@ -239,6 +248,18 @@ object ServerClient {
     fun signInStatus(url: String, token: String?, key: String): String {
         val response = send { Http.get("$url/api/signin/${escape(key)}/status", headers(token)) }
         return parsed { JSONObject(response.body).optString("status").ifEmpty { "none" } }
+    }
+
+    /**
+     * Hides a limit for every app, or shows it again; the answer is the server's
+     * whole list, which replaces whatever was shown meanwhile.
+     */
+    fun setHidden(url: String, token: String?, key: String, hidden: Boolean): List<String> {
+        val target = "$url/api/hidden?limit=${escape(key)}"
+        val response = send {
+            if (hidden) Http.putJson(target, headers(token), "{}") else Http.delete(target, headers(token))
+        }
+        return parsed { ServerState.strings(JSONArray(response.body)) }
     }
 
     private fun headers(token: String?): Map<String, String> =

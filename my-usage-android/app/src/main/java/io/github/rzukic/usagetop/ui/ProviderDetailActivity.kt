@@ -12,6 +12,8 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import io.github.rzukic.usagetop.R
 import io.github.rzukic.usagetop.data.Accounts
+import io.github.rzukic.usagetop.data.HiddenLimitStore
+import io.github.rzukic.usagetop.data.HiddenLimits
 import io.github.rzukic.usagetop.data.Projection
 import io.github.rzukic.usagetop.data.ProviderId
 import io.github.rzukic.usagetop.data.ProviderUsage
@@ -38,6 +40,7 @@ class ProviderDetailActivity : AppCompatActivity() {
     /** "claude", or "claude-2" for an account added on the server. */
     private lateinit var account: String
     private val repository by lazy { UsageRepository(this) }
+    private val hiddenLimits by lazy { HiddenLimitStore(this) }
     private var cacheWatcher: SharedPreferences.OnSharedPreferenceChangeListener? = null
     private var refreshing = false
 
@@ -138,6 +141,28 @@ class ProviderDetailActivity : AppCompatActivity() {
 
         card.findViewById<TextView>(R.id.window_label).text =
             window.label.ifBlank { getString(R.string.usage) }
+
+        // Hidden on this device: still here, dimmed and marked, with the way back.
+        val key = HiddenLimits.key(account, window.label)
+        val hidden = key in hiddenLimits.all()
+        card.findViewById<TextView>(R.id.window_hidden).visibility = if (hidden) View.VISIBLE else View.GONE
+        listOf(R.id.window_label, R.id.window_percent, R.id.window_reset, R.id.window_burn, R.id.window_chart, R.id.window_detail)
+            .forEach { card.findViewById<View>(it).alpha = if (hidden) 0.45f else 1f }
+        card.findViewById<TextView>(R.id.window_toggle).apply {
+            text = getString(if (hidden) R.string.limit_show else R.string.limit_hide)
+            setOnClickListener {
+                // At once on screen; with a server keeping the list, then there too.
+                lifecycleScope.launch {
+                    val redraw = {
+                        render()
+                        UsageWidgetProvider.render(this@ProviderDetailActivity)
+                    }
+                    val problem = hiddenLimits.set(key, !hidden, redraw)
+                    if (problem != null) repository.reportServerProblem(problem)
+                    redraw()
+                }
+            }
+        }
 
         val percent = window.remainingPercent
         val value = card.findViewById<TextView>(R.id.window_percent)

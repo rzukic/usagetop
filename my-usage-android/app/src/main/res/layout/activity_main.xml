@@ -204,6 +204,34 @@
                     android:visibility="gone" />
             </LinearLayout>
 
+            <!-- Limits hidden on this device, each with Show; only while there are any -->
+            <LinearLayout
+                android:id="@+id/hiddenLimitsCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/card_surface"
+                android:orientation="vertical"
+                android:padding="14dp"
+                android:visibility="gone">
+
+                <TextView
+                    style="@style/CardTitle"
+                    android:text="@string/hidden_limits_title" />
+
+                <TextView
+                    android:id="@+id/hiddenLimitsCaption"
+                    style="@style/CardCaption"
+                    android:text="@string/hidden_limits_caption" />
+
+                <LinearLayout
+                    android:id="@+id/hiddenLimitsList"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:orientation="vertical" />
+            </LinearLayout>
+
             <!-- The server's accounts, shown instead of the cards below while an address is set -->
             <LinearLayout
                 android:id="@+id/serverAccounts"

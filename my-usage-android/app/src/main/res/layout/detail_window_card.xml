@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- One window on the detail screen: its level, when it resets, and the drawdown. -->
+<!-- One window on the detail screen: its level, when it resets, and the drawdown.
+     A limit hidden on this device stays here, dimmed and marked, with the way back. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -23,6 +24,21 @@
             android:letterSpacing="-0.01"
             android:textColor="@color/text_primary"
             android:textSize="15sp" />
+
+        <TextView
+            android:id="@+id/window_hidden"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="8dp"
+            android:background="@drawable/plan_badge"
+            android:paddingStart="7dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="7dp"
+            android:paddingBottom="2dp"
+            android:text="@string/limit_hidden_badge"
+            android:textColor="@color/text_secondary"
+            android:textSize="11sp"
+            android:visibility="gone" />
 
         <TextView
             android:id="@+id/window_percent"
@@ -69,4 +85,17 @@
         android:textColor="@color/text_tertiary"
         android:textSize="11sp"
         android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/window_toggle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="end"
+        android:layout_marginTop="6dp"
+        android:fontFamily="sans-serif-medium"
+        android:paddingStart="8dp"
+        android:paddingTop="8dp"
+        android:paddingBottom="2dp"
+        android:textColor="@color/meter_normal"
+        android:textSize="12sp" />
 </LinearLayout>

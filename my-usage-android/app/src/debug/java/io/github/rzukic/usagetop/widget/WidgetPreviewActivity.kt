@@ -109,7 +109,7 @@ class WidgetPreviewActivity : Activity() {
     /** The list needs a launcher behind it; here its rows are drawn directly. */
     private fun fillList(context: Context, large: View) {
         val list = large.findViewById<ListView>(R.id.widget_list) ?: return
-        val entries = WidgetRenderer.entries(UsageRepository(context).cached())
+        val entries = WidgetRenderer.entries(context, UsageRepository(context).cached())
         large.findViewById<View>(R.id.widget_empty)?.visibility = if (entries.isEmpty()) View.VISIBLE else View.GONE
         list.adapter = object : BaseAdapter() {
             override fun getCount() = entries.size

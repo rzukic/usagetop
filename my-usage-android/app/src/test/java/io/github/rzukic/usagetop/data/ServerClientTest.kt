@@ -67,6 +67,17 @@ class ServerClientTest {
     }
 
     @Test
+    fun `the server's hidden limits come with its state, and an older server sends none`() {
+        val withList = answer.trimEnd().removeSuffix("}") + ""","hiddenLimits": ["antigravity|Claude & GPT 7d", "claude|Fable 7d"] }"""
+        assertEquals(
+            listOf("antigravity|Claude & GPT 7d", "claude|Fable 7d"),
+            ServerState.parse(withList)!!.hiddenLimits,
+        )
+        assertEquals(emptyList<String>(), ServerState.parse(answer.trimEnd().removeSuffix("}") + ""","hiddenLimits": [] }""")!!.hiddenLimits)
+        assertNull(ServerState.parse(answer)!!.hiddenLimits)
+    }
+
+    @Test
     fun `a server that has not polled yet has no state`() {
         assertNull(ServerState.parse("""{ "serverTime": 1, "snapshot": null, "combined": [], "series": {} }"""))
     }
