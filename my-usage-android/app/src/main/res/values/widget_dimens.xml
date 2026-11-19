@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12 and later give launchers one radius for every widget; before that,
+         the Mac panel's own. -->
+    <dimen name="widget_radius">24dp</dimen>
+</resources>

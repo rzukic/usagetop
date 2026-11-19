@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_panel">#DB121318</color>
+    <color name="widget_hairline">#1FFFFFFF</color>
+    <color name="widget_ink">#FFF2F2F2</color>
+    <color name="widget_ink_secondary">#B8EBEBF5</color>
+    <color name="widget_ink_quiet">#80EBEBF5</color>
+    <color name="widget_divider">#17FFFFFF</color>
+    <color name="widget_warning">#FFE8A93F</color>
+    <color name="widget_critical">#FFEE6A5F</color>
+    <color name="widget_action">#FF9CC0F0</color>
+    <color name="widget_stale_fill">#29E0A33C</color>
+</resources>

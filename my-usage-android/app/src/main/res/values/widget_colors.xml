@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The widget follows the system's light or dark setting; the app itself stays dark.
+     Light is the default here, dark lives in values-night. A launcher cannot blur what
+     is behind a widget, so the panel is nearly opaque: the text needs the floor.
+     The ring colours are not here: rings are images drawn for both themes at once,
+     see WidgetArt. -->
+<resources>
+    <color name="widget_panel">#E6FAFAFC</color>
+    <color name="widget_hairline">#0F000000</color>
+    <color name="widget_ink">#FF1C1C1E</color>
+    <color name="widget_ink_secondary">#C73C3C43</color>
+    <color name="widget_ink_quiet">#8C3C3C43</color>
+    <color name="widget_divider">#14000000</color>
+    <!-- Severity as text: darker than the ring colours, which only reach about
+         2:1 on a light panel. -->
+    <color name="widget_warning">#FF9A5F00</color>
+    <color name="widget_critical">#FFB8322A</color>
+    <color name="widget_action">#FF3F6CAD</color>
+    <color name="widget_stale_fill">#2EE0A33C</color>
+</resources>

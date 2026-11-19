@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Ahead of pace: spent faster than an even spread over the window would allow. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="@color/widget_warning"
+        android:pathData="M13.5,1.5s1,3.2 -1.4,6.1C10,10.2 7,11.6 7,15.5 7,19.1 9.7,22 13,22s6,-2.6 6,-6.4c0,-2.5 -1.1,-4.1 -2.1,-5.4 -0.3,1.5 -1.2,2.6 -2.4,2.9 0.9,-3.6 0.3,-8.4 -1,-11.6z" />
+</vector>
