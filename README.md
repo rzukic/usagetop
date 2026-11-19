@@ -73,7 +73,7 @@ for updates.
 <p align="center">
 <img src="docs/screenshots/windows-overview.png" width="330" alt="The Windows tray panel: the combined figure and every account's limits">
 &nbsp;&nbsp;
-<img src="docs/screenshots/windows-account.png" width="330" alt="One account in the Windows panel: Claude's 5-hour, weekly and Fable limits, each with its history, pace and when it runs dry">
+<img src="docs/screenshots/windows-account.png" width="330" alt="One account in the Windows panel: Claude's 5-hour and weekly limits, each with its history, pace and when it runs dry">
 </p>
 
 <p align="center"><sub>The Windows tray panel: everything at once, and one account with its history and forecast.</sub></p>
