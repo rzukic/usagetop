@@ -55,21 +55,25 @@ cd my-usage-mac
 ## Releasing
 
 One version number covers the whole project, and each version is one GitHub
-Release. Pushing a tag builds and publishes it (`.github/workflows/release.yml`):
+Release. For now a release is built on the maintainer's machine:
 
 ```
-# 1. Bump <Version> in my-usage-win/src/AiUsage/AiUsage.csproj and commit
-# 2. Tag that commit and push the tag
-git tag v1.2.0
-git push origin v1.2.0
+# 1. Bump <Version> in my-usage-win/src/AiUsage/AiUsage.csproj, commit and push
+# 2. Build and publish it (needs vpk and gh, see the script's header)
+./release.ps1
 ```
 
-The tag is the version: the workflow refuses a tag that is not SemVer, runs the
-tests, packs the Windows app with the tag's version, builds a delta package
-against the previous release, and publishes the release with generated notes.
-A tag with a suffix, such as `v1.2.1-beta.1`, becomes a pre-release instead: the
+`release.ps1` refuses a version that is not SemVer, runs the tests, packs the
+Windows app with that version, builds a delta package against the previous
+release, pushes the tag `v<version>` and publishes the release with generated
+notes. `./release.ps1 -Version 1.2.1-beta.1` makes a pre-release instead: the
 apps offer it only to those who opted into betas, and the download link above
-keeps pointing at the last stable release.
+keeps pointing at the last stable release. Files built elsewhere (the Mac app)
+are added to the same release with `gh release upload`.
+
+`.github/workflows/release.yml` does the same from a pushed tag on GitHub
+Actions, and `ci.yml` builds and tests every push and pull request. Both are
+switched off in the repository's Actions settings for the time being.
 
 ## One rule that cuts across all three
 
