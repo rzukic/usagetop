@@ -1,24 +1,118 @@
-<img src="docs/usagetop.svg" width="88" alt="">
+<p align="center"><img src="docs/usagetop.svg" width="96" alt=""></p>
 
-# usagetop
+<h1 align="center">usagetop</h1>
 
-How much of each AI subscription is left: Claude, ChatGPT, Mistral, Kimi, Muse
-and Google AI (Antigravity).
-Every limit with its pace and a forecast of when it runs out, in a Windows tray
-app, a macOS menu bar app, an Android app and widget, and the server's web dashboard.
+<p align="center">
+How much of each AI subscription is left, and whether it will last until it resets.<br>
+Claude · ChatGPT · Mistral · Kimi · Muse · Google AI (Antigravity)
+</p>
 
-| Folder | What it is |
+<p align="center">
+<a href="https://github.com/rzukic/usagetop/releases/latest/download/usagetop-mac.dmg">macOS</a> ·
+<a href="https://github.com/rzukic/usagetop/releases/latest/download/usagetop-win-Setup.exe">Windows</a> ·
+<a href="https://github.com/rzukic/usagetop/releases/latest/download/usagetop-android.apk">Android</a> ·
+<a href="#your-own-server">Server</a>
+</p>
+
+<p align="center">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/mac-dark.jpg">
+  <img src="docs/screenshots/mac-light.jpg" width="560" alt="The macOS menu bar panel: a combined 51% across five subscriptions, then each account's limits with bars, reset times and pace">
+</picture>
+</p>
+
+<p align="center"><sub>The macOS app, with sample data. Every picture here is made-up usage.</sub></p>
+
+## What it tells you
+
+Every provider has its own limits, its own reset times and its own page to look
+them up on. usagetop asks all of them every few minutes and puts the answers in
+one place, with the history and a forecast. In the picture above:
+
+- **What runs out first.** Kimi's weekly limit has 11% left and resets in 1 day
+  6 hours. At the pace of the last three hours it is empty in 12 hours, long
+  before the reset, so it is red and at the top of the list.
+- **Whether you are ahead of pace.** Claude's 5-hour window has 38% left with
+  2 hours 13 minutes to go. The tick on each bar is where an even spread over
+  the window would be; a flame means you are spending faster than that.
+- **One figure for everything.** 51% left across five subscriptions: each
+  subscription's long limit (weekly or monthly; 5-hour windows say nothing about
+  the week) averaged, burning 1.0% an hour against a usual 0.4%, with the next
+  refill on Saturday when Kimi resets.
+- **Every limit a provider has.** Antigravity on a Google AI Pro plan has four:
+  Gemini's weekly and 5-hour limits, a separate pool for Claude and GPT models,
+  and Gemini Argon's own weekly one. Only the main allowance counts toward the
+  combined figure; the others are shown beside it.
+
+<p align="center">
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/screenshots/mac-detail-dark.jpg">
+  <img src="docs/screenshots/mac-detail-light.jpg" width="560" alt="One account in the macOS app: Kimi's weekly limit at 11%, its history over the week, and a forecast that it runs dry on Friday at 07:15">
+</picture>
+</p>
+
+Click an account for its history and forecast: the last week of Kimi, the pace
+it is being spent at, and when it runs dry if nothing changes. The menu bar
+shows the combined figure in a ring, or the one to four limits closest to
+running out.
+
+## The apps
+
+Each app works on its own: add the subscriptions you have in its Settings, sign
+in or paste a key, and it asks the providers itself and keeps the history on
+that device. Nothing goes anywhere but to the providers, and to GitHub to look
+for updates.
+
+| | |
 |---|---|
-| `my-usage-android/` | The Android app and its home-screen widget (Kotlin) |
-| `my-usage-win/` | The Windows tray app (WPF, .NET 9), plus `AiUsage.Core`, the UI-free library |
-| `my-usage-mac/` | The macOS menu bar app (SwiftUI, SwiftPM) |
-| `my-usage-server/` | An always-on poller with a history database and an HTTP API, built on `AiUsage.Core` |
+| **macOS** | A menu bar app with a Liquid Glass panel. macOS 26, Apple silicon and Intel. Signed and notarized; updates itself. |
+| **Windows** | A tray icon with a flyout panel and a full window. Windows 10 and 11. Updates itself. |
+| **Android** | An app and a home-screen widget. Android 8 and newer. Updates itself. |
+| **Server** | Optional: polls around the clock, keeps one history for all your devices and holds the sign-ins, with a web page of its own. Linux, Docker. |
 
-Every app works on its own: add the subscriptions you have in its Settings, and
-it asks the providers itself and keeps their history on that device. Given a
-server address instead, it reads everything from the server, which does the fetching, keeps
-the history and holds the sign-ins for both. The server also has a page of its
-own: open its address in a browser. See `my-usage-server/README.md`.
+<p align="center">
+<img src="docs/screenshots/windows-overview.png" width="300" alt="The Windows tray panel: the combined figure and every account's limits">
+&nbsp;&nbsp;
+<img src="docs/screenshots/windows-account.png" width="300" alt="One account in the Windows panel: Claude's 5-hour, weekly and Fable limits, each with its history, pace and when it runs dry">
+</p>
+
+<p align="center"><sub>The Windows tray panel: everything at once, and one account with its history and forecast.</sub></p>
+
+### Your own server
+
+A server is worth it once you use more than one device: the phone and the PC
+show the same history, nothing has to be awake to record it, and each sign-in
+lives in one place. It is one container:
+
+```sh
+docker run -d --name usagetop -p 8377:8377 -v usagetop-data:/data \
+  ghcr.io/rzukic/usagetop-server
+docker exec usagetop dotnet aiusage-server.dll token   # the token the apps ask for
+```
+
+Open `http://<host>:8377`, add your accounts and sign in there, then give each
+app the address and the token in its Settings. The page shows everything the
+apps do:
+
+<p align="center"><img src="docs/screenshots/server-page.png" width="800" alt="The server's web page: the combined level over five weeks with a forecast, the limits closest to empty, and each subscription's windows with charts"></p>
+
+`my-usage-server/README.md` has the settings, the API, a systemd unit for running
+it without Docker, and where to put it (a machine at home beats a rented one).
+
+### Supported subscriptions
+
+| Provider | What it reads | How you connect |
+|---|---|---|
+| Claude (Pro, Max, Team) | 5-hour, weekly, and per-model weekly limits | Sign in with Claude, in the browser |
+| ChatGPT (Plus, Pro, Team) | 5-hour and weekly limits | Sign in with ChatGPT, in the browser |
+| Google AI Pro / Ultra (Antigravity) | Every model group's weekly and 5-hour limits | Sign in with Google, in the browser |
+| Muse Code (Meta) | 5-hour and weekly limits | A code to approve in the browser |
+| Kimi Code | 5-hour and monthly limits, or prepaid balance | API key |
+| Mistral | Vibe allowance and API credit | API key |
+
+The sign-ins ask for as little as each provider allows (Claude's cannot run
+models or create API keys), and the tokens stay on your device or your server,
+encrypted.
 
 ## Installing
 
@@ -122,7 +216,7 @@ refuse the update.
 GitHub Actions, and `ci.yml` builds and tests every push and pull request. Both
 are switched off in the repository's Actions settings for the time being.
 
-## One rule that cuts across all three
+## One rule that cuts across all of them
 
 Claude's and ChatGPT's refresh tokens are single-use. Any session must have
 exactly one holder that renews it, or whichever renews first signs the other
@@ -132,10 +226,11 @@ screens, and an app that is pointed at a server stops fetching altogether. A
 session reaches the server either by signing in there or by the Windows app
 moving its own across, after which the app forgets it.
 
-The provider logic exists twice, in Kotlin and in C#. The arithmetic they share
-(combined figure, trendline, projection, history thinning, provider parsing) is
-covered by the same tests on both sides; change one and its twin should change
-too.
+The provider logic exists three times: in C# (the Windows app and the server),
+in Kotlin (Android) and in Swift (the Mac app without a server). The arithmetic
+they share (combined figure, trendline, projection, history thinning, provider
+parsing) is covered by the same tests on each side; change one and its twins
+should change too.
 
 ## License
 
