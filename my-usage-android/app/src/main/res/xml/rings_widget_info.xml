@@ -1,17 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Rings you choose, at 2x2. Placed without asking: it starts with the windows
-     closest to empty, and its settings (long-press › Settings) change the picks.
-     It may grow a little, never across the screen. -->
+     closest to empty, and its settings (long-press › Settings) change the picks. -->
+<!-- Fixed at 2x2: stretched, a ring grid only gets squeezed. On launchers whose
+     cells are not square the panel stays square inside (WidgetRenderer.squared). -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:configure="io.github.rzukic.usagetop.widget.RingsConfigActivity"
     android:description="@string/rings_widget_description"
     android:initialLayout="@layout/widget_rings"
-    android:maxResizeHeight="250dp"
-    android:maxResizeWidth="250dp"
     android:minHeight="110dp"
     android:minWidth="110dp"
     android:previewImage="@drawable/widget_preview_rings"
-    android:resizeMode="horizontal|vertical"
+    android:resizeMode="none"
     android:targetCellHeight="2"
     android:targetCellWidth="2"
     android:updatePeriodMillis="0"

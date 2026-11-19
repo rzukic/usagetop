@@ -80,13 +80,14 @@ object WidgetRenderer {
      * A 2x2 whose panel stays square: the launcher may hand it a cell that is
      * not, or let it be stretched. From Android 12 it gets one version per size
      * and picks the largest that fits, each with its panel as wide as it is tall,
-     * centred. Before, the panel fills whatever it is given.
+     * centred. [build] gets the side in dp, to fit its content to it; before
+     * Android 12 it gets null, and the panel fills whatever it is given.
      */
-    fun squared(build: () -> RemoteViews): RemoteViews {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return build()
+    fun squared(build: (side: Float?) -> RemoteViews): RemoteViews {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) return build(null)
         return RemoteViews(
             SQUARES.associate { side ->
-                SizeF(side, side) to build().apply {
+                SizeF(side, side) to build(side).apply {
                     setViewLayoutWidth(R.id.panel, side, android.util.TypedValue.COMPLEX_UNIT_DIP)
                     setViewLayoutHeight(R.id.panel, side, android.util.TypedValue.COMPLEX_UNIT_DIP)
                 }

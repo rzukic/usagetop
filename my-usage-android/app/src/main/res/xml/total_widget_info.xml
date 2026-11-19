@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- The combined figure alone, at 2x2. It may grow a little, never across the screen. -->
+<!-- The combined figure alone, at 2x2. -->
+<!-- Fixed at 2x2: stretched, a ring grid only gets squeezed. On launchers whose
+     cells are not square the panel stays square inside (WidgetRenderer.squared). -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:description="@string/total_widget_description"
     android:initialLayout="@layout/widget_small"
-    android:maxResizeHeight="250dp"
-    android:maxResizeWidth="250dp"
     android:minHeight="110dp"
     android:minWidth="110dp"
     android:previewImage="@drawable/widget_preview_total"
-    android:resizeMode="horizontal|vertical"
+    android:resizeMode="none"
     android:targetCellHeight="2"
     android:targetCellWidth="2"
     android:updatePeriodMillis="0"

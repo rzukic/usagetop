@@ -45,14 +45,21 @@ class RingsWidgetProvider : AppWidgetProvider() {
             build(context, snapshot, RingPicks.read(context, widgetId) ?: RingPicks.defaults(snapshot))
 
         fun build(context: Context, snapshot: Snapshot?, picks: List<RingPicks.Pick>): RemoteViews =
-            WidgetRenderer.squared { plain(context, snapshot, picks) }
+            WidgetRenderer.squared { side -> plain(context, snapshot, picks, side) }
 
-        /** One version, its panel filling whatever it is given: for pictures of it. */
-        fun plain(context: Context, snapshot: Snapshot?, picks: List<RingPicks.Pick>): RemoteViews {
+        /**
+         * One version, its panel filling whatever it is given. Below [COMPACT_BELOW]
+         * dp across, four rings and their names only fit smaller.
+         */
+        fun plain(context: Context, snapshot: Snapshot?, picks: List<RingPicks.Pick>, side: Float? = null): RemoteViews {
             val rings = RingPicks.resolve(picks, snapshot)
             val stale = WidgetModel.staleAge(snapshot) != null
-            return if (rings.size == 1) one(context, rings.single(), stale) else grid(context, rings, stale)
+            val compact = side != null && side < COMPACT_BELOW
+            return if (rings.size == 1) one(context, rings.single(), stale) else grid(context, rings, stale, compact)
         }
+
+        /** The regular grid needs about 165 dp: two rows of a 50 dp ring and its name. */
+        private const val COMPACT_BELOW = 165f
 
         private fun one(context: Context, ring: RingPicks.Ring, stale: Boolean): RemoteViews {
             val views = RemoteViews(context.packageName, R.layout.widget_rings_one)
@@ -93,15 +100,19 @@ class RingsWidgetProvider : AppWidgetProvider() {
 
         private data class Cell(val root: Int, val track: Int, val level: Int, val value: Int, val logo: Int, val name: Int)
 
-        private fun grid(context: Context, rings: List<RingPicks.Ring>, stale: Boolean): RemoteViews {
-            val views = RemoteViews(context.packageName, R.layout.widget_rings)
+        private fun grid(context: Context, rings: List<RingPicks.Ring>, stale: Boolean, compact: Boolean): RemoteViews {
+            val views = RemoteViews(context.packageName, if (compact) R.layout.widget_rings_compact else R.layout.widget_rings)
             CELLS.forEachIndexed { index, cell ->
                 val ring = rings.getOrNull(index)
                 // Three rings: the third sits centred under the first two.
                 views.setViewVisibility(cell.root, if (ring == null) View.GONE else View.VISIBLE)
                 if (ring == null) return@forEachIndexed
                 val percent = ring.window?.remainingPercent
-                WidgetArt.setRing(context, views, cell.track, cell.level, 50f, 4.5f, percent)
+                if (compact) {
+                    WidgetArt.setRing(context, views, cell.track, cell.level, 38f, 3.6f, percent)
+                } else {
+                    WidgetArt.setRing(context, views, cell.track, cell.level, 50f, 4.5f, percent)
+                }
                 views.setTextViewText(cell.value, percent?.let { "${it.roundToInt()}%" } ?: "—")
                 WidgetArt.textColor(context, views, cell.value, percent?.let { WidgetArt.figureColor(it) } ?: R.color.widget_ink_secondary)
                 logo(ring)?.let { views.setImageViewResource(cell.logo, it) }
