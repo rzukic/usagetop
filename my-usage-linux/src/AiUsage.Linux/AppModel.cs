@@ -11,18 +11,22 @@ namespace AiUsage;
 /// </summary>
 public sealed class AppModel
 {
+    private Credentials? _credentials;
+    private UsageRepository? _real;
+
     private AppModel(UsageRepository? repository, bool sample)
     {
-        Repository = repository;
-        IsSample = sample;
-        if (repository != null) repository.Changed += _ => RaiseChanged();
+        Show(repository, sample);
     }
 
-    /// <summary>Null until accounts can be added here: there is nothing to read from yet.</summary>
-    public UsageRepository? Repository { get; }
+    /// <summary>
+    /// What is on screen: the user's own (from a server, once one is set) or
+    /// sample data. Null before the user's own has been looked at.
+    /// </summary>
+    public UsageRepository? Repository { get; private set; }
 
     /// <summary>Made-up usage is on screen, and everything says so.</summary>
-    public bool IsSample { get; }
+    public bool IsSample { get; private set; }
 
     /// <summary>A new reading, a preference, or the clock moving on.</summary>
     public event Action? Changed;
@@ -33,16 +37,60 @@ public sealed class AppModel
 
     public string? Problem => Repository?.ServerProblem;
 
-    public bool UsesServer => Repository?.UsesServer ?? false;
+    public bool UsesServer => !IsSample && (Repository?.UsesServer ?? false);
 
-    /// <summary>The app with nothing to show: no account has been added.</summary>
-    public static AppModel Empty() => new(null, sample: false);
+    /// <summary>The user's own files are in play: not a picture of the first start.</summary>
+    public bool HasOwnData => _real != null || IsSample;
+
+    /// <summary>The server's address while one is set, for the dashboard button.</summary>
+    public string? ServerUrl => IsSample || _real == null ? null : Credentials.ServerUrl();
+
+    /// <summary>
+    /// The user's own credentials file, whatever is on screen: Settings saves
+    /// the server into it even while sample data is showing.
+    /// </summary>
+    public Credentials Credentials => _credentials ??= new Credentials(AppPaths.Credentials, SecretKey.Sealer());
+
+    /// <summary>Nothing to show and nothing read or written: for pictures of the first start.</summary>
+    public static AppModel Blank() => new(null, sample: false);
+
+    /// <summary>The user's own: the server's reading, once a server is set.</summary>
+    public static AppModel Load()
+    {
+        var model = new AppModel(null, sample: false);
+        model.ShowOwn();
+        return model;
+    }
 
     /// <summary>
     /// A server's /api/state answer in place of anything of the user's, moved up
     /// to now: the README's made-up usage unless <paramref name="stateFile"/> names another.
     /// </summary>
-    public static AppModel Sample(string? stateFile = null)
+    public static AppModel Sample(string? stateFile = null) => new(SampleRepository(stateFile), sample: true);
+
+    /// <summary>Back to the user's own after sample data, or after the server changed.</summary>
+    public void ShowOwn()
+    {
+        _real ??= new UsageRepository(Credentials);
+        if (IsSample) PanelPrefs.Reload();
+        Show(_real, sample: false);
+    }
+
+    /// <summary>"Try with sample data".</summary>
+    public void ShowSample() => Show(SampleRepository(null), sample: true);
+
+    private void Show(UsageRepository? repository, bool sample)
+    {
+        if (Repository != null) Repository.Changed -= OnRepositoryChanged;
+        Repository = repository;
+        IsSample = sample;
+        if (repository != null) repository.Changed += OnRepositoryChanged;
+        RaiseChanged();
+    }
+
+    private void OnRepositoryChanged(Snapshot snapshot) => RaiseChanged();
+
+    private static UsageRepository SampleRepository(string? stateFile)
     {
         string json;
         if (stateFile != null)
@@ -58,16 +106,20 @@ public sealed class AppModel
         }
 
         var state = ServerState.Parse(json) ?? throw new FormatException("The state has no reading");
-        var repository = new UsageRepository(
+        // Pictures should not depend on this machine's saved look.
+        PanelPrefs.UseDefaults();
+        return new UsageRepository(
             state.ShiftedBy(DateTimeOffset.UtcNow - state.ServerTime),
             // Nothing is stored: the key only has to exist.
             Credentials.InMemory(new AesSealer(new byte[32])));
-        PanelPrefs.UseDefaults();
-        return new AppModel(repository, sample: true);
     }
 
+    /// <summary>
+    /// A new reading. Only from a server for now: this app does not yet ask the
+    /// providers itself, so without one there is nothing to fetch.
+    /// </summary>
     public Task RefreshAsync(bool force = false) =>
-        Repository == null || IsSample ? Task.CompletedTask : Repository.RefreshAsync(force);
+        Repository == null || IsSample || !Repository.UsesServer ? Task.CompletedTask : Repository.RefreshAsync(force);
 
     // ---- What is shown, and in what order ----
 

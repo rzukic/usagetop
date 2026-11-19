@@ -1,4 +1,3 @@
-using System.Reflection;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
@@ -33,6 +32,7 @@ public sealed class PanelView : Border
     private readonly AppModel _model;
     private readonly bool _flat;
     private ScrollViewer? _scroller;
+    private SettingsPage? _settings;
 
     /// <summary>
     /// <paramref name="flat"/> lays the page out in full, without scrolling: for
@@ -58,10 +58,16 @@ public sealed class PanelView : Border
 
     public void Show(Pane pane)
     {
+        // Settings opened afresh shows what is saved, not what was typed last time.
+        if (pane is Pane.Settings && Pane is not Pane.Settings) _settings = null;
         Pane = pane;
         Rebuild();
         _scroller?.ScrollToHome();
+        if (pane is Pane.Settings) Avalonia.Threading.Dispatcher.UIThread.Post(() => _settings?.FocusFirstEmpty());
     }
+
+    /// <summary>The panel shows Settings, where a new reading should not redraw what is being typed.</summary>
+    public bool Editing => Pane is Pane.Settings;
 
     public void Rebuild()
     {
@@ -241,7 +247,7 @@ public sealed class PanelView : Border
     {
         var (title, subtitle) = Pane switch
         {
-            Pane.Settings => ("Settings", "This app"),
+            Pane.Settings => ("Settings", _model.UsesServer ? "Server" : "Connect to your server"),
             Pane.Account { Key: var key } when Usage(key) is { } usage => (
                 usage.DisplayName,
                 usage.State != UsageState.Ok ? "Needs attention" : $"Read {Format.Ago(usage.FetchedAt)}"),
@@ -305,10 +311,19 @@ public sealed class PanelView : Border
         Grid.SetColumn(status, 1);
         footer.Children.Add(status);
 
-        var quit = Bits.IconButton(Icons.Power, "Quit usagetop  Ctrl+Q", () => QuitRequested?.Invoke(), size: 26);
-        quit.Margin = new Thickness(6, 0, 0, 0);
-        Grid.SetColumn(quit, 2);
-        footer.Children.Add(quit);
+        var ends = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 6, Margin = new Thickness(6, 0, 0, 0) };
+        if (_model.ServerUrl is { } url)
+        {
+            // Accounts and sign-ins live on the server's page.
+            ends.Children.Add(Bits.SoftButton("Dashboard ↗", "Open the server's page in the browser", () =>
+            {
+                _ = TopLevel.GetTopLevel(this)?.Launcher.LaunchUriAsync(new Uri(url));
+                DashboardOpened?.Invoke();
+            }));
+        }
+        ends.Children.Add(Bits.IconButton(Icons.Power, "Quit usagetop  Ctrl+Q", () => QuitRequested?.Invoke(), size: 26));
+        Grid.SetColumn(ends, 2);
+        footer.Children.Add(ends);
         return footer;
     }
 
@@ -327,7 +342,20 @@ public sealed class PanelView : Border
         switch (Pane)
         {
             case Pane.Settings:
-                return AboutCard();
+                if (_settings == null)
+                {
+                    _settings = new SettingsPage(_model, Rebuild);
+                }
+                else if (_settings.Parent is ContentControl holder)
+                {
+                    // Kept from the last drawing: out of the old scroll view first.
+                    holder.Content = null;
+                }
+                else if (_settings.Parent is Panel old)
+                {
+                    old.Children.Remove(_settings);
+                }
+                return _settings;
             case Pane.Account { Key: var key } when Usage(key) is { } usage:
                 return AccountPage.Build(_model, usage, now);
         }
@@ -346,21 +374,25 @@ public sealed class PanelView : Border
         stack.Children.Add(new Ring(72, 54, 4.5) { HorizontalAlignment = HorizontalAlignment.Left });
 
         var words = new StackPanel { Spacing = 5 };
-        words.Children.Add(Bits.Text("No subscriptions yet", 15, FontWeight.SemiBold, Look.Primary));
+        words.Children.Add(Bits.Text("Connect to your server", 15, FontWeight.SemiBold, Look.Primary));
         words.Children.Add(Bits.Paragraph(
             "usagetop shows what is left of Claude, ChatGPT, Mistral, Kimi, Muse and Antigravity. " +
-            "Adding accounts is not in this build yet; the sample shows what it will look like.",
+            "On Linux it reads from your usagetop server for now: give it the address and the token the other apps use.",
             12, Look.Secondary));
         stack.Children.Add(words);
 
-        var sample = Bits.SoftButton("Try with sample data", "Show made-up usage", () => SampleRequested?.Invoke(), prominent: true);
-        sample.HorizontalAlignment = HorizontalAlignment.Left;
-        stack.Children.Add(sample);
+        var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
+        buttons.Children.Add(Bits.SoftButton("Connect", "Enter your server's address and token", () => Show(new Pane.Settings()), prominent: true));
+        buttons.Children.Add(Bits.SoftButton("Try with sample data", "Show made-up usage", () => SampleRequested?.Invoke()));
+        stack.Children.Add(buttons);
         return Bits.Card(stack, padding: 16);
     }
 
     /// <summary>The onboarding card asks for the made-up usage.</summary>
     public event Action? SampleRequested;
+
+    /// <summary>The server's page was opened in the browser: the panel can step aside.</summary>
+    public event Action? DashboardOpened;
 
     private static Control Notice(string problem)
     {
@@ -373,16 +405,5 @@ public sealed class PanelView : Border
         Grid.SetColumn(words, 1);
         row.Children.Add(words);
         return Bits.Card(row, padding: 14);
-    }
-
-    private static Control AboutCard()
-    {
-        var version = Assembly.GetExecutingAssembly()
-            .GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "";
-        var stack = new StackPanel { Spacing = 5 };
-        stack.Children.Add(Bits.Text($"usagetop {version}".TrimEnd(), 13, FontWeight.SemiBold, Look.Primary));
-        stack.Children.Add(Bits.Paragraph(
-            "Accounts, a server and the panel's look are set here once this build has them.", 12, Look.Secondary));
-        return Bits.Card(stack, padding: 14);
     }
 }

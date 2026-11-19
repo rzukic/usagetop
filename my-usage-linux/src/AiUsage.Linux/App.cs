@@ -21,12 +21,19 @@ public sealed class App : Application
 {
     public static StartOptions Options { get; set; } = new();
 
-    private AppModel _model = AppModel.Empty();
+    /// <summary>How often a new reading is fetched while nothing asks for one.</summary>
+    private static readonly TimeSpan RefreshPeriod = TimeSpan.FromMinutes(5);
+
+    /// <summary>A reading younger than this is what someone opening the panel came to see.</summary>
+    private static readonly TimeSpan FreshEnough = TimeSpan.FromMinutes(1);
+
+    private AppModel _model = null!;
     private PanelWindow? _panel;
     private TrayIcon? _tray;
     private float? _trayPercent = -1;
     private IDisposable? _listener;
     private DispatcherTimer? _clock;
+    private DispatcherTimer? _refresher;
 
     public override void Initialize()
     {
@@ -60,31 +67,31 @@ public sealed class App : Application
                 if (visible) Panel().Reveal();
             };
 
-            Use(Options.Sample ? AppModel.Sample(Options.StateFile) : AppModel.Empty());
+            SecretKey.EnsureFolder();
+            _model = Options.Sample ? AppModel.Sample(Options.StateFile) : AppModel.Load();
+            _model.Changed += () => Dispatcher.UIThread.Post(OnChanged);
+            UpdateTray();
+            _ = _model.RefreshAsync();
 
             // Countdowns and "3m ago" move on without a new reading.
             _clock = new DispatcherTimer { Interval = TimeSpan.FromSeconds(30) };
             _clock.Tick += (_, _) => OnChanged();
             _clock.Start();
 
+            _refresher = new DispatcherTimer { Interval = RefreshPeriod };
+            _refresher.Tick += (_, _) => _ = _model.RefreshAsync();
+            _refresher.Start();
+
             if (!Options.Hidden) Panel().Reveal();
         }
         base.OnFrameworkInitializationCompleted();
     }
 
-    /// <summary>Takes a model in place of the current one: at start, and for "Try with sample data".</summary>
-    private void Use(AppModel model)
-    {
-        _model = model;
-        _model.Changed += () => Dispatcher.UIThread.Post(OnChanged);
-        ReplacePanel();
-        UpdateTray();
-    }
-
     private void OnChanged()
     {
         UpdateTray();
-        if (_panel is { IsVisible: true }) _panel.View.Rebuild();
+        // Settings is not redrawn under someone typing in it; it redraws itself when saved.
+        if (_panel is { IsVisible: true } && !_panel.View.Editing) _panel.View.Rebuild();
     }
 
     // ---- Panel ----
@@ -95,12 +102,17 @@ public sealed class App : Application
         _panel = new PanelWindow(_model);
         _panel.QuitRequested += Quit;
         _panel.View.QuitRequested += Quit;
-        _panel.View.SampleRequested += () =>
-        {
-            Use(AppModel.Sample());
-            Panel().Reveal();
-        };
+        _panel.View.SampleRequested += () => _model.ShowSample();
+        _panel.View.DashboardOpened += () => _panel.Hide();
+        // Someone opening the panel came for a current reading.
+        _panel.Opened += (_, _) => RefreshIfStale();
+        _panel.Activated += (_, _) => RefreshIfStale();
         return _panel;
+    }
+
+    private void RefreshIfStale()
+    {
+        if (_model.Repository is { } repository && !repository.IsFresh(FreshEnough)) _ = _model.RefreshAsync();
     }
 
     private void ReplacePanel()
@@ -190,6 +202,10 @@ public sealed class App : Application
             case "show":
                 Panel().Reveal(anchor);
                 return "";
+            case "settings":
+                Panel().Reveal(anchor);
+                Panel().View.Show(new Pane.Settings());
+                return "";
             case "hide":
                 _panel?.Hide();
                 return "";
@@ -198,6 +214,11 @@ public sealed class App : Application
                 return "";
             case "refresh":
                 _ = _model.RefreshAsync(force: true);
+                return "";
+            case "reload":
+                // The server was set from the command line: read from it now.
+                _model.ShowOwn();
+                _ = _model.RefreshAsync();
                 return "";
             case "quit":
                 Dispatcher.UIThread.Post(Quit);

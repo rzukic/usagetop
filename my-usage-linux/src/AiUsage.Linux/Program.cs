@@ -19,6 +19,8 @@ public static class Program
           usagetop status --waybar a Waybar custom module's JSON
           usagetop quit
           usagetop doctor          what this desktop offers, as the app sees it
+          usagetop server <address>  read from your usagetop server; asks for its token
+                                   (or reads it from standard input); --off stops
 
           --sample                 made-up usage in place of your own
           --state <file>           a server's /api/state answer in place of your own
@@ -70,7 +72,7 @@ public static class Program
         {
             // Before the single-instance check, so it works beside a running copy.
             BuildAvaloniaApp().SetupWithoutStarting();
-            Snapshots.Write(snapshot, sample ? AppModel.Sample(state) : AppModel.Empty());
+            Snapshots.Write(snapshot, sample ? AppModel.Sample(state) : AppModel.Blank());
             return 0;
         }
 
@@ -81,12 +83,20 @@ public static class Program
                 Console.WriteLine(Desktop.Describe());
                 return 0;
 
+            case "server":
+                return SetServer(words.ElementAtOrDefault(1), flags.Contains("--off"));
+
             case "status":
                 var form = flags.Contains("--waybar") ? " --waybar" : flags.Contains("--json") ? " --json" : "";
                 return Ask("status" + form);
 
             case "hide" or "refresh" or "quit":
                 return Ask(command);
+
+            case "settings":
+                if (Ipc.Send("settings" + (anchor == null ? "" : $" --anchor {anchor}")) != null) return 0;
+                App.Options = new StartOptions(Hidden: true, Sample: sample, StateFile: state);
+                return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args, Avalonia.Controls.ShutdownMode.OnExplicitShutdown);
 
             case "start" or "show" or "toggle":
                 // A running copy does it; with none, this becomes the app.
@@ -99,6 +109,73 @@ public static class Program
                 Console.Error.WriteLine($"usagetop: unknown command '{command}'. Try usagetop --help.");
                 return 2;
         }
+    }
+
+    /// <summary>
+    /// `usagetop server <address>`: tries the server with the token, saves both
+    /// when it answers, and tells a running copy to read from it. The token comes
+    /// from standard input, or is asked for without showing it: never on the
+    /// command line, where other users could read it.
+    /// </summary>
+    private static int SetServer(string? address, bool off)
+    {
+        SecretKey.EnsureFolder();
+        var credentials = new Data.Credentials(Data.AppPaths.Credentials, SecretKey.Sealer());
+        if (off)
+        {
+            credentials.SetServer(null, null);
+            Ipc.Send("reload");
+            Console.WriteLine("Server off.");
+            return 0;
+        }
+
+        if (Data.ServerClient.NormalizeUrl(address) is not { } url)
+        {
+            Console.Error.WriteLine("usagetop: give the server's address, e.g. usagetop server usage.example.com");
+            return 2;
+        }
+
+        var token = ReadToken();
+        try
+        {
+            var state = Data.ServerClient.FetchAsync(url, token, since: DateTimeOffset.UtcNow).GetAwaiter().GetResult();
+            var count = state.Snapshot.Usages.Count;
+            Console.WriteLine($"Reached {url} · {count} subscription{(count == 1 ? "" : "s")}");
+        }
+        catch (Data.ServerException problem) when (problem.Message == "Server has no reading yet")
+        {
+            Console.WriteLine($"Reached {url}; it has no reading yet");
+        }
+        catch (Data.ServerException problem)
+        {
+            Console.Error.WriteLine($"usagetop: {problem.Message}. Nothing was saved.");
+            return 1;
+        }
+
+        credentials.SetServer(url, token);
+        Console.WriteLine(Ipc.Send("reload") != null ? "Saved; the running app reads from it now." : "Saved.");
+        return 0;
+    }
+
+    private static string? ReadToken()
+    {
+        if (Console.IsInputRedirected) return Console.In.ReadLine()?.Trim() is { Length: > 0 } piped ? piped : null;
+
+        Console.Write("Token: ");
+        var typed = new System.Text.StringBuilder();
+        while (true)
+        {
+            var key = Console.ReadKey(intercept: true);
+            if (key.Key == ConsoleKey.Enter) break;
+            if (key.Key == ConsoleKey.Backspace)
+            {
+                if (typed.Length > 0) typed.Length--;
+                continue;
+            }
+            if (!char.IsControl(key.KeyChar)) typed.Append(key.KeyChar);
+        }
+        Console.WriteLine();
+        return typed.ToString().Trim() is { Length: > 0 } token ? token : null;
     }
 
     public static string Version =>

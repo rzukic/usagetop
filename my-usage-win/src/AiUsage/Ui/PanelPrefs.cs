@@ -20,6 +20,9 @@ public sealed class PanelPrefs
     /// <summary>The defaults in place of what is saved, for pictures that should not depend on this PC.</summary>
     public static void UseDefaults() => _current = new PanelPrefs();
 
+    /// <summary>What is saved, again: after the defaults stood in for a while.</summary>
+    public static void Reload() => _current = Load();
+
     /// <summary>0 is a flat, opaque panel; 1 is the backdrop with only its tint.</summary>
     public double Glass { get; set; } = 1;
 
