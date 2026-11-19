@@ -218,3 +218,36 @@ public class PlansTests
         Assert.Single(account.Periods);
     }
 }
+
+public class HiddenLimitTests
+{
+    [Fact]
+    public void Hidden_limits_are_kept_in_order_and_survive_a_restart()
+    {
+        using var temp = new TempStore();
+        using (var store = temp.Open())
+        {
+            Assert.Empty(store.HiddenLimits());
+            store.SetHidden("antigravity|Claude & GPT 7d", true);
+            store.SetHidden("claude|Fable 7d", true);
+            store.SetHidden("antigravity|Claude & GPT 7d", true);
+            Assert.Equal(["claude|Fable 7d", "antigravity|Claude & GPT 7d"], store.HiddenLimits());
+        }
+
+        using var reopened = temp.Open();
+        Assert.Equal(["claude|Fable 7d"], reopened.SetHidden("antigravity|Claude & GPT 7d", false));
+    }
+
+    [Theory]
+    [InlineData("antigravity|Claude & GPT 7d", true)]
+    [InlineData("claude-2|5h", true)]
+    [InlineData("claude", false)]
+    [InlineData("|5h", false)]
+    [InlineData("claude|", false)]
+    [InlineData("nope|5h", false)]
+    [InlineData(null, false)]
+    public void Only_an_account_and_a_label_name_a_limit(string? limit, bool valid)
+    {
+        Assert.Equal(valid, Api.HiddenLimit(limit) != null);
+    }
+}

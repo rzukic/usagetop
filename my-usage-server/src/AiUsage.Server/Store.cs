@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using AiUsage.Data;
 using Microsoft.Data.Sqlite;
 
@@ -235,6 +236,41 @@ public sealed class Store : IDisposable
             return points;
         }
     }
+
+    /// <summary>
+    /// The limits the apps leave out of their overviews, as "account|label"
+    /// (the key a window's history is filed under), in the order they were
+    /// hidden. One list for every app that reads from this server.
+    /// </summary>
+    public IReadOnlyList<string> HiddenLimits()
+    {
+        try
+        {
+            return Get(HiddenKey) is { } json ? JsonSerializer.Deserialize<List<string>>(json) ?? [] : [];
+        }
+        catch (JsonException)
+        {
+            return [];
+        }
+    }
+
+    /// <summary>Hides a limit or shows it again, and returns the list as it now is.</summary>
+    public IReadOnlyList<string> SetHidden(string limit, bool hide)
+    {
+        lock (_gate)
+        {
+            var list = HiddenLimits().Where(key => key != limit).ToList();
+            if (hide) list.Add(limit);
+            using var command = _connection.CreateCommand();
+            command.CommandText = "INSERT OR REPLACE INTO kv (key, value) VALUES ($key, $value)";
+            command.Parameters.AddWithValue("$key", HiddenKey);
+            command.Parameters.AddWithValue("$value", JsonSerializer.Serialize(list));
+            command.ExecuteNonQuery();
+            return list;
+        }
+    }
+
+    private const string HiddenKey = "hidden-limits";
 
     /// <summary>The last plan name an account was seen on, or null when it never said.</summary>
     public string? Plan(string account) => Get("plan:" + account);

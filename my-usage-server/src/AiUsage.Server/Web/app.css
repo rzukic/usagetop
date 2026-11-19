@@ -198,6 +198,14 @@ h1, h2, h3, p { margin: 0; }
 .chart .even { stroke: var(--text-3); stroke-width: 1; stroke-dasharray: 3 3; }
 
 .window > p.hint { margin-top: 4px; }
+.window.hidden-limit { opacity: 0.55; }
+.window-head .eye {
+  border: 0; background: none; padding: 2px; margin: 0; cursor: pointer;
+  color: var(--text-2); line-height: 0; align-self: center; border-radius: 6px;
+}
+.window-head .eye:hover { color: inherit; background: rgba(255, 255, 255, 0.08); }
+.window-head .eye svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.hidden-toggle { margin-top: 12px; font-size: 12px; }
 
 .sev-normal { color: var(--text); }
 .sev-warning { color: var(--warning); }

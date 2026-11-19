@@ -219,6 +219,37 @@ let burnHours = (() => {
 /** A week of readings in full, for burn rates; the long series are thinned out. */
 let recent = {};
 
+// Limits left out of the cards and the closest-to-empty list, as the server
+// keeps them for every app ("account|label"); and the cards whose hidden
+// limits have been opened up here.
+const hiddenLimits = () => new Set((state && state.hiddenLimits) || []);
+const showingHidden = new Set();
+
+/** An eye, struck through when the limit is hidden; clicking it flips that. */
+function eyeButton(key, label, hidden) {
+  const button = el('button', 'eye');
+  button.type = 'button';
+  button.title = hidden ? 'Hidden from the overview in every app. Click to show it again.'
+    : 'Shown in every app. Click to hide it from their overviews.';
+  button.setAttribute('aria-label', (hidden ? 'Show ' : 'Hide ') + label);
+  const icon = svg('svg', { viewBox: '0 0 24 24', width: '14', height: '14', 'aria-hidden': 'true' });
+  icon.append(svg('path', { d: 'M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z' }));
+  icon.append(svg('circle', { cx: '12', cy: '12', r: '2.8' }));
+  if (hidden) icon.append(svg('path', { d: 'M4 4l16 16' }));
+  button.append(icon);
+  button.addEventListener('click', async () => {
+    button.disabled = true;
+    try {
+      state.hiddenLimits = await api(hidden ? 'DELETE' : 'PUT', '/hidden?limit=' + encodeURIComponent(key));
+      renderUsage();
+    } catch (problem) {
+      button.disabled = false;
+      $('status').textContent = problem.message;
+    }
+  });
+  return button;
+}
+
 /** How far back the usual rate looks: long enough to take in the nights. */
 const USUAL_HOURS = 7 * 24;
 /** Below this, in points an hour, a window counts as not draining. */
@@ -769,11 +800,18 @@ function renderUsage() {
       card.append(el('p', usage.transient ? 'hint' : 'problem', usage.message));
     }
 
+    const hidden = hiddenLimits();
+    const account = usage.account || usage.id;
+    const hiddenCount = usage.windows.filter(window => hidden.has(seriesKey(usage, window.label))).length;
     for (const window of usage.windows) {
-      const block = el('div', 'window');
+      const key = seriesKey(usage, window.label);
+      const isHidden = hidden.has(key);
+      if (isHidden && !showingHidden.has(account)) continue;
+      const block = el('div', isHidden ? 'window hidden-limit' : 'window');
       card.append(block);
       const row = el('div', 'window-head');
       row.append(el('span', 'label', window.label));
+      if (isHidden) row.append(el('span', 'hint', 'Hidden'));
 
       const reset = window.resetAt ? Date.parse(window.resetAt) - Date.now() : null;
       row.append(el('span', 'hint reset', reset == null ? '' : reset <= 0 ? 'resets now' : `resets in ${span(reset)}`));
@@ -781,6 +819,7 @@ function renderUsage() {
       const percent = window.remainingPercent;
       if (percent == null) {
         row.append(el('span', 'hint', window.detail || '—'));
+        row.append(eyeButton(key, `${name} ${window.label}`, isHidden));
         block.append(row);
         continue;
       }
@@ -793,6 +832,7 @@ function renderUsage() {
           badge.title = PACE[pace].title;
           row.append(badge);
         }
+        row.append(eyeButton(key, `${name} ${window.label}`, isHidden));
         row.append(el('span', 'value sev-' + tone, percentText(percent)));
         block.append(row);
 
@@ -806,7 +846,6 @@ function renderUsage() {
 
         if (window.detail) block.append(el('p', 'hint', window.detail));
 
-        const key = seriesKey(usage, window.label);
         const forecast = forecastOf(window, burnPoints(key));
         if (forecast) block.append(burnLine(forecast, forecast.reset ? 'lasts past the reset' : 'no reset reported'));
 
@@ -817,6 +856,19 @@ function renderUsage() {
         block.append(chart);
         drawings.push(() => drawChart(chart, state.series[key], chartDays(window.label), `${name} ${window.label}`, window, forecast));
       }
+    }
+
+    if (hiddenCount) {
+      const open = showingHidden.has(account);
+      const toggle = el('button', 'quiet hidden-toggle',
+        open ? 'Fold the hidden limits away'
+          : hiddenCount === usage.windows.length ? 'All limits hidden · show them' : `${hiddenCount} hidden · show`);
+      toggle.type = 'button';
+      toggle.addEventListener('click', () => {
+        if (open) showingHidden.delete(account); else showingHidden.add(account);
+        renderUsage();
+      });
+      card.append(toggle);
     }
   }
 
@@ -922,10 +974,11 @@ function renderLowest(snapshot) {
   const list = $('lowest-list');
   list.replaceChildren();
 
+  const hidden = hiddenLimits();
   const windows = snapshot.usages
     .filter(usage => usage.state === 'OK' || usage.stale)
     .flatMap(usage => usage.windows
-      .filter(window => window.remainingPercent != null)
+      .filter(window => window.remainingPercent != null && !hidden.has(seriesKey(usage, window.label)))
       .map(window => ({ provider: accountName(usage), window })))
     .sort((a, b) => a.window.remainingPercent - b.window.remainingPercent)
     .slice(0, 7);

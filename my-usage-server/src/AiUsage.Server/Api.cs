@@ -66,8 +66,23 @@ public static class Api
                 ["snapshot"] = poller.Current is { } snapshot ? Wire.Snapshot(snapshot) : null,
                 ["combined"] = Wire.Series(Wire.Downsample(store.Combined(from), max)),
                 ["series"] = series,
+                // Read with every state, so a limit hidden on one device is
+                // hidden on the others at their next look.
+                ["hiddenLimits"] = new JsonArray(store.HiddenLimits().Select(key => (JsonNode?)key).ToArray()),
             });
         });
+
+        // Limits the apps leave out of their overviews: "account|label", as in
+        // the series keys. Given as ?limit=, since a label has spaces and "|".
+        api.MapGet("/hidden", (Store store) => Results.Json(store.HiddenLimits()));
+
+        api.MapPut("/hidden", (Store store, string? limit) => HiddenLimit(limit) is { } key
+            ? Results.Json(store.SetHidden(key, true))
+            : Results.Json(new { error = "Give the limit as ?limit=account|label" }, statusCode: 400));
+
+        api.MapDelete("/hidden", (Store store, string? limit) => HiddenLimit(limit) is { } key
+            ? Results.Json(store.SetHidden(key, false))
+            : Results.Json(new { error = "Give the limit as ?limit=account|label" }, statusCode: 400));
 
         api.MapGet("/snapshot", (Poller poller) => poller.Current is { } snapshot
             ? Results.Json(Wire.Snapshot(snapshot))
@@ -206,6 +221,15 @@ public static class Api
             Find(key, credentials) is { } account
                 ? Results.Json(new { status = signIn.Status(account) ?? "none" })
                 : Unknown(key));
+    }
+
+    /// <summary>"account|label", or null for anything that is not one.</summary>
+    internal static string? HiddenLimit(string? limit)
+    {
+        var key = limit?.Trim();
+        if (string.IsNullOrEmpty(key) || key.Length > 200) return null;
+        var bar = key.IndexOf('|');
+        return bar > 0 && bar < key.Length - 1 && Account.Parse(key[..bar]) != null ? key : null;
     }
 
     /// <summary>What a client is told about an account: never a token.</summary>
