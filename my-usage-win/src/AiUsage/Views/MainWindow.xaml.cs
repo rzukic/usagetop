@@ -130,8 +130,8 @@ public partial class MainWindow : Window
     // ---- Settings ---------------------------------------------------------
 
     /// <summary>
-    /// One card per provider, built here rather than in XAML: five near-identical
-    /// blocks of markup would be five places to forget a change.
+    /// One card per provider that has been added, built here rather than in XAML:
+    /// near-identical blocks of markup would be as many places to forget a change.
     /// </summary>
     private void BuildSettings()
     {
@@ -180,10 +180,76 @@ public partial class MainWindow : Window
 
         SettingsHost.Children.Add(StartupCard());
 
-        foreach (var info in ProviderCatalog.All)
+        // Only the providers that have been added, then a card to add another.
+        var added = App.Repository.Credentials.Accounts()
+            .Where(account => account.IsDefault)
+            .Select(account => account.Provider)
+            .ToHashSet();
+        foreach (var info in ProviderCatalog.All.Where(info => added.Contains(info.Id)))
         {
             SettingsHost.Children.Add(ProviderCardFor(info));
         }
+        if (AddAccountCard(added) is { } add) SettingsHost.Children.Add(add);
+    }
+
+    /// <summary>
+    /// The providers not added yet, one button each. Adding one gives it a card
+    /// above, with its sign-in or key; nothing is fetched for it before then.
+    /// </summary>
+    private Border? AddAccountCard(IReadOnlySet<ProviderId> added)
+    {
+        var missing = ProviderCatalog.All.Where(info => !added.Contains(info.Id)).ToList();
+        if (missing.Count == 0) return null;
+
+        var stack = new StackPanel();
+        stack.Children.Add(new TextBlock { Text = "Add an account", Style = (Style)FindResource("CardTitle") });
+        stack.Children.Add(new TextBlock
+        {
+            Text = added.Count == 0
+                ? "Nothing is followed yet. Add the subscriptions you have, then sign in or paste a key."
+                : "Another subscription you have.",
+            Style = (Style)FindResource("Hint"),
+            Margin = new Thickness(0, 4, 0, 8),
+            TextWrapping = TextWrapping.Wrap,
+        });
+
+        var buttons = new WrapPanel();
+        foreach (var info in missing)
+        {
+            var button = new Button
+            {
+                Content = info.DisplayName,
+                Style = (Style)FindResource("PillButton"),
+                Margin = new Thickness(0, 0, 8, 8),
+            };
+            button.Click += (_, _) =>
+            {
+                App.Repository.Credentials.AddAccount(info.Id, null);
+                BuildSettings();
+                LoadSettings();
+            };
+            buttons.Children.Add(button);
+        }
+        stack.Children.Add(buttons);
+
+        return new Border
+        {
+            Style = (Style)FindResource("Card"),
+            Margin = new Thickness(0, 0, 0, 10),
+            Child = stack,
+        };
+    }
+
+    /// <summary>Takes a provider off the list, with its sign-in or key.</summary>
+    private void RemoveProvider(ProviderInfo info)
+    {
+        var question = $"Remove {info.DisplayName}? Its sign-in or key is forgotten on this PC; add it again any time.";
+        if (MessageBox.Show(this, question, "Remove account", MessageBoxButton.OKCancel) != MessageBoxResult.OK) return;
+
+        App.Repository.Credentials.RemoveAccount(info.Key);
+        BuildSettings();
+        LoadSettings();
+        _ = RefreshAsync(force: true);
     }
 
     /// <summary>
@@ -516,6 +582,17 @@ public partial class MainWindow : Window
                 TextWrapping = TextWrapping.Wrap,
             });
         }
+
+        var remove = new Button
+        {
+            Content = "Remove",
+            Style = (Style)FindResource("QuietButton"),
+            Margin = new Thickness(0, 8, 0, 0),
+            HorizontalAlignment = HorizontalAlignment.Left,
+            Padding = new Thickness(0),
+        };
+        remove.Click += (_, _) => RemoveProvider(info);
+        stack.Children.Add(remove);
 
         return new Border
         {

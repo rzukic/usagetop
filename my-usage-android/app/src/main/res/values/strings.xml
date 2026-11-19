@@ -11,6 +11,12 @@
     <string name="sign_in_chatgpt">Sign in with ChatGPT</string>
     <string name="sign_in_muse">Sign in with Muse</string>
     <string name="sign_in_antigravity">Sign in with Google</string>
+    <string name="add_account_title">Add an account</string>
+    <string name="add_account_caption">Another subscription you have.</string>
+    <string name="add_account_caption_empty">Nothing is followed yet. Add the subscriptions you have, then sign in or paste a key.</string>
+    <string name="remove_account">Remove</string>
+    <string name="remove_account_question">Remove %1$s? Its sign-in or key is forgotten on this phone; add it again any time.</string>
+    <string name="no_accounts">No accounts yet. Add the subscriptions you have in Settings.</string>
     <string name="antigravity_caption">The Google account with the Google AI plan Antigravity uses.</string>
     <string name="open_key_console">Open API key console</string>
     <string name="signing_in">Waiting for browser…</string>
@@ -38,7 +44,7 @@
     <string name="server_accounts_reading">Reading…</string>
     <string name="server_accounts_none">The server follows no accounts yet.</string>
     <string name="server_accounts_caption">Keys and sessions stay on the server; this app never reads them back.</string>
-    <string name="server_accounts_add">Add another account</string>
+    <string name="server_accounts_add">Add an account</string>
     <string name="server_account_not_set_up">Not set up</string>
     <string name="server_account_key_stored">Key stored</string>
     <string name="server_account_token_stored">Token stored</string>

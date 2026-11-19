@@ -27,7 +27,24 @@ public sealed class Poller(
     private DateTimeOffset _lastForced = DateTimeOffset.MinValue;
 
     /// <summary>The newest snapshot, or null before the first poll of a new database.</summary>
-    public Snapshot? Current => Volatile.Read(ref _current);
+    /// <summary>
+    /// The latest reading, of the accounts in the list only: one removed, or one
+    /// a store from before left out when it was upgraded, is gone at once rather
+    /// than at the next round. With no accounts at all it is an empty reading,
+    /// not none, so a client can tell "nothing added" from "not asked yet".
+    /// </summary>
+    public Snapshot? Current
+    {
+        get
+        {
+            var current = Volatile.Read(ref _current);
+            var listed = credentials.Accounts().Select(account => account.Key).ToHashSet(StringComparer.Ordinal);
+            if (current == null) return listed.Count == 0 ? new Snapshot([], DateTimeOffset.UtcNow) : null;
+            return current.Usages.All(usage => listed.Contains(usage.AccountKey))
+                ? current
+                : current with { Usages = current.Usages.Where(usage => listed.Contains(usage.AccountKey)).ToList() };
+        }
+    }
 
     protected override async Task ExecuteAsync(CancellationToken stopping)
     {

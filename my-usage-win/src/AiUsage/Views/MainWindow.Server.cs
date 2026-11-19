@@ -45,7 +45,7 @@ public partial class MainWindow
         // Another account of a provider: a second Claude subscription, a work ChatGPT.
         stack.Children.Add(new TextBlock
         {
-            Text = "Add another account",
+            Text = "Add an account",
             Style = (Style)FindResource("Hint"),
             Margin = new Thickness(0, 12, 0, 0),
         });

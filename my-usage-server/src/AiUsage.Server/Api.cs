@@ -162,14 +162,11 @@ public static class Api
             return Results.Json(Describe(credentials.FindAccount(account.Key)!, credentials));
         });
 
-        // Only an added account can go; the first of each provider is signed out instead.
+        // Any account can go, the first of a provider too: it leaves the list, and
+        // its sign-in or key with it. Its history stays in the database.
         api.MapDelete("/accounts/{key}", async (string key, Credentials credentials, Poller poller, SignInService signIn, CancellationToken cancellation) =>
         {
-            if (Find(key, credentials) is not { } account) return Unknown(key);
-            if (account.IsDefault)
-            {
-                return Results.Json(new { error = "The first account of a provider can be signed out, not removed." }, statusCode: 400);
-            }
+            if (credentials.FindAccount(key.Trim().ToLowerInvariant()) is not { } account) return Unknown(key);
 
             credentials.RemoveAccount(account.Key);
             signIn.Forget(account);
@@ -221,7 +218,7 @@ public static class Api
             provider = ProviderCatalog.Of(account.Provider).Key,
             name = account.Name,
             displayName = account.DisplayName,
-            removable = !account.IsDefault,
+            removable = true,
             configured = view.Token(account.Provider) != null,
             renews = view.IsSignedIn(account.Provider),
         };
@@ -239,8 +236,17 @@ public static class Api
     }
 
     /// <summary>"claude" or "claude-2", if it is an account that exists.</summary>
-    private static Account? Find(string key, Credentials credentials) =>
-        credentials.FindAccount(key.Trim().ToLowerInvariant());
+    /// <summary>
+    /// The account a key names. A provider's plain key ("claude") names its first
+    /// account even before it is in the list, so a sign-in or a key can be given
+    /// to a server that follows nothing yet; storing it adds the account.
+    /// </summary>
+    private static Account? Find(string key, Credentials credentials)
+    {
+        var clean = key.Trim().ToLowerInvariant();
+        return credentials.FindAccount(clean)
+            ?? (ProviderCatalog.FromKey(clean) is { } info ? new Account(info.Id) : null);
+    }
 
     private static IResult Unknown(string key) =>
         Results.Json(new { error = $"No account '{key}'" }, statusCode: 404);

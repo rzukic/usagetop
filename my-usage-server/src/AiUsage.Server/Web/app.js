@@ -1055,11 +1055,11 @@ function updateTile(nodes, account) {
   nodes.remove.hidden = !account.removable;
 }
 
-/** The last tile: another account of any provider, e.g. a second Claude subscription. */
+/** The last tile: an account of any provider, the first or another, e.g. a second Claude subscription. */
 function buildAddTile() {
   const card = el('div', 'card add-account');
   card.append(el('h3', null, 'Add an account'));
-  card.append(el('p', 'hint', 'Another subscription with a provider you already use, e.g. a work Claude.'));
+  card.append(el('p', 'hint', 'Pick the provider. A name tells two accounts with one provider apart, e.g. a work Claude.'));
 
   const form = el('form', 'add-form');
   const select = el('select');
@@ -1071,7 +1071,7 @@ function buildAddTile() {
   }
   const name = el('input');
   name.type = 'text';
-  name.placeholder = 'Name, e.g. Work';
+  name.placeholder = 'Name (optional), e.g. Work';
   name.setAttribute('aria-label', 'Account name');
   name.maxLength = 40;
   name.autocomplete = 'off';

@@ -49,20 +49,26 @@ the apps, and has every sign-in from the commands above as a button. The page
 itself is three static files built into the binary; it loads nothing from
 anywhere else, and everything it shows comes through the API below.
 
-### More than one account per provider
+### Accounts
 
-The server can follow several subscriptions with the same provider: a personal
-and a work Claude, two ChatGPT accounts. On the page, **Add an account** under
-Sign-ins picks the provider and a name ("Work"), then goes straight on to its
-sign-in or key. Each account has its own tokens, card, charts and alerts, and
-counts as its own subscription in the combined figure. **Rename** and **Remove
-account** are on its tile; the first account of a provider can be signed out but
-not removed.
+A new server follows nothing. On the page, **Add an account** under Sign-ins
+picks the provider and, optionally, a name ("Work"), then goes straight on to
+its sign-in or key; nothing is asked of a provider until it has been added. The
+`signin` and `key` commands add the account too. The server can follow several
+subscriptions with the same provider: a personal and a work Claude, two ChatGPT
+accounts. Each account has its own tokens, card, charts and alerts, and counts
+as its own subscription in the combined figure. **Rename** and **Remove
+account** are on its tile; removing one forgets its sign-in or key, while its
+history stays in the database.
 
-Accounts are keyed `claude`, `claude-2`, `claude-3`, … The first account keeps
-the plain key, so everything stored before accounts existed is still its own,
-and a number is never reused, so a removed account's history (which stays in the
-database) can never be read as a new one's.
+Accounts are keyed `claude`, `claude-2`, `claude-3`, … A provider's first
+account has the plain key, so everything stored before accounts existed is
+still its own; added again after being removed, it gets the same key and its
+history back. A number is never reused, so a removed numbered account's history
+can never be read as a new one's.
+
+A server from before this kept the accounts that held a sign-in or key when it
+was updated, and dropped the empty ones every provider used to have.
 
 A browser sign-in approves whichever account that browser is signed in to, so
 sign in to the right one before approving the second account's link.
@@ -274,12 +280,12 @@ Every `/api` call needs `Authorization: Bearer <token>`.
 | `GET /api/state?since=<epoch ms>` | The same, with only the readings after that moment |
 | `GET /api/snapshot` | The latest snapshot alone |
 | `POST /api/refresh` | Asks every provider now, returns the snapshot |
-| `GET /api/credentials` | Every account: `key`, `provider`, `name`, `displayName`, `removable`, `configured`, `renews`; never the tokens |
+| `GET /api/credentials` | Every account added: `key`, `provider`, `name`, `displayName`, `removable` (always true now), `configured`, `renews`; never the tokens |
 | `PUT /api/credentials/{account}` | `{ "token": … }`, or a whole session with `refreshToken`, `expiresAt`, `accountId`; also `kimiChina`, `mistralBudget`, `mistralSpent` |
 | `DELETE /api/credentials/{account}` | Signs the account out |
-| `POST /api/accounts` | `{ "provider": "claude", "name": "Work" }` adds an account; returns it, with its key |
+| `POST /api/accounts` | `{ "provider": "claude", "name": "Work" }` adds an account (the provider's first, or another); returns it, with its key |
 | `PATCH /api/accounts/{account}` | `{ "name": … }` renames it; `null` clears the name |
-| `DELETE /api/accounts/{account}` | Removes an added account and its tokens (not the first of a provider) |
+| `DELETE /api/accounts/{account}` | Removes an account and its tokens; its history stays |
 | `POST /api/signin/{account}/start` | `{ kind, url, userCode, instructions }` |
 | `POST /api/signin/{account}/complete` | `{ "input": "<what the user pasted>" }` |
 | `GET /api/signin/{account}/status` | `none`, `pending`, `done` or `failed: …` |

@@ -321,6 +321,10 @@ struct PanelView: View {
             if !model.settings.isConfigured && !model.isDemo {
                 Onboarding(openSettings: { pane = .settings })
                     .transition(.opacity)
+            } else if model.ordered.isEmpty && model.snapshot != nil && model.problem == nil {
+                // A reading came back with nothing in it: the server follows no
+                // accounts yet, and nothing will arrive until one is added.
+                NoAccounts(openSettings: { pane = .settings })
             } else if model.ordered.isEmpty {
                 Waiting(problem: model.problem)
             } else {
@@ -423,6 +427,27 @@ private struct Onboarding: View {
 }
 
 /// A server is set but has nothing to show yet.
+private struct NoAccounts: View {
+    let openSettings: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("No accounts yet")
+                .font(.system(size: 13, weight: .semibold))
+            Text("The server follows no subscriptions. Add the ones you have under Accounts on the server, then sign in or set a key.")
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Open Settings", action: openSettings)
+                .buttonStyle(.soft)
+                .controlSize(.small)
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .card()
+    }
+}
+
 private struct Waiting: View {
     let problem: String?
 

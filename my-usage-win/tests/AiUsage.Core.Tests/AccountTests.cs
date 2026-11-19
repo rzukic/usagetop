@@ -43,20 +43,79 @@ public class AccountCredentialTests
         new(folder.File("credentials.json"), new AesSealer(key));
 
     [Fact]
-    public void Every_provider_has_a_first_account_and_added_ones_follow_their_provider()
+    public void The_list_starts_empty_and_accounts_follow_their_provider_as_they_are_added()
     {
         using var folder = new TempFolder();
         var credentials = Open(folder, RandomNumberGenerator.GetBytes(32));
 
-        Assert.Equal(ProviderCatalog.All.Select(info => info.Key), credentials.Accounts().Select(a => a.Key));
+        Assert.Empty(credentials.Accounts());
 
+        var kimi = credentials.AddAccount(ProviderId.Kimi, null);
+        var personal = credentials.AddAccount(ProviderId.Claude, null);
         var work = credentials.AddAccount(ProviderId.Claude, "Work");
-        credentials.AddAccount(ProviderId.Kimi, null);
 
-        Assert.Equal(
-            ["claude", "claude-2", "chatgpt", "mistral", "kimi", "kimi-3", "muse", "antigravity"],
-            credentials.Accounts().Select(a => a.Key));
+        // A provider's first account has the plain key; the next ones are numbered.
+        Assert.Equal(("kimi", "claude", "claude-2"), (kimi.Key, personal.Key, work.Key));
+        Assert.Equal(["claude", "claude-2", "kimi"], credentials.Accounts().Select(a => a.Key));
         Assert.Equal("Work", credentials.FindAccount(work.Key)!.Name);
+    }
+
+    [Fact]
+    public void A_sign_in_or_a_key_puts_a_first_account_in_the_list()
+    {
+        using var folder = new TempFolder();
+        var credentials = Open(folder, RandomNumberGenerator.GetBytes(32));
+
+        credentials.SetManualToken(ProviderId.Mistral, "key");
+        credentials.SetSession(ProviderId.Claude, "access", "refresh", 0L, null, borrowed: false);
+        credentials.SetManualToken(ProviderId.Kimi, "");
+
+        Assert.Equal(["claude", "mistral"], credentials.Accounts().Select(a => a.Key));
+    }
+
+    [Fact]
+    public void A_store_from_before_keeps_the_first_accounts_that_hold_something_and_drops_the_empty_ones()
+    {
+        using var folder = new TempFolder();
+        var key = RandomNumberGenerator.GetBytes(32);
+        var credentials = Open(folder, key);
+        credentials.SetManualToken(ProviderId.Mistral, "key");
+        credentials.SetSession(ProviderId.Claude, "access", "refresh", 0L, null, borrowed: false);
+        credentials.For("2").SetManualToken(ProviderId.Claude, "work");
+
+        // The book as it was written before the list could be emptied: no record
+        // of which first accounts are in it, because every one always was.
+        typeof(Credentials)
+            .GetMethod("Set", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance)!
+            .Invoke(credentials, ["accounts", """{"Next":3,"Extra":["claude-2"],"Names":{"claude":"Personal","claude-2":"Work"}}"""]);
+
+        var reopened = Open(folder, key);
+        Assert.Equal(["claude", "claude-2", "mistral"], reopened.Accounts().Select(a => a.Key));
+        Assert.Equal("Personal", reopened.FindAccount("claude")!.Name);
+        Assert.Equal("access", reopened.Token(ProviderId.Claude));
+
+        // Settled once: a key added later does not bring back an empty account.
+        Assert.Equal(["claude", "claude-2", "mistral"], Open(folder, key).Accounts().Select(a => a.Key));
+    }
+
+    [Fact]
+    public void A_first_account_can_be_removed_and_added_again_under_its_own_key()
+    {
+        using var folder = new TempFolder();
+        var credentials = Open(folder, RandomNumberGenerator.GetBytes(32));
+        credentials.SetManualToken(ProviderId.Kimi, "kimi-key");
+        credentials.SetKimiChina(true);
+        credentials.RenameAccount("kimi", "Home");
+
+        Assert.True(credentials.RemoveAccount("kimi"));
+        Assert.Empty(credentials.Accounts());
+        Assert.Null(credentials.Token(ProviderId.Kimi));
+        Assert.False(credentials.KimiChina());
+        Assert.DoesNotContain("kimi-key", File.ReadAllText(folder.File("credentials.json")));
+
+        var again = credentials.AddAccount(ProviderId.Kimi, null);
+        Assert.Equal("kimi", again.Key);
+        Assert.Null(again.Name);
     }
 
     [Fact]
@@ -65,6 +124,7 @@ public class AccountCredentialTests
         using var folder = new TempFolder();
         var key = RandomNumberGenerator.GetBytes(32);
         var credentials = Open(folder, key);
+        credentials.AddAccount(ProviderId.Claude, null);
         var second = credentials.AddAccount(ProviderId.Claude, "Work");
 
         credentials.SetSession(ProviderId.Claude, "first-access", "first-refresh", 0L, null, borrowed: false);
@@ -90,6 +150,7 @@ public class AccountCredentialTests
     {
         using var folder = new TempFolder();
         var credentials = Open(folder, RandomNumberGenerator.GetBytes(32));
+        credentials.AddAccount(ProviderId.ChatGpt, null);
         var second = credentials.AddAccount(ProviderId.ChatGpt, "Work");
         credentials.For(second.Slot).SetManualToken(ProviderId.ChatGpt, "work-token");
 
@@ -100,10 +161,7 @@ public class AccountCredentialTests
 
         var third = credentials.AddAccount(ProviderId.ChatGpt, null);
         Assert.NotEqual(second.Slot, third.Slot);
-
-        // The first account of a provider can only be signed out.
-        Assert.False(credentials.RemoveAccount("chatgpt"));
-        Assert.NotNull(credentials.FindAccount("chatgpt"));
+        Assert.NotEqual("", third.Slot);
     }
 
     [Fact]
@@ -111,6 +169,7 @@ public class AccountCredentialTests
     {
         using var folder = new TempFolder();
         var credentials = Open(folder, RandomNumberGenerator.GetBytes(32));
+        credentials.AddAccount(ProviderId.Claude, null);
 
         credentials.RenameAccount("claude", "Personal");
         Assert.Equal("Claude · Personal", credentials.FindAccount("claude")!.DisplayName);
@@ -138,6 +197,7 @@ public class AccountFetchTests
     {
         using var folder = new TempFolder();
         var credentials = new Credentials(folder.File("credentials.json"), new AesSealer(RandomNumberGenerator.GetBytes(32)));
+        credentials.AddAccount(ProviderId.Claude, null);
         var work = credentials.AddAccount(ProviderId.Claude, "Work");
         credentials.SetManualToken(ProviderId.Claude, "personal");
         credentials.For(work.Slot).SetManualToken(ProviderId.Claude, "work");

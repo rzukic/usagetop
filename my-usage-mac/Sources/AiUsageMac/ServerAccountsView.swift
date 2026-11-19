@@ -48,7 +48,7 @@ struct ServerAccountsSection: View {
                     .fixedSize(horizontal: false, vertical: true)
 
                 VStack(alignment: .leading, spacing: 6) {
-                    Text("Add another account")
+                    Text("Add an account")
                         .font(.system(size: 11, weight: .medium))
                         .foregroundStyle(.secondary)
                     HStack(spacing: 6) {
@@ -60,8 +60,8 @@ struct ServerAccountsSection: View {
                                     .frame(width: 28, height: 28)
                             }
                             .buttonStyle(.softCircle)
-                            .help("Add another \(Provider(key: provider).displayName) account")
-                            .accessibilityLabel("Add another \(Provider(key: provider).displayName) account")
+                            .help("Add a \(Provider(key: provider).displayName) account")
+                            .accessibilityLabel("Add a \(Provider(key: provider).displayName) account")
                         }
                     }
                 }

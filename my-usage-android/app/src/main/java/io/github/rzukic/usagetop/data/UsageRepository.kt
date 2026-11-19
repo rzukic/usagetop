@@ -95,7 +95,11 @@ class UsageRepository(context: Context) {
         val previous = cached()?.usages.orEmpty().associateBy { it.accountKey }
         val now = Instant.now()
 
+        // Only the providers that have been added: the rest are not asked, and
+        // do not show.
+        val added = credentials.added()
         val usages = providers
+            .filter { it.id in added }
             .map { provider -> async(Dispatchers.IO) { fetchOne(provider) } }
             .awaitAll()
             .map { usage -> keepLastGood(usage, previous[usage.accountKey]) }

@@ -249,6 +249,7 @@
 
             <!-- Claude -->
             <LinearLayout
+                android:id="@+id/claudeCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
@@ -290,6 +291,7 @@
 
             <!-- ChatGPT -->
             <LinearLayout
+                android:id="@+id/chatgptCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
@@ -331,6 +333,7 @@
 
             <!-- Mistral -->
             <LinearLayout
+                android:id="@+id/mistralCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
@@ -396,6 +399,7 @@
 
             <!-- Kimi -->
             <LinearLayout
+                android:id="@+id/kimiCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
@@ -441,6 +445,7 @@
 
             <!-- Muse -->
             <LinearLayout
+                android:id="@+id/museCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
@@ -482,6 +487,7 @@
 
             <!-- Antigravity -->
             <LinearLayout
+                android:id="@+id/antigravityCard"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
@@ -510,6 +516,32 @@
                     android:layout_marginTop="6dp"
                     android:text="@string/antigravity_caption"
                     android:textSize="10sp" />
+            </LinearLayout>
+
+            <!-- The providers not added yet: one button each. Adding one shows its card above. -->
+            <LinearLayout
+                android:id="@+id/addAccountCard"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/card_surface"
+                android:orientation="vertical"
+                android:padding="14dp">
+
+                <TextView
+                    style="@style/CardTitle"
+                    android:text="@string/add_account_title" />
+
+                <TextView
+                    android:id="@+id/addAccountCaption"
+                    style="@style/CardCaption"
+                    android:text="@string/add_account_caption" />
+
+                <com.google.android.material.chip.ChipGroup
+                    android:id="@+id/addAccountChoices"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp" />
             </LinearLayout>
             </LinearLayout>
 

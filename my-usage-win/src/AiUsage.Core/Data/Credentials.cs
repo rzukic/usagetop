@@ -59,7 +59,11 @@ public sealed class Credentials
         ? value
         : null;
 
-    public void SetToken(ProviderId id, string? value) => Set(KeyToken(id), value?.Trim());
+    public void SetToken(ProviderId id, string? value)
+    {
+        Set(KeyToken(id), value?.Trim());
+        if (!string.IsNullOrWhiteSpace(value)) Enlist(id);
+    }
 
     public string? RefreshToken(ProviderId id) => Get(KeyRefresh(id)) is { Length: > 0 } value
         ? value
@@ -128,6 +132,7 @@ public sealed class Credentials
             if (accountId != null) values[KeyAccount(id)] = accountId;
             Put(values, KeyBorrowed(id), borrowed ? "true" : null);
         });
+        Enlist(id);
     }
 
     /// <summary>
@@ -147,6 +152,7 @@ public sealed class Credentials
             values.Remove(KeyBorrowed(id));
             if (string.IsNullOrEmpty(trimmed)) values.Remove(KeyAccount(id));
         });
+        if (!string.IsNullOrEmpty(trimmed)) Enlist(id);
     }
 
     public bool KimiChina() => Get(Scoped(KeyKimiChina)) == "true";
@@ -191,6 +197,13 @@ public sealed class Credentials
     {
         public int Next { get; set; } = 2;
 
+        /// <summary>
+        /// The providers whose first account is in the list, by key. Null in a
+        /// book written before accounts could be removed: it is filled on first
+        /// read with the first accounts that hold something.
+        /// </summary>
+        public List<string>? Firsts { get; set; }
+
         /// <summary>Extra accounts as "provider-slot" keys, in the order they were added.</summary>
         public List<string> Extra { get; set; } = [];
 
@@ -199,16 +212,21 @@ public sealed class Credentials
     }
 
     /// <summary>
-    /// Every account: the first of each provider, which always exists, then any
-    /// added since, grouped by provider in catalogue order.
+    /// Every account that has been added, grouped by provider in catalogue order:
+    /// a provider's first account, if it is in the list, then any added since.
+    /// The list starts empty; an account joins it when it is added, or when a
+    /// sign-in or key is stored for it.
     /// </summary>
     public IReadOnlyList<Account> Accounts()
     {
-        var book = ReadBook();
+        var book = Book();
         var accounts = new List<Account>();
         foreach (var info in ProviderCatalog.All)
         {
-            accounts.Add(new Account(info.Id, "", book.Names.GetValueOrDefault(info.Key)));
+            if (book.Firsts!.Contains(info.Key))
+            {
+                accounts.Add(new Account(info.Id, "", book.Names.GetValueOrDefault(info.Key)));
+            }
             foreach (var key in book.Extra)
             {
                 if (Account.Parse(key) is not { } parsed || parsed.Provider != info.Id) continue;
@@ -222,8 +240,10 @@ public sealed class Credentials
         Accounts().FirstOrDefault(account => account.Key == key);
 
     /// <summary>
-    /// Adds another account of a provider and returns it. Slots are numbered and
-    /// never reused, so a removed account's history can never be read as a new
+    /// Adds an account of a provider and returns it. The first one a provider gets
+    /// is its first account, the one with the plain key ("claude"); a removed
+    /// first account's history comes back with it. Any after that get numbered
+    /// slots, never reused, so a removed one's history is never read as a new
     /// one's.
     /// </summary>
     public Account AddAccount(ProviderId provider, string? name)
@@ -231,6 +251,16 @@ public sealed class Credentials
         Account? added = null;
         UpdateBook(book =>
         {
+            var key0 = ProviderCatalog.Of(provider).Key;
+            if (!book.Firsts!.Contains(key0))
+            {
+                book.Firsts.Add(key0);
+                if (Clean(name) is { } first) book.Names[key0] = first;
+                else book.Names.Remove(key0);
+                added = new Account(provider, "", Clean(name));
+                return;
+            }
+
             var slot = book.Next.ToString(System.Globalization.CultureInfo.InvariantCulture);
             book.Next++;
             var key = Account.KeyOf(provider, slot);
@@ -251,12 +281,12 @@ public sealed class Credentials
     }
 
     /// <summary>
-    /// Forgets an added account and everything stored for it. The first account of
-    /// a provider cannot be removed, only signed out.
+    /// Takes an account out of the list and forgets everything stored for it:
+    /// its sign-in or key and its settings. Its history is not touched.
     /// </summary>
     public bool RemoveAccount(string key)
     {
-        if (Account.Parse(key) is not { } parsed || parsed.Slot.Length == 0) return false;
+        if (Account.Parse(key) is not { } parsed) return false;
 
         var removed = false;
         lock (_vault.Gate)
@@ -268,7 +298,9 @@ public sealed class Credentials
             Set(view.Scoped(KeyMistralSpent), null);
             UpdateBook(book =>
             {
-                removed = book.Extra.Remove(key);
+                removed = parsed.Slot.Length == 0
+                    ? book.Firsts!.Remove(ProviderCatalog.Of(parsed.Provider).Key)
+                    : book.Extra.Remove(key);
                 book.Names.Remove(key);
             });
         }
@@ -296,9 +328,43 @@ public sealed class Credentials
     {
         lock (_vault.Gate)
         {
-            var book = ReadBook();
+            var book = Book();
             change(book);
             Set(KeyAccounts, JsonSerializer.Serialize(book));
+        }
+    }
+
+    /// <summary>
+    /// The book, with its first accounts settled. A book from before accounts
+    /// could be removed keeps the first accounts that hold a sign-in or a key,
+    /// and drops the empty ones every provider used to have whether wanted or not.
+    /// </summary>
+    private AccountBook Book()
+    {
+        lock (_vault.Gate)
+        {
+            var book = ReadBook();
+            if (book.Firsts != null) return book;
+
+            var first = For("");
+            book.Firsts = ProviderCatalog.All
+                .Where(info => first.Token(info.Id) != null || first.RefreshToken(info.Id) != null)
+                .Select(info => info.Key)
+                .ToList();
+            Set(KeyAccounts, JsonSerializer.Serialize(book));
+            return book;
+        }
+    }
+
+    /// <summary>A sign-in or key stored for a first account puts it in the list.</summary>
+    private void Enlist(ProviderId id)
+    {
+        if (Slot.Length != 0) return;
+        var key = ProviderCatalog.Of(id).Key;
+        lock (_vault.Gate)
+        {
+            if (Book().Firsts!.Contains(key)) return;
+            UpdateBook(book => book.Firsts!.Add(key));
         }
     }
 

@@ -281,8 +281,13 @@ public class UsageFetcherTests
         Windows = [new UsageWindow("7d", percent)],
     };
 
-    private static Credentials NewCredentials(TempFolder folder) =>
-        new(folder.File("credentials.json"), Sealer);
+    /// <summary>A store that follows the first account of each of <paramref name="providers"/>.</summary>
+    private static Credentials NewCredentials(TempFolder folder, params ProviderId[] providers)
+    {
+        var credentials = new Credentials(folder.File("credentials.json"), Sealer);
+        foreach (var provider in providers) credentials.AddAccount(provider, null);
+        return credentials;
+    }
 
     [Fact]
     public async Task A_rejected_token_is_renewed_and_tried_once_more()
@@ -299,7 +304,7 @@ public class UsageFetcherTests
             return Task.FromResult(true);
         });
 
-        var snapshot = await fetcher.FetchAsync(NewCredentials(folder), previous: null);
+        var snapshot = await fetcher.FetchAsync(NewCredentials(folder, ProviderId.ChatGpt), previous: null);
 
         var usage = Assert.Single(snapshot.Usages);
         Assert.Equal(UsageState.Ok, usage.State);
@@ -315,7 +320,7 @@ public class UsageFetcherTests
         var provider = new Scripted(ProviderId.Claude, () => ProviderHelpers.HttpError(ProviderId.Claude, 401));
         var fetcher = new UsageFetcher([provider], (_, _, _) => Task.FromResult(false));
 
-        var snapshot = await fetcher.FetchAsync(NewCredentials(folder), previous: null);
+        var snapshot = await fetcher.FetchAsync(NewCredentials(folder, ProviderId.Claude), previous: null);
 
         Assert.Equal("Token rejected", snapshot.Usages[0].Message);
         Assert.Equal(1, provider.Calls);
@@ -344,7 +349,7 @@ public class UsageFetcherTests
         var provider = new Scripted(ProviderId.Claude, () => ProviderHelpers.HttpError(ProviderId.Claude, 429));
         var fetcher = new UsageFetcher([provider], (_, _, _) => Task.FromResult(false));
 
-        var snapshot = await fetcher.FetchAsync(NewCredentials(folder), previous);
+        var snapshot = await fetcher.FetchAsync(NewCredentials(folder, ProviderId.Claude), previous);
 
         var usage = snapshot.Usages[0];
         Assert.Equal(UsageState.Ok, usage.State);
@@ -361,7 +366,7 @@ public class UsageFetcherTests
         var fine = new Scripted(ProviderId.Mistral, () => Ok(ProviderId.Mistral, 80f));
         var fetcher = new UsageFetcher([broken, fine], (_, _, _) => Task.FromResult(false));
 
-        var snapshot = await fetcher.FetchAsync(NewCredentials(folder), previous: null);
+        var snapshot = await fetcher.FetchAsync(NewCredentials(folder, ProviderId.Kimi, ProviderId.Mistral), previous: null);
 
         var kimi = snapshot.Usages.Single(u => u.Id == ProviderId.Kimi);
         Assert.Equal(UsageState.Error, kimi.State);

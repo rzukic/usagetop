@@ -22,6 +22,7 @@ class Credentials(context: Context) {
             val trimmed = value?.trim()
             if (trimmed.isNullOrEmpty()) remove(keyToken(id)) else putString(keyToken(id), trimmed)
         }.apply()
+        if (!value.isNullOrBlank()) enlist(id)
     }
 
     fun refreshToken(id: ProviderId): String? =
@@ -63,6 +64,7 @@ class Credentials(context: Context) {
             putLong(keyExpires(id), expiresAt)
             if (!accountId.isNullOrEmpty()) putString(keyAccount(id), accountId)
         }.apply()
+        enlist(id)
     }
 
     /**
@@ -83,6 +85,49 @@ class Credentials(context: Context) {
             remove(keyRefresh(id))
             remove(keyExpires(id))
         }.apply()
+        if (!trimmed.isNullOrEmpty()) enlist(id)
+    }
+
+    /**
+     * The providers this app follows when it asks them itself. The list starts
+     * empty; a provider joins it when it is added, or when a sign-in or key is
+     * stored for it. A phone that had the app before keeps the providers it holds
+     * something for, and loses the empty ones every provider used to have.
+     */
+    fun added(): Set<ProviderId> {
+        val stored = prefs.getString(KEY_ADDED, null)
+        if (stored != null) {
+            return stored.split(',').mapNotNull { ProviderId.fromKey(it) }.toSet()
+        }
+        val held = ProviderId.values().filter { token(it) != null || refreshToken(it) != null }.toSet()
+        writeAdded(held)
+        return held
+    }
+
+    fun add(id: ProviderId) {
+        enlist(id)
+    }
+
+    /** Takes a provider off the list, with its sign-in or key and its settings. */
+    fun remove(id: ProviderId) {
+        signOut(id)
+        when (id) {
+            ProviderId.KIMI -> prefs.edit().remove(KEY_KIMI_CN).apply()
+            ProviderId.MISTRAL -> prefs.edit().remove(KEY_MISTRAL_BUDGET).remove(KEY_MISTRAL_SPENT).apply()
+            else -> Unit
+        }
+        writeAdded(added() - id)
+    }
+
+    private fun enlist(id: ProviderId) {
+        val now = added()
+        if (id !in now) writeAdded(now + id)
+    }
+
+    private fun writeAdded(ids: Set<ProviderId>) {
+        // Catalogue order, so the list reads the same however it was built.
+        val ordered = ProviderId.values().filter { it in ids }.joinToString(",") { it.key }
+        prefs.edit().putString(KEY_ADDED, ordered).apply()
     }
 
     /** True when the provider was set up through the browser flow. */
@@ -177,6 +222,7 @@ class Credentials(context: Context) {
         const val KEY_MISTRAL_BUDGET = "mistral_budget"
         const val KEY_MISTRAL_SPENT = "mistral_spent"
         const val KEY_SERVER_URL = "server_url"
+        const val KEY_ADDED = "added_providers"
         const val KEY_SERVER_TOKEN = "server_token"
     }
 }

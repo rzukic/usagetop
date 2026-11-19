@@ -233,7 +233,7 @@ public sealed partial class PanelView
         stack.Children.Add(_accountsHost);
 
         // Another account of a provider: a second Claude subscription, a work ChatGPT.
-        stack.Children.Add(FieldLabel("Add another account", new Thickness(0, 12, 0, 6)));
+        stack.Children.Add(FieldLabel("Add an account", new Thickness(0, 12, 0, 6)));
         var add = new WrapPanel();
         foreach (var info in ProviderCatalog.All)
         {

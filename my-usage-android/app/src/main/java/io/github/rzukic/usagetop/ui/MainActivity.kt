@@ -16,6 +16,8 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.chip.Chip
 import io.github.rzukic.usagetop.R
 import io.github.rzukic.usagetop.auth.OAuthCallbackService
 import io.github.rzukic.usagetop.auth.OAuthConfig
@@ -87,6 +89,7 @@ class MainActivity : AppCompatActivity() {
         binding.btnSave.setOnClickListener {
             val wasServer = repository.usesServer()
             saveValues()
+            showLocalAccounts()
             if (repository.usesServer() != wasServer) applyMode()
             refresh(force = true)
         }
@@ -102,6 +105,7 @@ class MainActivity : AppCompatActivity() {
         binding.kimiGetKey.setOnClickListener { openUrl(KIMI_KEYS) }
 
         setupUpdates()
+        setupLocalAccounts()
 
         lifecycleScope.launch {
             OAuthSession.results.collect { result ->
@@ -110,6 +114,7 @@ class MainActivity : AppCompatActivity() {
                     is OAuthSession.Result.Success -> {
                         binding.overallStatus.text = getString(R.string.signed_in)
                         loadSavedValues()
+                        showLocalAccounts()
                         refresh()
                     }
                     is OAuthSession.Result.Failure -> {
@@ -211,6 +216,79 @@ class MainActivity : AppCompatActivity() {
      * With an address set the server holds the accounts, so its own card replaces
      * the five below: a key typed here belongs to the server, not to this app.
      */
+    /** Each provider's card in the local settings, to show or hide as it is added or removed. */
+    private val localCards by lazy {
+        mapOf(
+            ProviderId.CLAUDE to binding.claudeCard,
+            ProviderId.CHATGPT to binding.chatgptCard,
+            ProviderId.MISTRAL to binding.mistralCard,
+            ProviderId.KIMI to binding.kimiCard,
+            ProviderId.MUSE to binding.museCard,
+            ProviderId.ANTIGRAVITY to binding.antigravityCard,
+        )
+    }
+
+    /** Gives every card its Remove button, once. */
+    private fun setupLocalAccounts() {
+        localCards.forEach { (id, card) ->
+            card.addView(MaterialButton(this, null, com.google.android.material.R.attr.borderlessButtonStyle).apply {
+                text = getString(R.string.remove_account)
+                isAllCaps = false
+                textSize = 12f
+                minHeight = 0
+                minimumHeight = 0
+                setPadding(0, dp(6), 0, 0)
+                setTextColor(ContextCompat.getColor(this@MainActivity, R.color.text_secondary))
+                layoutParams = LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                ).apply { topMargin = dp(4) }
+                setOnClickListener { removeProvider(id) }
+            })
+        }
+        showLocalAccounts()
+    }
+
+    /** Only the added providers' cards, and a button for each of the rest. */
+    private fun showLocalAccounts() {
+        val added = credentials.added()
+        localCards.forEach { (id, card) -> card.visibility = if (id in added) View.VISIBLE else View.GONE }
+
+        val missing = ProviderId.values().filter { it !in added }
+        binding.addAccountCard.visibility = if (missing.isEmpty()) View.GONE else View.VISIBLE
+        binding.addAccountCaption.text = getString(
+            if (added.isEmpty()) R.string.add_account_caption_empty else R.string.add_account_caption
+        )
+        binding.addAccountChoices.removeAllViews()
+        missing.forEach { id ->
+            binding.addAccountChoices.addView(Chip(this).apply {
+                text = id.displayName
+                chipIcon = ContextCompat.getDrawable(this@MainActivity, ProviderArt.logo(id))
+                chipIconTint = android.content.res.ColorStateList.valueOf(
+                    ContextCompat.getColor(this@MainActivity, R.color.text_primary)
+                )
+                setOnClickListener {
+                    credentials.add(id)
+                    showLocalAccounts()
+                    renderUsage(repository.cached())
+                }
+            })
+        }
+    }
+
+    private fun removeProvider(id: ProviderId) {
+        android.app.AlertDialog.Builder(this)
+            .setMessage(getString(R.string.remove_account_question, id.displayName))
+            .setPositiveButton(R.string.remove_account) { _, _ ->
+                credentials.remove(id)
+                loadSavedValues()
+                showLocalAccounts()
+                refresh(force = true)
+            }
+            .setNegativeButton(android.R.string.cancel, null)
+            .show()
+    }
+
     private fun applyMode() {
         val server = repository.usesServer()
         binding.localAccounts.visibility = if (server) View.GONE else View.VISIBLE
@@ -285,12 +363,25 @@ class MainActivity : AppCompatActivity() {
     private fun renderUsage(snapshot: Snapshot?) {
         binding.usageContainer.removeAllViews()
 
-        // Every provider's first account has a section even before it reports;
-        // accounts added on a server follow their provider's.
+        // Only what has been added: on a server, the accounts it follows; here,
+        // the providers added in Settings, each with a section even before it
+        // reports. Accounts added on a server follow their provider's.
         val usages = snapshot?.usages.orEmpty()
+        val added = if (repository.usesServer()) emptySet() else credentials.added()
         val sections = ProviderId.values().flatMap { id ->
-            listOf(id to usages.firstOrNull { it.id == id && it.slot.isEmpty() }) +
-                usages.filter { it.id == id && it.slot.isNotEmpty() }.map { id to it }
+            val first = usages.firstOrNull { it.id == id && it.slot.isEmpty() }
+            val firstSection = if (first != null || id in added) listOf(id to first) else emptyList()
+            firstSection + usages.filter { it.id == id && it.slot.isNotEmpty() }.map { id to it }
+        }
+
+        if (sections.isEmpty() && snapshot != null) {
+            binding.usageContainer.addView(TextView(this).apply {
+                text = getString(R.string.no_accounts)
+                setTextColor(ContextCompat.getColor(this@MainActivity, R.color.text_secondary))
+                textSize = 13f
+                setPadding(dp(4), dp(8), dp(4), dp(8))
+            })
+            return
         }
 
         sections.forEachIndexed { index, (id, usage) ->

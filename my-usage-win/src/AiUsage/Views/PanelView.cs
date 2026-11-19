@@ -695,7 +695,13 @@ public sealed partial class PanelView : UserControl
     {
         if (snapshot == null || snapshot.Usages.Count == 0)
         {
-            _content.Children.Add(Card(Text(App.Repository.ServerProblem ?? "Waiting for the first reading", Body, FontWeights.Normal, Secondary)));
+            // A reading with nothing in it means nothing has been added, and
+            // nothing will arrive until something is.
+            var empty = snapshot != null && App.Repository.ServerProblem == null;
+            _content.Children.Add(Card(Text(
+                App.Repository.ServerProblem
+                    ?? (empty ? "No accounts yet. Add the subscriptions you have in Settings." : "Waiting for the first reading"),
+                Body, FontWeights.Normal, Secondary)));
             return;
         }
 
