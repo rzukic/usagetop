@@ -1,7 +1,36 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+
+// The project's one version number, which release.ps1 passes in:
+//   ./gradlew assembleRelease -PreleaseVersion=1.2.1
+// Without it this is a development build.
+val releaseVersion = (findProperty("releaseVersion") as String?)?.trim().orEmpty()
+
+// Android orders installs by a single number that must rise with every release.
+// 1.2.1 becomes 1020199 and 1.2.1-beta.3 becomes 1020103, so a release sits
+// above all of its own betas and below the next version's first one.
+fun versionCodeOf(version: String): Int {
+    val match = Regex("""^(\d+)\.(\d+)\.(\d+)(-.*)?$""").matchEntire(version)
+        ?: throw GradleException("releaseVersion '$version' is not a version like 1.2.0 or 1.2.1-beta.1")
+    val (major, minor, patch) = match.destructured.toList().take(3).map(String::toInt)
+    val stage = match.groupValues[4].let { suffix ->
+        if (suffix.isEmpty()) 99
+        else (Regex("""(\d+)$""").find(suffix)?.value?.toInt() ?: 0).coerceAtMost(98)
+    }
+    return major * 1_000_000 + minor * 10_000 + patch * 100 + stage
+}
+
+// The release key lives outside the repository: a properties file naming the
+// keystore, its alias and passwords, at USAGETOP_SIGNING or in the home folder.
+// Without one a release build still works, but comes out unsigned.
+val signingFile = file(
+    System.getenv("USAGETOP_SIGNING") ?: "${System.getProperty("user.home")}/.usagetop/signing.properties"
+)
+val signing = Properties().apply { if (signingFile.isFile) signingFile.inputStream().use { load(it) } }
 
 android {
     namespace = "io.github.rzukic.usagetop"
@@ -11,12 +40,24 @@ android {
         applicationId = "io.github.rzukic.usagetop"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = if (releaseVersion.isEmpty()) 1 else versionCodeOf(releaseVersion)
+        versionName = releaseVersion.ifEmpty { "dev" }
+    }
+
+    signingConfigs {
+        if (signing.getProperty("storeFile") != null) {
+            create("release") {
+                storeFile = file(signing.getProperty("storeFile"))
+                storePassword = signing.getProperty("storePassword")
+                keyAlias = signing.getProperty("keyAlias")
+                keyPassword = signing.getProperty("keyPassword")
+            }
+        }
     }
 
     buildTypes {
         release {
+            signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

@@ -20,13 +20,25 @@ own: open its address in a browser. See `my-usage-server/README.md`.
 
 ## Installing
 
-Windows: download
-[`usagetop-win-Setup.exe`](https://github.com/rzukic/usagetop/releases/latest/download/usagetop-win-Setup.exe)
-(always the latest release; earlier ones and betas are on the
-[Releases page](https://github.com/rzukic/usagetop/releases)) and run it. It
-installs for your user only (no admin prompt), adds a Start menu entry, and
-fetches the .NET 9 desktop runtime first if it is missing. The other apps are
-built from source for now (below).
+These links always give the latest release; earlier ones and betas are on the
+[Releases page](https://github.com/rzukic/usagetop/releases).
+
+- **Windows:** download
+  [`usagetop-win-Setup.exe`](https://github.com/rzukic/usagetop/releases/latest/download/usagetop-win-Setup.exe)
+  and run it. It installs for your user only (no admin prompt), adds a Start
+  menu entry, and fetches the .NET 9 desktop runtime first if it is missing.
+  From then on the app updates itself.
+- **Android:** download
+  [`usagetop-android.apk`](https://github.com/rzukic/usagetop/releases/latest/download/usagetop-android.apk)
+  on the phone and open it; Android asks once to allow installing from your
+  browser. A newer release installs over it the same way.
+- **Server:** unpack
+  [`usagetop-server-linux-x64.tar.gz`](https://github.com/rzukic/usagetop/releases/latest/download/usagetop-server-linux-x64.tar.gz)
+  (or
+  [`-arm64`](https://github.com/rzukic/usagetop/releases/latest/download/usagetop-server-linux-arm64.tar.gz))
+  and start `./usagetop-server/aiusage-server`; nothing else to install. For
+  Docker and the settings, see `my-usage-server/README.md`.
+- **macOS:** built from source for now (below).
 
 ## Building and testing
 
@@ -63,17 +75,22 @@ Release. For now a release is built on the maintainer's machine:
 ./release.ps1
 ```
 
-`release.ps1` refuses a version that is not SemVer, runs the tests, packs the
-Windows app with that version, builds a delta package against the previous
-release, pushes the tag `v<version>` and publishes the release with generated
-notes. `./release.ps1 -Version 1.2.1-beta.1` makes a pre-release instead: the
-apps offer it only to those who opted into betas, and the download link above
-keeps pointing at the last stable release. Files built elsewhere (the Mac app)
-are added to the same release with `gh release upload`.
+`release.ps1` refuses a version that is not SemVer, runs the tests, and builds
+every app it can with that version: the Windows installer with a delta package
+against the previous release, the signed Android APK, and the server for Linux
+on x64 and arm64. Then it pushes the tag `v<version>` and publishes the release
+with generated notes. `./release.ps1 -Version 1.2.1-beta.1` makes a pre-release
+instead: the apps offer it only to those who opted into betas, and the download
+links above keep pointing at the last stable release. The Mac app is built on a
+Mac and added to the same release with `gh release upload`.
 
-`.github/workflows/release.yml` does the same from a pushed tag on GitHub
-Actions, and `ci.yml` builds and tests every push and pull request. Both are
-switched off in the repository's Actions settings for the time being.
+The Android APK is signed with a key that is kept outside the repository (the
+script's header says where). Every release must use the same key, or phones
+refuse the update.
+
+`.github/workflows/release.yml` builds the Windows part from a pushed tag on
+GitHub Actions, and `ci.yml` builds and tests every push and pull request. Both
+are switched off in the repository's Actions settings for the time being.
 
 ## One rule that cuts across all three
 

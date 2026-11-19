@@ -18,6 +18,8 @@ captures/
 # Machine-specific or secret
 local.properties
 *.keystore
+*.jks
+signing.properties
 .env
 
 # Screenshots and probes left behind while developing

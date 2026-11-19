@@ -152,13 +152,26 @@ server and gets a certificate like any other name.
 
 ### Deploying to Linux
 
+Every release carries the server built for Linux with its runtime included, so
+there is no .NET to install: `usagetop-server-linux-x64.tar.gz` for an Intel or
+AMD machine, `usagetop-server-linux-arm64.tar.gz` for a Raspberry Pi or an ARM
+server.
+
+```
+curl -L https://github.com/rzukic/usagetop/releases/latest/download/usagetop-server-linux-x64.tar.gz | tar -xz
+./usagetop-server/aiusage-server
+```
+
+To update, unpack a newer release over it and restart; the data folder is not
+part of the archive. Or build it yourself, as one file:
+
 ```
 dotnet publish src/AiUsage.Server -c Release -r linux-arm64 --self-contained \
   -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o publish
 ```
 
-That gives one `aiusage-server` binary of about 95 MB with no runtime to install
-(`linux-x64` for an Intel box). A unit to keep it running:
+That gives one `aiusage-server` binary of about 95 MB (`linux-x64` for an Intel
+box). A unit to keep it running:
 
 ```ini
 [Unit]
