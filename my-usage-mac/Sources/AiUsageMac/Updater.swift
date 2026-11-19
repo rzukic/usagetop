@@ -34,7 +34,7 @@ final class Updater {
     enum Phase { case off, waiting, checking, upToDate, downloading, ready, failed }
 
     private static let api = "https://api.github.com/repos/rzukic/usagetop"
-    private static let asset = "usagetop-mac.zip"
+    private static let asset = "usagetop-mac.dmg"
     private static let sourceVariable = "USAGETOP_UPDATE_SOURCE"
     private static let betaKey = "betaUpdates"
     private static let firstLook: Duration = .seconds(60)
@@ -237,7 +237,7 @@ final class Updater {
             .appendingPathComponent("usagetop/Updates", isDirectory: true)
     }
 
-    /// Downloads the archive, checks it and leaves the bundle in
+    /// Downloads the disk image, checks it and leaves the bundle in
     /// Updates/<version>/usagetop.app. Throws what went wrong otherwise.
     private func download(_ asset: Release.Asset, version name: String) async throws -> URL {
         let files = FileManager.default
@@ -262,26 +262,49 @@ final class Updater {
             }
         }
 
-        let unpack = Process()
-        unpack.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
-        unpack.arguments = ["-x", "-k", temporary.path, folder.path]
-        try unpack.run()
-        await withCheckedContinuation { done in
-            DispatchQueue.global().async {
-                unpack.waitUntilExit()
-                done.resume()
-            }
+        // The image is mounted read-only out of sight, the app copied out of
+        // it with its signature as it is, and the image let go again.
+        let image = folder.appendingPathComponent("usagetop.dmg")
+        try files.moveItem(at: temporary, to: image)
+        let mount = files.temporaryDirectory.appendingPathComponent("usagetop-update-\(UUID().uuidString)", isDirectory: true)
+        try files.createDirectory(at: mount, withIntermediateDirectories: true)
+        let attached = await Self.run("/usr/bin/hdiutil", ["attach", image.path, "-readonly", "-nobrowse", "-noautoopen",
+                                                           "-noverify", "-mountpoint", mount.path])
+        var copied: Int32 = -1
+        if attached == 0 {
+            copied = await Self.run("/usr/bin/ditto", [mount.appendingPathComponent("usagetop.app").path,
+                                                      folder.appendingPathComponent("usagetop.app").path])
+            _ = await Self.run("/usr/bin/hdiutil", ["detach", mount.path, "-force"])
         }
+        try? files.removeItem(at: mount)
+        try? files.removeItem(at: image)
         let bundle = folder.appendingPathComponent("usagetop.app", isDirectory: true)
-        guard unpack.terminationStatus == 0, files.fileExists(atPath: bundle.path) else {
+        guard copied == 0, files.fileExists(atPath: bundle.path) else {
             try? files.removeItem(at: updatesFolder)
-            throw Failure(line: "The download of \(name) was damaged", detail: "It did not unpack to usagetop.app")
+            throw Failure(line: "The download of \(name) was damaged",
+                          detail: attached == 0 ? "It holds no usagetop.app" : "It could not be opened as a disk image")
         }
         if let reason = Self.whyNot(bundle, version: name) {
             try? files.removeItem(at: updatesFolder)
             throw Failure(line: "The download of \(name) was not usable", detail: reason)
         }
         return bundle
+    }
+
+    /// Runs a tool off the main thread and gives its exit status.
+    private static func run(_ tool: String, _ arguments: [String]) async -> Int32 {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: tool)
+        process.arguments = arguments
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        do { try process.run() } catch { return -1 }
+        return await withCheckedContinuation { done in
+            DispatchQueue.global().async {
+                process.waitUntilExit()
+                done.resume(returning: process.terminationStatus)
+            }
+        }
     }
 
     /// Why a bundle must not replace this app, or nil when it may: it has to

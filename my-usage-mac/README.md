@@ -24,6 +24,11 @@ another. A release build is signed with the keychain's Developer ID
 Application certificate if there is one, and ad hoc otherwise; the released
 app is signed and notarized (`../release-mac.sh`).
 
+`dmg/make-dmg.sh usagetop.app usagetop-mac.dmg` packs the app in the disk image
+that is released: a window with the app and an arrow to Applications, on a
+background `dmg/background.swift` draws. It needs create-dmg (`brew install
+create-dmg`) and lets Finder lay out the window.
+
 ## What it shows
 
 The panel is one sheet of Liquid Glass hung under the menu bar item. Down its
@@ -77,7 +82,7 @@ be made easy to read while the panel around them stays clear.
 
 **Updates**: a copy in the Applications folder keeps itself current from the
 GitHub releases. It looks a minute after start and every six hours, or on
-`Check now`; a newer `usagetop-mac.zip` is downloaded in the background,
+`Check now`; a newer `usagetop-mac.dmg` is downloaded in the background,
 checked (its SHA-256 against the one the release lists, that it is this app in
 that version, that its signature is intact) and goes in on `Restart to update`,
 or when the app next quits or starts. A switch adds beta versions. A copy

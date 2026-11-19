@@ -45,8 +45,8 @@ These links always give the latest release; earlier ones and betas are on the
   `docker run -d -p 8377:8377 -v usagetop-data:/data ghcr.io/rzukic/usagetop-server`.
   For the settings, see `my-usage-server/README.md`.
 - **macOS:** download
-  [`usagetop-mac.zip`](https://github.com/rzukic/usagetop/releases/latest/download/usagetop-mac.zip),
-  unpack it and move `usagetop.app` to Applications. It needs macOS 26 and runs
+  [`usagetop-mac.dmg`](https://github.com/rzukic/usagetop/releases/latest/download/usagetop-mac.dmg),
+  open it and drag `usagetop` onto Applications. It needs macOS 26 and runs
   on Apple silicon and Intel. The app is signed with a Developer ID and
   notarized by Apple, so it opens like any other download. From then on it
   updates itself, as long as it is in the Applications folder: it downloads a
@@ -101,13 +101,13 @@ links above keep pointing at the last stable release.
 
 `release-mac.sh` does what only a Mac can, for the latest release or the one
 named (`./release-mac.sh 1.2.1`): it builds the Mac app for Apple silicon and
-Intel with that version, zips it and attaches `usagetop-mac.zip` to the
-release; then it builds the server's image for `linux/amd64` and
+Intel with that version, packs it in a disk image and attaches
+`usagetop-mac.dmg` to the release; then it builds the server's image for `linux/amd64` and
 `linux/arm64`, starts it once on an empty volume to see that it serves its page
 and can write its data, and pushes it to `ghcr.io/rzukic/usagetop-server` as
 `<version>` and `latest` (a pre-release leaves `latest` alone). The Mac app is
 signed with the Developer ID certificate in the maintainer's keychain and
-notarized by Apple before it is zipped; the script's header says what that
+notarized by Apple, and so is the disk image; the script's header says what that
 needs. A copy built without a certificate is signed ad hoc: it runs on the Mac
 that built it, and anywhere else macOS has to be told to open it (System
 Settings → Privacy & Security → Open Anyway).

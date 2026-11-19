@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # Adds what only a Mac can build to a release that release.ps1 has published:
 #
-#   usagetop-mac.zip                 the Mac app, universal, signed and notarized,
-#                                    attached to the release
+#   usagetop-mac.dmg                 the Mac app, universal, signed and notarized,
+#                                    in a disk image to drag it to Applications
+#                                    from, attached to the release; the app
+#                                    updates itself from it too
 #   ghcr.io/rzukic/usagetop-server   the server's image for linux/amd64 and
 #                                    linux/arm64, tagged <version> and latest
 #
@@ -18,12 +20,15 @@
 # stable release.
 #
 # Needs:
-#   - Xcode 26
+#   - Xcode 26, and create-dmg (brew install create-dmg); create-dmg has
+#     Finder lay out the image's window, so the terminal must be allowed to
+#     control Finder
 #   - for a Mac app that opens without a Gatekeeper warning: a Developer ID
 #     Application certificate in the keychain, and notary credentials stored as
 #     the profile "usagetop" (or the one USAGETOP_NOTARY_PROFILE names):
 #         xcrun notarytool store-credentials usagetop --apple-id <id> --team-id <team>
-#     Without a certificate the app is signed ad hoc, and whoever downloads it
+#     Without a certificate the app is signed ad hoc and the image not at all,
+#     and whoever downloads it
 #     has to allow it by hand. With one but no credentials the script stops:
 #     a signed app that is not notarized is refused just the same.
 #   - gh, signed in to an account that may write to the repository; for the
@@ -83,30 +88,44 @@ if [[ "$WHAT" != "image" ]]; then
 	[[ "$ARCHS" == *arm64* && "$ARCHS" == *x86_64* ]] || fail "usagetop.app is not universal: $ARCHS."
 	codesign --verify --strict "$APP"
 
-	# ditto rather than zip: it keeps the bundle's signature and attributes intact.
-	ZIP="$OUT/usagetop-mac.zip"
-	rm -f "$ZIP"
+	DMG="$OUT/usagetop-mac.dmg"
+	rm -f "$DMG"
 
 	# Signed with a Developer ID, the app goes to Apple's notary service, and
-	# the ticket that comes back is stapled to it, so it also opens offline.
-	if codesign -dv "$APP" 2>&1 | grep -q '^TeamIdentifier=[A-Z0-9]\{10\}$'; then
-		step "Mac: notarize"
-		PROFILE="${USAGETOP_NOTARY_PROFILE:-usagetop}"
-		ditto -c -k --keepParent "$APP" "$ZIP"
-		xcrun notarytool submit "$ZIP" --keychain-profile "$PROFILE" --wait | tee "$OUT/notary.log"
-		grep -q 'status: Accepted' "$OUT/notary.log" || fail "Apple did not accept the app; see: xcrun notarytool log <id> --keychain-profile $PROFILE"
+	# the ticket that comes back is stapled to it, so it also opens offline;
+	# then the same for the disk image it is packed in.
+	SIGNED=""
+	codesign -dv "$APP" 2>&1 | grep -q '^TeamIdentifier=[A-Z0-9]\{10\}$' && SIGNED=1
+	PROFILE="${USAGETOP_NOTARY_PROFILE:-usagetop}"
+	notarize() {
+		xcrun notarytool submit "$1" --keychain-profile "$PROFILE" --wait | tee "$OUT/notary.log"
+		grep -q 'status: Accepted' "$OUT/notary.log" || fail "Apple did not accept $1; see: xcrun notarytool log <id> --keychain-profile $PROFILE"
+		rm -f "$OUT/notary.log"
+	}
+	if [[ -n "$SIGNED" ]]; then
+		step "Mac: notarize the app"
+		# The notary service takes a zip, not a bare bundle; ditto keeps the
+		# bundle's signature and attributes intact.
+		ditto -c -k --keepParent "$APP" "$OUT/usagetop-notarize.zip"
+		notarize "$OUT/usagetop-notarize.zip"
+		rm -f "$OUT/usagetop-notarize.zip"
 		xcrun stapler staple "$APP"
 		spctl --assess --type execute "$APP" || fail "Gatekeeper still refuses the app."
-		rm -f "$ZIP" "$OUT/notary.log"
 	else
 		echo "No Developer ID certificate: the app is signed ad hoc and Gatekeeper will stop a download of it."
 	fi
 
-	step "Mac: package"
-	ditto -c -k --keepParent "$APP" "$ZIP"
+	step "Mac: disk image"
+	./my-usage-mac/dmg/make-dmg.sh "$APP" "$DMG"
+	if [[ -n "$SIGNED" ]]; then
+		step "Mac: notarize the disk image"
+		notarize "$DMG"
+		xcrun stapler staple "$DMG"
+		spctl --assess --type open --context context:primary-signature "$DMG" || fail "Gatekeeper refuses the disk image."
+	fi
 
 	step "Mac: upload"
-	gh release upload "$TAG" -R "$REPO" "$ZIP" --clobber
+	gh release upload "$TAG" -R "$REPO" "$DMG" --clobber
 fi
 
 if [[ "$WHAT" != "mac" ]]; then
