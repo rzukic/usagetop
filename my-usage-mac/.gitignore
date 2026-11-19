@@ -1,2 +1,3 @@
 .build/
 usagetop.app/
+.swiftpm/
