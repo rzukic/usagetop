@@ -52,8 +52,10 @@ These links always give the latest release; earlier ones and betas are on the
   3. Confirm with **Open Anyway** and your password or Touch ID.
 
   Or, in Terminal: `xattr -dr com.apple.quarantine /Applications/usagetop.app`.
-  A newer release is installed the same way, over the old one; the Mac app
-  does not update itself. A copy you build yourself (below) needs none of this.
+  From then on the app updates itself, as long as it is in the Applications
+  folder: it downloads a new release in the background and puts it in when
+  you restart or quit (Settings → Updates). A copy you build yourself (below)
+  needs none of the steps above.
 
 ## Building and testing
 

@@ -74,6 +74,19 @@ panel is Liquid Glass, from a flat, opaque panel in the window colour to clear
 glass; a Tiles slider, apart from it, how solid the cards on it are, so they can
 be made easy to read while the panel around them stays clear.
 
+**Updates**: a copy in the Applications folder keeps itself current from the
+GitHub releases. It looks a minute after start and every six hours, or on
+`Check now`; a newer `usagetop-mac.zip` is downloaded in the background,
+checked (its SHA-256 against the one the release lists, that it is this app in
+that version, that its signature is intact) and goes in on `Restart to update`,
+or when the app next quits or starts. A switch adds beta versions. The app is
+signed ad hoc, so the check says the download is whole and came from the
+release, not who built it; and macOS may ask once after an update whether the
+new version may read the token from the Keychain. A copy anywhere else (a
+build folder, Downloads) leaves itself alone. `USAGETOP_UPDATE_SOURCE`, an
+address that answers like `https://api.github.com/repos/rzukic/usagetop`,
+stands in for GitHub to try an update without publishing one.
+
 **Order**: drag the accounts into the order wanted; the sidebar and ⌘1–9 follow
 it. The overview lists whatever is closest to running out first, or, with that
 switched off, follows the same order. Holding ⌘ with the panel open shows each

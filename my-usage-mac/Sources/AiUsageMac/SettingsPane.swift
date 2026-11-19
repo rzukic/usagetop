@@ -166,6 +166,8 @@ struct SettingsPane: View {
                 }
             }
 
+            updates
+
             Text("usagetop \(version) · ⌘R refresh · ⌘1–9 accounts · esc close")
                 .font(.system(size: 10))
                 .foregroundStyle(.secondary)
@@ -177,6 +179,75 @@ struct SettingsPane: View {
             address = model.settings.serverURL
             token = model.settings.token
             launchAtLogin = model.settings.launchesAtLogin
+        }
+    }
+
+    /// The app's version and where it stands with updates; "Restart to update"
+    /// once a newer one has been downloaded.
+    @ViewBuilder
+    private var updates: some View {
+        @Bindable var updater = model.updater
+
+        section("Updates", symbol: "arrow.down.circle") {
+            HStack(alignment: .center, spacing: 10) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("usagetop \(updater.version)")
+                        .font(.system(size: 12))
+                    Text(updateStatus(updater))
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(updater.phase == .ready ? Color(hex: 0x5BC48A) : .secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .help(updater.phase == .failed ? updater.failureDetail ?? ""
+                              : updater.sourceOverride.map { "Updates from \($0)" } ?? "")
+                }
+                Spacer()
+                if updater.isInstalled {
+                    Button("Check now") {
+                        Task { await updater.check() }
+                    }
+                    .buttonStyle(.soft)
+                    .controlSize(.small)
+                    .disabled(updater.busy)
+                    .help("Look for a newer version now")
+                }
+            }
+
+            if updater.phase == .ready {
+                VStack(alignment: .leading, spacing: 4) {
+                    Button("Restart to update") {
+                        if updater.restartToUpdate() { NSApplication.shared.terminate(nil) }
+                    }
+                    .buttonStyle(.glassProminent)
+                    .controlSize(.small)
+                    .help("Close usagetop, put the new version in and start it again")
+                    Text("Otherwise it goes in when usagetop next quits or starts.")
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(.secondary)
+                }
+            }
+
+            if updater.isInstalled {
+                VStack(alignment: .leading, spacing: 4) {
+                    switchRow("Beta versions", isOn: $updater.beta)
+                    Text("Early builds as well as releases, whichever is newer.")
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private func updateStatus(_ updater: Updater) -> String {
+        // Reading the clock keeps "checked 2h ago" ageing while the page is open.
+        _ = model.now
+        switch updater.phase {
+        case .off: return "Move usagetop to the Applications folder and it updates itself"
+        case .waiting: return "Looks for updates shortly"
+        case .checking: return "Checking for updates…"
+        case .upToDate: return updater.checkedAt.map { "Up to date · checked \(Format.ago($0))" } ?? "Up to date"
+        case .downloading: return "Downloading \(updater.target ?? "")…"
+        case .ready: return "\(updater.target ?? "A newer version") is ready"
+        case .failed: return updater.failure ?? "Couldn't check for updates"
         }
     }
 

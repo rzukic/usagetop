@@ -7,6 +7,7 @@ import Observation
 @Observable
 final class AppModel {
     let settings = Settings()
+    let updater = Updater()
 
     var snapshot: Snapshot?
     var series: [String: [SeriesPoint]] = [:]
