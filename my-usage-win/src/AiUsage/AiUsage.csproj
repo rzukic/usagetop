@@ -15,7 +15,7 @@
     <!-- The release version: pack.ps1 builds the installer and update packages for
          it. A release build takes its version from the git tag instead (pack.ps1
          -Version), so bump this to match before tagging. -->
-    <Version>1.5.1</Version>
+    <Version>1.6.0</Version>
     <!-- Keep the product version as the plain release version (1.2.0), without the
          "+<commit>" the SDK would append. -->
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
