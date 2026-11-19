@@ -16,6 +16,13 @@
     <string name="widget_signed_out">%s signed out</string>
     <string name="widget_sign_in">Sign in ›</string>
     <string name="widget_ahead">Ahead of pace</string>
+    <string name="rings_widget_label">usagetop rings</string>
+    <string name="rings_widget_description">Up to four limits you choose, as rings</string>
+    <string name="rings_title">Rings</string>
+    <string name="rings_count">%1$d of %2$d</string>
+    <string name="rings_hint">Any limit of any account, each once. The numbers set the order.</string>
+    <string name="rings_done">Done</string>
+    <string name="rings_nothing">Nothing to pick yet: open usagetop once so it has a reading.</string>
     <string name="refresh">Refresh</string>
     <string name="save_and_refresh">Save &amp; refresh</string>
     <string name="not_configured">Not configured</string>

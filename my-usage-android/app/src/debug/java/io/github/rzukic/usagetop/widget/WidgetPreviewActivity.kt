@@ -42,6 +42,13 @@ class WidgetPreviewActivity : Activity() {
 
             column.addView(WidgetRenderer.small(themed, snapshot).apply(themed, column), LinearLayout.LayoutParams(cell, cell))
             column.addView(gap())
+            val picks = RingPicks.defaults(snapshot)
+            val pair = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+            pair.addView(RingsWidgetProvider.build(themed, snapshot, picks.take(1)).apply(themed, pair),
+                LinearLayout.LayoutParams(cell, cell).apply { marginEnd = dp(8) })
+            pair.addView(RingsWidgetProvider.build(themed, snapshot, picks).apply(themed, pair), LinearLayout.LayoutParams(cell, cell))
+            column.addView(pair)
+            column.addView(gap())
             column.addView(WidgetRenderer.medium(themed, snapshot).apply(themed, column), LinearLayout.LayoutParams(width, cell))
             column.addView(gap())
             val large = WidgetRenderer.large(themed, snapshot).apply(themed, column)
