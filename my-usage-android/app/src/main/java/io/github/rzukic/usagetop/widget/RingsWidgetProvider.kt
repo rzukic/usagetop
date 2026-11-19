@@ -47,7 +47,9 @@ class RingsWidgetProvider : AppWidgetProvider() {
         fun build(context: Context, snapshot: Snapshot?, picks: List<RingPicks.Pick>): RemoteViews {
             val rings = RingPicks.resolve(picks, snapshot)
             val stale = WidgetModel.staleAge(snapshot) != null
-            return if (rings.size == 1) one(context, rings.single(), stale) else grid(context, rings, stale)
+            return WidgetRenderer.squared {
+                if (rings.size == 1) one(context, rings.single(), stale) else grid(context, rings, stale)
+            }
         }
 
         private fun one(context: Context, ring: RingPicks.Ring, stale: Boolean): RemoteViews {

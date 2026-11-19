@@ -15,6 +15,8 @@
     <string name="widget_signed_out">%s signed out</string>
     <string name="widget_sign_in">Sign in ›</string>
     <string name="widget_ahead">Ahead of pace</string>
+    <string name="total_widget_label">usagetop total</string>
+    <string name="total_widget_description">What is left across all your subscriptions</string>
     <string name="rings_widget_label">usagetop rings</string>
     <string name="rings_widget_description">Up to four limits you choose, as rings</string>
     <string name="rings_title">Rings</string>

@@ -43,9 +43,13 @@ class UsageWidgetProvider : AppWidgetProvider() {
 
     override fun onDisabled(context: Context) {
         super.onDisabled(context)
-        // The rings widget shares the tick; stop it only when neither kind is left.
+        // The other widgets share the tick; stop it only when none is left.
         val manager = AppWidgetManager.getInstance(context)
-        if (manager == null || RingsWidgetProvider.ids(context, manager).isEmpty()) WidgetTicker.cancel(context)
+        if (manager == null || (RingsWidgetProvider.ids(context, manager).isEmpty() &&
+                TotalWidgetProvider.ids(context, manager).isEmpty())
+        ) {
+            WidgetTicker.cancel(context)
+        }
     }
 
     companion object {
@@ -59,12 +63,14 @@ class UsageWidgetProvider : AppWidgetProvider() {
                 ComponentName(context, UsageWidgetProvider::class.java)
             )
             val rings = RingsWidgetProvider.ids(context, manager)
-            if (ids.isEmpty() && rings.isEmpty()) return
+            val totals = TotalWidgetProvider.ids(context, manager)
+            if (ids.isEmpty() && rings.isEmpty() && totals.isEmpty()) return
 
             val snapshot = UsageRepository(context).cached()
             ids.forEach { id -> manager.updateAppWidget(id, WidgetRenderer.build(context, snapshot, manager, id)) }
             if (ids.isNotEmpty()) manager.notifyAppWidgetViewDataChanged(ids, R.id.widget_list)
             RingsWidgetProvider.render(context, manager, snapshot)
+            TotalWidgetProvider.render(context, manager, snapshot)
             WidgetTicker.schedule(context)
         }
     }

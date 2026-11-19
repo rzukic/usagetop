@@ -1,104 +1,113 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- One ring you chose: the window's figure with the account's mark, then the window
      and when it resets. A flame only when this window is ahead of pace. -->
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<!-- The launcher may hand a 2x2 a cell that is not square; the panel inside is
+     kept square and centred (see WidgetRenderer.squared). -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="@drawable/widget_panel"
-    android:gravity="center_horizontal"
-    android:orientation="vertical"
-    android:padding="12dp">
+    android:layout_height="match_parent">
 
-    <FrameLayout
+    <LinearLayout
+        android:id="@+id/panel"
         android:layout_width="match_parent"
-        android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_height="match_parent"
+        android:layout_gravity="center"
+        android:background="@drawable/widget_panel"
+        android:gravity="center_horizontal"
+        android:orientation="vertical"
+        android:padding="12dp">
 
-        <ImageView
-            android:id="@+id/ring_track"
+        <FrameLayout
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:contentDescription="@null"
-            android:scaleType="fitCenter" />
+            android:layout_height="0dp"
+            android:layout_weight="1">
 
-        <ImageView
-            android:id="@+id/ring_level"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:contentDescription="@null"
-            android:scaleType="fitCenter" />
+            <ImageView
+                android:id="@+id/ring_track"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@null"
+                android:scaleType="fitCenter" />
+
+            <ImageView
+                android:id="@+id/ring_level"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:contentDescription="@null"
+                android:scaleType="fitCenter" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:gravity="center_horizontal"
+                android:orientation="vertical">
+
+                <ImageView
+                    android:id="@+id/one_logo"
+                    android:layout_width="16dp"
+                    android:layout_height="16dp"
+                    android:contentDescription="@null"
+                    android:tint="@color/widget_ink" />
+
+                <TextView
+                    android:id="@+id/hero_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:fontFeatureSettings="tnum"
+                    android:includeFontPadding="false"
+                    android:letterSpacing="-0.02"
+                    android:textColor="@color/widget_ink"
+                    android:textSize="24sp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="@string/widget_left_word"
+                    android:textColor="@color/widget_ink_secondary"
+                    android:textSize="11sp" />
+            </LinearLayout>
+        </FrameLayout>
 
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:gravity="center_horizontal"
-            android:orientation="vertical">
+            android:layout_marginTop="6dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
 
             <ImageView
-                android:id="@+id/one_logo"
-                android:layout_width="16dp"
-                android:layout_height="16dp"
-                android:contentDescription="@null"
-                android:tint="@color/widget_ink" />
+                android:id="@+id/one_flame"
+                android:layout_width="12dp"
+                android:layout_height="12dp"
+                android:layout_marginEnd="4dp"
+                android:contentDescription="@string/widget_ahead"
+                android:src="@drawable/ic_flame"
+                android:visibility="gone" />
 
             <TextView
-                android:id="@+id/hero_value"
+                android:id="@+id/one_window"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:fontFamily="sans-serif-medium"
-                android:fontFeatureSettings="tnum"
-                android:includeFontPadding="false"
-                android:letterSpacing="-0.02"
-                android:textColor="@color/widget_ink"
-                android:textSize="24sp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="@string/widget_left_word"
+                android:maxLines="1"
                 android:textColor="@color/widget_ink_secondary"
-                android:textSize="11sp" />
+                android:textSize="12sp" />
+
+            <Chronometer
+                android:id="@+id/one_reset"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:fontFeatureSettings="tnum"
+                android:maxLines="1"
+                android:textColor="@color/widget_ink_secondary"
+                android:textSize="12sp" />
+
+            <TextView
+                android:id="@+id/stale"
+                style="@style/WidgetStaleChip"
+                android:layout_marginStart="4dp" />
         </LinearLayout>
-    </FrameLayout>
-
-    <LinearLayout
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="6dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-
-        <ImageView
-            android:id="@+id/one_flame"
-            android:layout_width="12dp"
-            android:layout_height="12dp"
-            android:layout_marginEnd="4dp"
-            android:contentDescription="@string/widget_ahead"
-            android:src="@drawable/ic_flame"
-            android:visibility="gone" />
-
-        <TextView
-            android:id="@+id/one_window"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:maxLines="1"
-            android:textColor="@color/widget_ink_secondary"
-            android:textSize="12sp" />
-
-        <Chronometer
-            android:id="@+id/one_reset"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:fontFeatureSettings="tnum"
-            android:maxLines="1"
-            android:textColor="@color/widget_ink_secondary"
-            android:textSize="12sp" />
-
-        <TextView
-            android:id="@+id/stale"
-            style="@style/WidgetStaleChip"
-            android:layout_marginStart="4dp" />
     </LinearLayout>
-</LinearLayout>
+</FrameLayout>
