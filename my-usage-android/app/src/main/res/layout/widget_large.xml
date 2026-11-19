@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- 4x4: the combined figure with its week and the next lift, then every account,
-     closest to empty first, in a list that scrolls when there are more than fit. -->
+     closest to empty first, in a list that scrolls when there are more than fit.
+     No title: the rings and marks say what it is, as on the Mac panel. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root"
     android:layout_width="match_parent"
@@ -8,45 +9,13 @@
     android:background="@drawable/widget_panel"
     android:orientation="vertical"
     android:paddingStart="14dp"
-    android:paddingTop="10dp"
+    android:paddingTop="14dp"
     android:paddingEnd="8dp"
     android:paddingBottom="6dp">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="32dp"
-        android:gravity="center_vertical"
-        android:orientation="horizontal">
-
-        <TextView
-            android:id="@+id/widget_title"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:fontFamily="sans-serif-medium"
-            android:text="@string/widget_title"
-            android:textColor="@color/widget_ink"
-            android:textSize="13sp" />
-
-        <TextView
-            android:id="@+id/stale"
-            style="@style/WidgetStaleChip"
-            android:layout_marginEnd="2dp" />
-
-        <ImageView
-            android:id="@+id/widget_refresh"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:contentDescription="@string/refresh"
-            android:padding="8dp"
-            android:src="@drawable/ic_refresh"
-            android:tint="@color/widget_ink_secondary" />
-    </LinearLayout>
-
-    <LinearLayout
-        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
         android:layout_marginEnd="6dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
@@ -105,6 +74,11 @@
                     android:text="@string/widget_left"
                     android:textColor="@color/widget_ink_secondary"
                     android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/stale"
+                    style="@style/WidgetStaleChip"
+                    android:layout_marginStart="8dp" />
             </LinearLayout>
 
             <TextView

@@ -202,6 +202,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun showTab(tab: Int) {
         val usage = tab == TAB_USAGE
+        binding.pageTitle.setText(if (usage) R.string.tab_usage else R.string.tab_settings)
         binding.usageContainer.visibility = if (usage) View.VISIBLE else View.GONE
         binding.allUsageCard.visibility = if (usage) View.VISIBLE else View.GONE
         binding.settingsContainer.visibility = if (usage) View.GONE else View.VISIBLE

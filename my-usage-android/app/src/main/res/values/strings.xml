@@ -2,7 +2,6 @@
 <resources>
     <string name="app_name">usagetop</string>
     <string name="widget_description">Usage limits for your coding AI subscriptions</string>
-    <string name="widget_title">usagetop</string>
     <string name="widget_empty">Tap to configure your subscriptions</string>
     <string name="widget_sigma">Σ</string>
     <string name="widget_left">\u0020left</string>

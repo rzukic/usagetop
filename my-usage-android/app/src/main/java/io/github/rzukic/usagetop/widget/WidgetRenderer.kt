@@ -135,7 +135,6 @@ object WidgetRenderer {
         views.setRemoteAdapter(R.id.widget_list, Intent(context, UsageWidgetService::class.java))
         views.setEmptyView(R.id.widget_list, R.id.widget_empty)
         views.setPendingIntentTemplate(R.id.widget_list, rowIntent(context))
-        views.setOnClickPendingIntent(R.id.widget_refresh, refreshIntent(context))
         views.setOnClickPendingIntent(R.id.widget_root, openIntent(context))
         return views
     }
@@ -265,13 +264,6 @@ object WidgetRenderer {
         }
     }
 
-    private fun refreshIntent(context: Context): PendingIntent {
-        val intent = Intent(context, UsageWidgetProvider::class.java)
-            .setAction(UsageWidgetProvider.ACTION_REFRESH)
-        return PendingIntent.getBroadcast(
-            context, 1, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
-        )
-    }
 
     internal fun openIntent(context: Context): PendingIntent {
         val intent = Intent(context, MainActivity::class.java)
