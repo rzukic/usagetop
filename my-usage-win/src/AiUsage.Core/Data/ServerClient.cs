@@ -5,12 +5,17 @@ using AiUsage.Net;
 
 namespace AiUsage.Data;
 
-/// <summary>Everything one call to the server returns: the reading and the history behind it.</summary>
+/// <summary>
+/// Everything one call to the server returns: the reading, the history behind
+/// it and the limits every app leaves out of its overview ("account|label").
+/// <see cref="HiddenLimits"/> is null from a server too old to keep that list.
+/// </summary>
 public sealed record ServerState(
     Snapshot Snapshot,
     DateTimeOffset ServerTime,
     IReadOnlyList<UsagePoint> Combined,
-    IReadOnlyDictionary<string, IReadOnlyList<UsagePoint>> Series)
+    IReadOnlyDictionary<string, IReadOnlyList<UsagePoint>> Series,
+    IReadOnlyList<string>? HiddenLimits = null)
 {
     /// <summary>
     /// Reads a <c>/api/state</c> answer. The shape is the Android app's own cache
@@ -75,7 +80,8 @@ public sealed record ServerState(
                 ? DateTimeOffset.FromUnixTimeMilliseconds((long)millis)
                 : DateTimeOffset.UtcNow,
             Points(root["combined"]),
-            series);
+            series,
+            root["hiddenLimits"] is JsonArray hidden ? Strings(hidden) : null);
     }
 
     /// <summary>
@@ -98,8 +104,12 @@ public sealed record ServerState(
             new Snapshot(usages, Snapshot.FetchedAt + offset),
             ServerTime + offset,
             Move(Combined),
-            Series.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<UsagePoint>)Move(pair.Value), StringComparer.Ordinal));
+            Series.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<UsagePoint>)Move(pair.Value), StringComparer.Ordinal),
+            HiddenLimits);
     }
+
+    /// <summary>The strings in an array, anything else in it skipped.</summary>
+    internal static List<string> Strings(JsonArray array) => array.Select(Text).OfType<string>().ToList();
 
     private static List<UsagePoint> Points(JsonNode? node)
     {
@@ -403,6 +413,27 @@ public static class ServerClient
             ? ServerState.Text(node["status"]) ?? "none"
             : "none");
     }
+
+    /// <summary>
+    /// Hides a limit ("account|label") from every app's overview, or shows it
+    /// again; the list as the server now has it.
+    /// </summary>
+    public static async Task<IReadOnlyList<string>> SetHiddenAsync(
+        string url,
+        string? token,
+        string limit,
+        bool hide,
+        CancellationToken cancellation = default)
+    {
+        var address = $"{url}/api/hidden?limit={Escape(limit)}";
+        var response = await SendAsync(() => hide
+            ? Http.PutJsonAsync(address, Headers(token), "{}", cancellation)
+            : Http.DeleteAsync(address, Headers(token), cancellation));
+        return Parsed(() => ParseHidden(response.Body));
+    }
+
+    internal static IReadOnlyList<string> ParseHidden(string json) =>
+        JsonNode.Parse(json) is JsonArray array ? ServerState.Strings(array) : throw new FormatException("Not a JSON array");
 
     private static ServerAccount ParseAccount(string json) =>
         JsonNode.Parse(json) is JsonObject node

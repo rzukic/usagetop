@@ -34,16 +34,14 @@ public sealed class PanelPrefs
     /// <summary>
     /// Limits left out of the overview, the tray and the rail's rings, as
     /// "account|label" (<see cref="Limits.Key(string, string)"/>, the key their
-    /// history is filed under). They stay on their account's page. On this PC only.
+    /// history is filed under). They stay on their account's page. On this PC
+    /// only, and set aside while a server keeps the list for every app
+    /// (<see cref="UsageRepository.HiddenLimits"/>).
     /// </summary>
     public List<string> HiddenLimits { get; set; } = [];
 
     /// <summary>Hides or shows one limit, keeping the order the others were hidden in.</summary>
-    public void SetHidden(string key, bool hide) => Update(p =>
-    {
-        p.HiddenLimits = p.HiddenLimits.Where(k => k != key).ToList();
-        if (hide) p.HiddenLimits.Add(key);
-    });
+    public void SetHidden(string key, bool hide) => Update(p => p.HiddenLimits = Limits.With(p.HiddenLimits, key, hide));
 
     /// <summary>
     /// What the tray icon shows, the Windows side of the Mac's menu bar setting:

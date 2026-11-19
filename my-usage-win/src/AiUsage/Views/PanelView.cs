@@ -448,10 +448,34 @@ public sealed partial class PanelView : UserControl
     // ---- Data -------------------------------------------------------------
 
     /// <summary>The window that decides an account's ring: the tightest of the ones not hidden.</summary>
-    private static UsageWindow? Tightest(ProviderUsage usage) => Limits.Tightest(usage, PanelPrefs.Current.HiddenLimits);
+    private static UsageWindow? Tightest(ProviderUsage usage) => Limits.Tightest(usage, Hidden);
 
     private static bool IsHidden(ProviderUsage usage, UsageWindow window) =>
-        Limits.IsHidden(PanelPrefs.Current.HiddenLimits, usage, window);
+        Limits.IsHidden(Hidden, usage, window);
+
+    /// <summary>The hidden limits in force: the server's, kept for every app, or this PC's own.</summary>
+    private static IReadOnlyList<string> Hidden => App.Repository.HiddenLimits(PanelPrefs.Current.HiddenLimits);
+
+    /// <summary>
+    /// Hides a limit or shows it again, in whichever list is in force. The panel
+    /// follows at once; with a server, again if its answer differs from that.
+    /// </summary>
+    private async void SetHidden(string key, bool hide)
+    {
+        if (!App.Repository.HidesOnServer)
+        {
+            PanelPrefs.Current.SetHidden(key, hide);
+            Render();
+            return;
+        }
+
+        var change = App.Repository.SetHiddenOnServerAsync(key, hide);
+        var shown = Hidden.ToList();
+        Render();
+        await change;
+        // Drawn again only for news, so a field being typed in on Settings is left alone.
+        if (!Hidden.SequenceEqual(shown) || App.Repository.ServerProblem != null) Render();
+    }
 
     /// <summary>"Antigravity · Claude &amp; GPT weekly" for "antigravity|Claude &amp; GPT 7d".</summary>
     private static string HiddenName(string key)
@@ -825,7 +849,7 @@ public sealed partial class PanelView : UserControl
         else
         {
             var now = DateTimeOffset.UtcNow;
-            var shown = Limits.Shown(usage, PanelPrefs.Current.HiddenLimits);
+            var shown = Limits.Shown(usage, Hidden);
             foreach (var window in shown)
             {
                 stack.Children.Add(WindowRow(window, now));
@@ -998,11 +1022,7 @@ public sealed partial class PanelView : UserControl
         };
         AutomationName(eye, hidden ? $"Show {name}" : $"Hide {name}");
         var limit = Limits.Key(usage, window);
-        eye.Click += (_, _) =>
-        {
-            PanelPrefs.Current.SetHidden(limit, !hidden);
-            Render();
-        };
+        eye.Click += (_, _) => SetHidden(limit, !hidden);
         Grid.SetColumn(eye, 1);
         top.Children.Add(eye);
 
@@ -1162,7 +1182,7 @@ public sealed partial class PanelView : UserControl
         }
         _content.Children.Add(Section("Order", "", order));
 
-        if (prefs.HiddenLimits.Count > 0) _content.Children.Add(HiddenSection(prefs));
+        if (Hidden.Count > 0) _content.Children.Add(HiddenSection());
 
         _content.Children.Add(TraySection(prefs));
 
@@ -1206,10 +1226,10 @@ public sealed partial class PanelView : UserControl
     }
 
     /// <summary>The limits hidden from the overview, each with a way back; only there when there are any.</summary>
-    private FrameworkElement HiddenSection(PanelPrefs prefs)
+    private FrameworkElement HiddenSection()
     {
         var stack = new StackPanel();
-        foreach (var key in prefs.HiddenLimits.ToList())
+        foreach (var key in Hidden.ToList())
         {
             var row = new Grid { Margin = new Thickness(0, 2, 0, 2) };
             row.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -1220,17 +1240,14 @@ public sealed partial class PanelView : UserControl
             name.TextTrimming = TextTrimming.CharacterEllipsis;
             row.Children.Add(name);
             var show = SoftButton("Show", "Back on the overview, in the tray and in the rail's ring");
-            show.Click += (_, _) =>
-            {
-                prefs.SetHidden(key, false);
-                Render();
-            };
+            show.Click += (_, _) => SetHidden(key, false);
             Grid.SetColumn(show, 1);
             row.Children.Add(show);
             stack.Children.Add(row);
         }
+        const string what = "Left out of the overview, the tray icon and the rail's rings; each still shows on its account's page, where the eye button hides or shows it.";
         stack.Children.Add(Text(
-            "Left out of the overview, the tray icon and the rail's rings; each still shows on its account's page, where the eye button hides or shows it.",
+            App.Repository.HidesOnServer ? "Kept by the server, for every app that reads from it. " + what : what,
             Caption, FontWeights.Normal, Secondary, new Thickness(0, 6, 0, 0)));
         return Section("Hidden limits", "", stack);
     }

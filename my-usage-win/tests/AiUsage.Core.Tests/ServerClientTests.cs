@@ -87,6 +87,97 @@ public class ServerStateTests
     }
 
     [Fact]
+    public void A_server_that_keeps_hidden_limits_sends_them_with_the_state()
+    {
+        var json = Answer.TrimEnd().TrimEnd('}') + """, "hiddenLimits": ["antigravity|Claude & GPT 7d", "claude-2|Fable 7d", 7] }""";
+        var state = ServerState.Parse(json)!;
+
+        // Anything in the list that is not a key is skipped, not fatal.
+        Assert.Equal(["antigravity|Claude & GPT 7d", "claude-2|Fable 7d"], state.HiddenLimits);
+        Assert.Equal(state.HiddenLimits, state.ShiftedBy(TimeSpan.FromDays(9)).HiddenLimits);
+
+        Assert.Empty(ServerState.Parse(Answer.TrimEnd().TrimEnd('}') + """, "hiddenLimits": [] }""")!.HiddenLimits!);
+    }
+
+    [Fact]
+    public void A_server_too_old_to_keep_hidden_limits_sends_none()
+    {
+        var state = ServerState.Parse(Answer)!;
+        Assert.Null(state.HiddenLimits);
+        Assert.Null(state.ShiftedBy(TimeSpan.FromDays(9)).HiddenLimits);
+    }
+
+    [Fact]
+    public void The_hidden_list_the_server_answers_a_change_with_is_read_whole()
+    {
+        Assert.Equal(["muse|Daily", "claude|Fable 7d"], ServerClient.ParseHidden("""["muse|Daily", "claude|Fable 7d"]"""));
+        Assert.Empty(ServerClient.ParseHidden("[]"));
+        Assert.Throws<FormatException>(() => ServerClient.ParseHidden("""{ "error": "Give the limit as ?limit=account|label" }"""));
+    }
+
+    [Fact]
+    public void A_sample_with_hidden_limits_hides_nothing()
+    {
+        // `--state` draws a server's answer without a server: its list is not in force.
+        var json = Answer.TrimEnd().TrimEnd('}') + """, "hiddenLimits": ["mistral|Vibe"] }""";
+        var repository = new UsageRepository(ServerState.Parse(json)!, Credentials.InMemory(new AesSealer(new byte[32])));
+
+        Assert.Null(repository.ServerHidden);
+        Assert.False(repository.HidesOnServer);
+        Assert.Empty(repository.HiddenLimits([]));
+    }
+
+    [Fact]
+    public void The_servers_hidden_limits_replace_this_pcs_only_while_it_keeps_them()
+    {
+        var credentials = Credentials.InMemory(new AesSealer(new byte[32]));
+        var repository = new UsageRepository(ServerState.Parse(Answer)!, credentials);
+        string[] local = ["claude|5h"];
+
+        // No server: this PC's list.
+        repository.KeepHidden("http://nas.local:8377", ["mistral|Vibe"]);
+        Assert.False(repository.HidesOnServer);
+        Assert.Equal(local, repository.HiddenLimits(local));
+
+        // The server that sent a list: its list alone, not merged with this PC's.
+        credentials.SetServer("http://nas.local:8377", "secret");
+        Assert.True(repository.HidesOnServer);
+        Assert.Equal(["mistral|Vibe"], repository.HiddenLimits(local));
+
+        // An empty list from the server is still the server's: nothing hidden.
+        repository.KeepHidden("http://nas.local:8377", []);
+        Assert.Empty(repository.HiddenLimits(local));
+
+        // A server too old to keep one: this PC's list again.
+        repository.KeepHidden("http://nas.local:8377", null);
+        Assert.False(repository.HidesOnServer);
+        Assert.Equal(local, repository.HiddenLimits(local));
+
+        // Another server's list is not this one's.
+        repository.KeepHidden("http://nas.local:8377", ["mistral|Vibe"]);
+        credentials.SetServer("http://other.local:8377", "secret");
+        Assert.Equal(local, repository.HiddenLimits(local));
+
+        credentials.SetServer(null, null);
+        Assert.Equal(local, repository.HiddenLimits(local));
+    }
+
+    [Fact]
+    public async Task A_server_that_cannot_be_told_keeps_its_last_list()
+    {
+        var credentials = Credentials.InMemory(new AesSealer(new byte[32]));
+        var repository = new UsageRepository(ServerState.Parse(Answer)!, credentials);
+        // Nothing listens on port 9 of this machine; the call fails at once.
+        credentials.SetServer("http://127.0.0.1:9", "secret");
+        repository.KeepHidden("http://127.0.0.1:9", ["mistral|Vibe"]);
+
+        await repository.SetHiddenOnServerAsync("kimi|Weekly", hide: true);
+
+        Assert.Equal(["mistral|Vibe"], repository.ServerHidden);
+        Assert.Equal("Server unreachable", repository.ServerProblem);
+    }
+
+    [Fact]
     public void A_server_that_has_not_polled_yet_has_no_state()
     {
         Assert.Null(ServerState.Parse("""{ "serverTime": 1, "snapshot": null, "combined": [], "series": {} }"""));

@@ -24,6 +24,10 @@ public sealed class UsageRepository
     private string? _serverSynced;
     private DateTimeOffset? _serverSyncedTo;
 
+    /// <summary>The hidden limits the server last sent, and which server sent them.</summary>
+    private IReadOnlyList<string>? _serverHidden;
+    private string? _serverHiddenFrom;
+
     /// <summary>Set for a repository that only shows a state it was given.</summary>
     private readonly bool _fixed;
 
@@ -66,6 +70,63 @@ public sealed class UsageRepository
 
     /// <summary>True when <see cref="ServerProblem"/> is one only the user can fix.</summary>
     public bool ServerNeedsUser { get; private set; }
+
+    /// <summary>
+    /// The limits the server keeps hidden for every app, as it last sent them;
+    /// null without a server, before its first answer, or from a server too old
+    /// to keep the list.
+    /// </summary>
+    public IReadOnlyList<string>? ServerHidden
+    {
+        get
+        {
+            var url = _credentials.ServerUrl();
+            lock (_gate) return url != null && url == _serverHiddenFrom ? _serverHidden : null;
+        }
+    }
+
+    /// <summary>True while the server's list is the one shown and changed, not this PC's.</summary>
+    public bool HidesOnServer => ServerHidden != null;
+
+    /// <summary>
+    /// The limits left out of the overview: the server's list while there is
+    /// one, so a limit hidden on one device is hidden on all; otherwise
+    /// <paramref name="local"/>, this PC's own. The two are never merged.
+    /// </summary>
+    public IReadOnlyList<string> HiddenLimits(IReadOnlyList<string> local) => ServerHidden ?? local;
+
+    /// <summary>
+    /// Hides a limit on the server, or shows it again. The change shows at once;
+    /// the list the server answers with then replaces it. If the server cannot
+    /// be told, its last list stays and <see cref="ServerProblem"/> says why.
+    /// Only for <see cref="HidesOnServer"/>; this PC's own list is the panel's.
+    /// </summary>
+    public async Task SetHiddenOnServerAsync(string key, bool hide, CancellationToken cancellation = default)
+    {
+        if (_credentials.ServerUrl() is not { } url || ServerHidden is not { } before) return;
+
+        KeepHidden(url, Limits.With(before, key, hide));
+        try
+        {
+            KeepHidden(url, await ServerClient.SetHiddenAsync(url, _credentials.ServerToken(), key, hide, cancellation));
+        }
+        catch (ServerException problem)
+        {
+            KeepHidden(url, before);
+            ServerProblem = problem.Message;
+            ServerNeedsUser = problem.NeedsUser;
+        }
+    }
+
+    /// <summary>What a server sent as its hidden limits; null is a server that keeps none.</summary>
+    internal void KeepHidden(string url, IReadOnlyList<string>? hidden)
+    {
+        lock (_gate)
+        {
+            _serverHidden = hidden;
+            _serverHiddenFrom = url;
+        }
+    }
 
     /// <summary>
     /// Fetches every provider in parallel, then caches the result. Concurrent callers
@@ -140,6 +201,7 @@ public sealed class UsageRepository
             _history.Merge(state, DateTimeOffset.UtcNow);
             _serverSynced = url;
             _serverSyncedTo = state.ServerTime;
+            KeepHidden(url, state.HiddenLimits);
             ServerProblem = null;
             ServerNeedsUser = false;
             return state.Snapshot;

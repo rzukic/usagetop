@@ -431,6 +431,16 @@ public class LimitsTests
     };
 
     [Fact]
+    public void Hiding_and_showing_keeps_the_order_the_others_were_hidden_in()
+    {
+        string[] hidden = ["a|1", "b|2"];
+        Assert.Equal(["a|1", "b|2", "c|3"], Limits.With(hidden, "c|3", hide: true));
+        Assert.Equal(["b|2", "a|1"], Limits.With(hidden, "a|1", hide: true));
+        Assert.Equal(["b|2"], Limits.With(hidden, "a|1", hide: false));
+        Assert.Equal(hidden, Limits.With(hidden, "c|3", hide: false));
+    }
+
+    [Fact]
     public void A_key_is_the_one_history_files_the_window_under()
     {
         var second = Antigravity() with { Slot = "2" };

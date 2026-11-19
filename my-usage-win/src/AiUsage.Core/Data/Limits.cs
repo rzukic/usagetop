@@ -20,6 +20,17 @@ public static class Limits
         return bar <= 0 ? null : (key[..bar], key[(bar + 1)..]);
     }
 
+    /// <summary>
+    /// <paramref name="hidden"/> with one limit hidden or shown again, the
+    /// others kept in the order they were hidden in.
+    /// </summary>
+    public static List<string> With(IEnumerable<string> hidden, string key, bool hide)
+    {
+        var list = hidden.Where(k => k != key).ToList();
+        if (hide) list.Add(key);
+        return list;
+    }
+
     public static bool IsHidden(IReadOnlyCollection<string> hidden, ProviderUsage usage, UsageWindow window) =>
         hidden.Count > 0 && hidden.Contains(Key(usage, window));
 
