@@ -558,6 +558,7 @@ public sealed partial class PanelView : UserControl
         RenderHeader(snapshot);
         RenderFooter(snapshot);
 
+        var focused = FocusedLimit();
         _content.Children.Clear();
         switch (_page)
         {
@@ -570,6 +571,36 @@ public sealed partial class PanelView : UserControl
             case PageKind.Settings:
                 RenderSettings();
                 break;
+        }
+
+        // A limit hidden or shown from the keyboard keeps the focus where it went on the page.
+        if (focused != null && LimitBlocks(_content).FirstOrDefault(b => b.Key == focused) is { } again)
+        {
+            Dispatcher.BeginInvoke(() => again.Focus(), DispatcherPriority.Loaded);
+        }
+    }
+
+    /// <summary>
+    /// The limit the keyboard is on, or whose menu it opened; null when the
+    /// mouse was last, so a click never leaves a limit holding the focus.
+    /// </summary>
+    private static string? FocusedLimit()
+    {
+        if (InputManager.Current.MostRecentInputDevice is not KeyboardDevice) return null;
+        return Keyboard.FocusedElement switch
+        {
+            LimitBlock block => block.Key,
+            DependencyObject inside when ItemsControl.ItemsControlFromItemContainer(inside) is ContextMenu { PlacementTarget: LimitBlock block } => block.Key,
+            _ => null,
+        };
+    }
+
+    private static IEnumerable<LimitBlock> LimitBlocks(DependencyObject parent)
+    {
+        foreach (var child in LogicalTreeHelper.GetChildren(parent).OfType<DependencyObject>())
+        {
+            if (child is LimitBlock block) yield return block;
+            else foreach (var inner in LimitBlocks(child)) yield return inner;
         }
     }
 
@@ -850,12 +881,7 @@ public sealed partial class PanelView : UserControl
         {
             var now = DateTimeOffset.UtcNow;
             var shown = Limits.Shown(usage, Hidden);
-            foreach (var window in shown)
-            {
-                var row = WindowRow(window, now);
-                row.ContextMenu = HideMenu(usage, window);
-                stack.Children.Add(row);
-            }
+            foreach (var window in shown) stack.Children.Add(Reachable(WindowRow(window, now), usage, window));
 
             var hidden = usage.Windows.Count - shown.Count;
             if (hidden > 0)
@@ -982,7 +1008,17 @@ public sealed partial class PanelView : UserControl
         _content.Children.Add(Card(summary, radius: 18));
 
         if (usage.State != UsageState.Ok) return;
-        foreach (var window in usage.Windows) _content.Children.Add(WindowCard(usage, window));
+        // The limits shown in the overview first, in their order; the hidden ones after, as on the Mac.
+        foreach (var window in Limits.Shown(usage, Hidden)) _content.Children.Add(WindowCard(usage, window));
+        var hidden = usage.Windows.Where(w => IsHidden(usage, w)).ToList();
+        if (hidden.Count == 0) return;
+        var head = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(4, 4, 0, 10) };
+        var eye = Glyph("", Caption); // Hide: an eye with a slash
+        eye.Foreground = Secondary;
+        head.Children.Add(eye);
+        head.Children.Add(Text("Hidden from the overview", Caption, FontWeights.SemiBold, Secondary, new Thickness(7, 0, 0, 0)));
+        _content.Children.Add(head);
+        foreach (var window in hidden) _content.Children.Add(WindowCard(usage, window));
     }
 
     /// <summary>A window: the figure, the bar with its pace tick, the chart and the burn.</summary>
@@ -1084,9 +1120,23 @@ public sealed partial class PanelView : UserControl
             stack.Children.Add(Text(detail, Caption, FontWeights.Normal, Secondary, new Thickness(0, 6, 0, 0)));
         }
 
-        var card = Card(stack);
-        card.ContextMenu = HideMenu(usage, window);
-        return card;
+        return Reachable(Card(stack), usage, window, radius: 16);
+    }
+
+    /// <summary>
+    /// A limit as the keyboard and a screen reader reach it: a stop for Tab, a
+    /// name such as "Kimi Weekly, 11% left", and the right-click menu, which the
+    /// menu key or Shift+F10 opens too.
+    /// </summary>
+    private LimitBlock Reachable(FrameworkElement limit, ProviderUsage usage, UsageWindow window, double radius = 0)
+    {
+        var hidden = IsHidden(usage, window);
+        var level = window.RemainingPercent is { } percent ? $"{Format.Percent(percent)} left" : "no reading";
+        var name = $"{usage.DisplayName} {WindowName.Display(window.Label)}, {level}{(hidden ? ", hidden from the overview" : "")}";
+        var help = hidden
+            ? "Right-click or press the menu key to show it in the overview"
+            : "Right-click or press the menu key to hide it from the overview";
+        return new LimitBlock(limit, Limits.Key(usage, window), name, help, radius) { ContextMenu = HideMenu(usage, window) };
     }
 
     /// <summary>
