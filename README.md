@@ -47,19 +47,11 @@ These links always give the latest release; earlier ones and betas are on the
 - **macOS:** download
   [`usagetop-mac.zip`](https://github.com/rzukic/usagetop/releases/latest/download/usagetop-mac.zip),
   unpack it and move `usagetop.app` to Applications. It needs macOS 26 and runs
-  on Apple silicon and Intel. The app is not signed with an Apple Developer ID
-  yet, so macOS refuses to open a downloaded copy until you allow it, once:
-  1. Open `usagetop.app`. macOS says it could not verify the app; choose
-     **Done** (not "Move to Trash").
-  2. Open **System Settings → Privacy & Security**, scroll down to "usagetop
-     was blocked to protect your Mac" and choose **Open Anyway**.
-  3. Confirm with **Open Anyway** and your password or Touch ID.
-
-  Or, in Terminal: `xattr -dr com.apple.quarantine /Applications/usagetop.app`.
-  From then on the app updates itself, as long as it is in the Applications
-  folder: it downloads a new release in the background and puts it in when
-  you restart or quit (Settings → Updates). A copy you build yourself (below)
-  needs none of the steps above.
+  on Apple silicon and Intel. The app is signed with a Developer ID and
+  notarized by Apple, so it opens like any other download. From then on it
+  updates itself, as long as it is in the Applications folder: it downloads a
+  new release in the background and puts it in when you restart or quit
+  (Settings → Updates).
 
 ## Building and testing
 
@@ -114,7 +106,11 @@ release; then it builds the server's image for `linux/amd64` and
 `linux/arm64`, starts it once on an empty volume to see that it serves its page
 and can write its data, and pushes it to `ghcr.io/rzukic/usagetop-server` as
 `<version>` and `latest` (a pre-release leaves `latest` alone). The Mac app is
-signed ad hoc only, hence the steps under Installing.
+signed with the Developer ID certificate in the maintainer's keychain and
+notarized by Apple before it is zipped; the script's header says what that
+needs. A copy built without a certificate is signed ad hoc: it runs on the Mac
+that built it, and anywhere else macOS has to be told to open it (System
+Settings → Privacy & Security → Open Anyway).
 
 The Android APK is signed with a key that is kept outside the repository (the
 script's header says where). Every release must use the same key, or phones

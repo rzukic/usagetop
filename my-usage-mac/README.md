@@ -20,8 +20,9 @@ the sign-ins.
 so it lives in the menu bar only. Needs macOS 26 or newer and Xcode 26. The
 app takes the project's version, `<Version>` in
 `../my-usage-win/src/AiUsage/AiUsage.csproj`; `VERSION=1.2.3 ./build.sh` sets
-another. It is signed ad hoc: there is no Developer ID yet, so a copy that was
-downloaded rather than built has to be allowed once (see the root `README.md`).
+another. A release build is signed with the keychain's Developer ID
+Application certificate if there is one, and ad hoc otherwise; the released
+app is signed and notarized (`../release-mac.sh`).
 
 ## What it shows
 
@@ -79,10 +80,12 @@ GitHub releases. It looks a minute after start and every six hours, or on
 `Check now`; a newer `usagetop-mac.zip` is downloaded in the background,
 checked (its SHA-256 against the one the release lists, that it is this app in
 that version, that its signature is intact) and goes in on `Restart to update`,
-or when the app next quits or starts. A switch adds beta versions. The app is
-signed ad hoc, so the check says the download is whole and came from the
-release, not who built it; and macOS may ask once after an update whether the
-new version may read the token from the Keychain. A copy anywhere else (a
+or when the app next quits or starts. A switch adds beta versions. A copy
+signed with a Developer ID also requires the download to be signed by the same
+team. A copy signed ad hoc has no team to compare, so for it the check says the
+download is whole and came from the release, not who built it; and macOS may
+ask after an update whether the new version may read the token from the
+Keychain. A copy anywhere else (a
 build folder, Downloads) leaves itself alone. `USAGETOP_UPDATE_SOURCE`, an
 address that answers like `https://api.github.com/repos/rzukic/usagetop`,
 stands in for GitHub to try an update without publishing one.
