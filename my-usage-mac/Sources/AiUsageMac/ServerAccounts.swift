@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 import Observation
 
@@ -41,9 +42,10 @@ final class ServerAccounts {
         self.app = app
     }
 
-    private var client: ServerClient? {
-        guard let app, !app.isDemo, let url = app.settings.baseURL else { return nil }
-        return ServerClient(baseURL: url, token: app.settings.token)
+    /// The server's accounts, or this Mac's own when no server is set.
+    private var client: (any UsageBackend)? {
+        guard let app, !app.isDemo else { return nil }
+        return app.backend
     }
 
     // MARK: The list
@@ -159,7 +161,9 @@ final class ServerAccounts {
         do {
             let step = try await client.startSignIn(account.key)
             steps[account.key] = .signIn(step)
-            if step.kind == "device" { watch(account.key) }
+            // A sign-in this Mac catches itself goes straight to the browser.
+            if step.kind == "browser", let url = URL(string: step.url) { NSWorkspace.shared.open(url) }
+            if step.kind == "device" || step.kind == "browser" { watch(account.key) }
         } catch {
             problems[account.key] = message(error)
         }
@@ -191,7 +195,7 @@ final class ServerAccounts {
 
     /// One change to an account: the call, then the list again, then a fresh
     /// reading once the server has had a moment to poll the account.
-    private func run(_ account: ServerAccount, _ change: (ServerClient) async throws -> Void) async {
+    private func run(_ account: ServerAccount, _ change: (any UsageBackend) async throws -> Void) async {
         guard let client else { return }
         busy.insert(account.key)
         defer { busy.remove(account.key) }

@@ -4,9 +4,11 @@ A menu bar app: how much of each AI subscription is left, one glance away. Nativ
 SwiftUI, no Dock icon, no window — the whole app is the menu bar item and the
 panel it opens.
 
-It reads from the server, the same one the other apps use. Point it at the
-address in Settings and the server does the polling, keeps the history and holds
-the sign-ins.
+On its own, it asks the providers itself: add the subscriptions you have in
+Settings, sign in or paste a key, and it polls them, keeps their history on this
+Mac and holds the sign-ins in the Keychain. Given a server's address instead, it
+reads everything from the server, the same one the other apps use, which polls
+around the clock and shares one history between your devices.
 
 ## Build
 
@@ -62,14 +64,27 @@ to PNGs and quits (glass is stood in for by a flat backdrop there).
 
 ## Settings
 
-**Accounts on the server**, as in the Windows and Android apps: every account
-the server follows and what it has stored, with Sign in (the server runs the
-sign-in; paste back what the page shows, or approve a device code), Set or
-Replace key for Mistral and Kimi (with Mistral's fallback budget and Kimi's China
-endpoint), Rename, Sign out, Remove, and Add another account. The server never
-hands a key or a session back; this only ever replaces one.
+**Accounts**: every subscription followed and what is stored for it, with Sign
+in, Set or Replace key for Mistral and Kimi (with Mistral's fallback budget and
+Kimi's China endpoint), Rename, Sign out, Remove, and Add an account. The list
+starts empty.
 
-Address and token. The address is ordinary preference; the token goes to the
+- *Without a server* (`Local/`): the app is the server. Claude, ChatGPT and
+  Antigravity sign in in the browser, which is sent back to a port on this Mac
+  that catches the code; Muse approves a device code. The providers are the
+  twins of `my-usage-win/src/AiUsage.Core/Providers`, asked every five minutes
+  (two while a window is being spent), and history is kept for 40 days in
+  `~/Library/Application Support/usagetop/history.json`, by the server's rules.
+  Sign-ins and keys stay in the Keychain. A Claude or ChatGPT account signed in
+  here should not also be signed in on a server: their renewals are single-use.
+- *With a server*: the server's accounts. It runs the sign-in (paste back what
+  the page shows, or approve a device code), and never hands a key or a session
+  back; this only ever replaces one.
+
+`AiUsageMac --local-selftest` runs the no-server mode end to end against a
+throwaway account store, and deletes it again.
+
+**Server (optional)**: address and token. The address is ordinary preference; the token goes to the
 Keychain. `Test connection` asks the server for one reading before you commit to
 it. The menu bar shows either the combined figure in a ring (with or without
 the percentage), or the one to four limits closest to running out: each as its

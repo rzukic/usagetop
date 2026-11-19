@@ -214,11 +214,11 @@ struct PanelView: View {
 
             if pane != .settings {
                 // Point-symmetric, so it sits centred in its circle and spins true.
-                GlassIconButton(symbol: "arrow.triangle.2.circlepath", help: "Ask the server to poll every provider now  ⌘R",
+                GlassIconButton(symbol: "arrow.triangle.2.circlepath",
+                                help: model.usesServer ? "Ask the server to poll every provider now  ⌘R" : "Ask every provider now  ⌘R",
                                 spinning: model.isLoading) {
                     Task { await model.refresh(force: true) }
                 }
-                .disabled(!model.settings.isConfigured && !model.isDemo)
             }
         }
     }
@@ -318,13 +318,15 @@ struct PanelView: View {
                     .transition(.opacity.combined(with: .offset(y: 6)))
             }
         case .overview:
-            if !model.settings.isConfigured && !model.isDemo {
-                Onboarding(openSettings: { pane = .settings })
-                    .transition(.opacity)
-            } else if model.ordered.isEmpty && model.snapshot != nil && model.problem == nil {
-                // A reading came back with nothing in it: the server follows no
-                // accounts yet, and nothing will arrive until one is added.
-                NoAccounts(openSettings: { pane = .settings })
+            if model.ordered.isEmpty && model.snapshot != nil && model.problem == nil && !model.isDemo {
+                // A reading came back with nothing in it: no account has been
+                // added yet, and nothing will arrive until one is.
+                if model.usesServer {
+                    NoAccounts(openSettings: { pane = .settings })
+                } else {
+                    Onboarding(openSettings: { pane = .settings })
+                        .transition(.opacity)
+                }
             } else if model.ordered.isEmpty {
                 Waiting(problem: model.problem)
             } else {
@@ -404,16 +406,16 @@ private struct Onboarding: View {
             }
 
             VStack(alignment: .leading, spacing: 5) {
-                Text("Connect your usage server")
+                Text("Add your subscriptions")
                     .font(.system(size: 15, weight: .semibold, design: .rounded))
-                Text("It polls Claude, ChatGPT, Mistral, Kimi, Muse and Antigravity, keeps the history and holds the sign-ins. This app just reads it.")
+                Text("usagetop asks Claude, ChatGPT, Mistral, Kimi, Muse and Antigravity for what is left, and keeps the history on this Mac. Add the ones you have and sign in or paste a key. A server is optional.")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
             }
 
             HStack(spacing: 8) {
-                Button("Set up server", action: openSettings)
+                Button("Add accounts", action: openSettings)
                     .buttonStyle(.glassProminent)
                 Button("Try with sample data") { model.showDemo() }
                     .buttonStyle(.soft)

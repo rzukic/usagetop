@@ -59,7 +59,7 @@ struct SignInStep: Decodable, Hashable {
 }
 
 /// The app's side of the server's API. One round trip draws every screen.
-struct ServerClient {
+struct ServerClient: Sendable {
     let baseURL: URL
     let token: String
 

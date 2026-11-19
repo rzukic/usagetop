@@ -22,7 +22,18 @@ struct SettingsPane: View {
         @Bindable var settings = model.settings
 
         VStack(alignment: .leading, spacing: 10) {
-            section("Server", symbol: "server.rack") {
+            // The accounts come first: with no server, this is all there is to set up.
+            if !model.isDemo {
+                ServerAccountsSection()
+            }
+
+            section("Server (optional)", symbol: "server.rack") {
+                Text(model.usesServer
+                     ? "This Mac reads everything from the server. Clear the address to have it ask the providers itself."
+                     : "Without one, this Mac asks the providers itself. A server of your own polls around the clock and shares one history with your other devices.")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 field("Address") {
                     TextField("usage.example.com", text: $address)
                         .autocorrectionDisabled()
@@ -62,9 +73,6 @@ struct SettingsPane: View {
                 .controlSize(.small)
             }
 
-            if model.settings.isConfigured && !model.isDemo {
-                ServerAccountsSection()
-            }
 
             if !model.railOrder.isEmpty {
                 OrderSection()

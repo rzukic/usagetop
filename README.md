@@ -14,8 +14,9 @@ app, a macOS menu bar app, an Android app and widget, and the server's web dashb
 | `my-usage-mac/` | The macOS menu bar app (SwiftUI, SwiftPM) |
 | `my-usage-server/` | An always-on poller with a history database and an HTTP API, built on `AiUsage.Core` |
 
-Each app fetches for itself until it is given a server address in its Settings.
-From then on it reads everything from the server, which does the fetching, keeps
+Every app works on its own: add the subscriptions you have in its Settings, and
+it asks the providers itself and keeps their history on that device. Given a
+server address instead, it reads everything from the server, which does the fetching, keeps
 the history and holds the sign-ins for both. The server also has a page of its
 own: open its address in a browser. See `my-usage-server/README.md`.
 

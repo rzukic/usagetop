@@ -13,7 +13,7 @@ struct ServerAccountsSection: View {
 
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                Label("Accounts on the server", systemImage: "person.2")
+                Label(model.usesServer ? "Accounts on the server" : "Accounts", systemImage: "person.2")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundStyle(.secondary)
                 Spacer()
@@ -26,7 +26,7 @@ struct ServerAccountsSection: View {
                     .foregroundStyle(Palette.warning)
                     .fixedSize(horizontal: false, vertical: true)
             } else if accounts.loaded && accounts.accounts.isEmpty {
-                Text("The server follows no accounts yet.")
+                Text(model.usesServer ? "The server follows no accounts yet." : "No accounts yet. Add the subscriptions you have below.")
                     .font(.system(size: 11.5))
                     .foregroundStyle(.secondary)
             }
@@ -42,7 +42,9 @@ struct ServerAccountsSection: View {
             }
 
             if accounts.loaded {
-                Text("Keys and sessions stay on the server; this app never reads them back.")
+                Text(model.usesServer
+                     ? "Keys and sessions stay on the server; this app never reads them back."
+                     : "Keys and sign-ins stay in this Mac's Keychain, and this Mac asks the providers itself.")
                     .font(.system(size: 10.5))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
@@ -255,12 +257,14 @@ private struct StepView: View {
         }
         .buttonStyle(.soft)
 
-        if signIn.kind == "device" {
-            HStack(spacing: 8) {
-                Text(signIn.userCode ?? "")
-                    .font(.system(size: 20, weight: .semibold, design: .monospaced))
-                    .textSelection(.enabled)
-                if let code = signIn.userCode {
+        if signIn.kind == "device" || signIn.kind == "browser" {
+            // A device code is typed into the page; a browser sign-in this Mac
+            // catches itself has nothing to type. Either finishes by itself.
+            if let code = signIn.userCode {
+                HStack(spacing: 8) {
+                    Text(code)
+                        .font(.system(size: 20, weight: .semibold, design: .monospaced))
+                        .textSelection(.enabled)
                     Button {
                         NSPasteboard.general.clearContents()
                         NSPasteboard.general.setString(code, forType: .string)
@@ -273,7 +277,8 @@ private struct StepView: View {
             }
             HStack(spacing: 6) {
                 ProgressView().controlSize(.mini)
-                Text("Waiting for you to approve…").font(.system(size: 11)).foregroundStyle(.secondary)
+                Text(signIn.kind == "browser" ? "Waiting for you to approve in the browser…" : "Waiting for you to approve…")
+                    .font(.system(size: 11)).foregroundStyle(.secondary)
                 Spacer()
                 Button("Cancel") { accounts.close(account.key) }.buttonStyle(.soft)
             }

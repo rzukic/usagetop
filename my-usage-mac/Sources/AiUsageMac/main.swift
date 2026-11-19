@@ -12,6 +12,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ProcessInfo.processInfo.disableAutomaticTermination("usagetop lives in the menu bar")
         ProcessInfo.processInfo.disableSuddenTermination()
 
+        // `--local-selftest`: exercises the no-server mode against a throwaway
+        // account store, prints what it saw, and quits.
+        if CommandLine.arguments.contains("--local-selftest") {
+            Task {
+                let failures = await LocalSelfTest.run()
+                exit(failures == 0 ? 0 : 1)
+            }
+            return
+        }
+
         let model = AppModel()
         // Not while drawing screenshots: those runs quit by themselves.
         let drawing = CommandLine.arguments.contains("--snapshot") || CommandLine.arguments.contains("--showcase")

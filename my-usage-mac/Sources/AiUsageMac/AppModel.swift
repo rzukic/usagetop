@@ -141,6 +141,16 @@ final class AppModel {
 
     // MARK: Fetching
 
+    /// True when a server is set; the app then reads everything from it. Without
+    /// one it asks the providers itself (`LocalSource`).
+    var usesServer: Bool { settings.baseURL != nil }
+
+    /// Where readings and accounts come from: the server, or this Mac.
+    var backend: any UsageBackend {
+        if let url = settings.baseURL { return ServerClient(baseURL: url, token: settings.token) }
+        return LocalSource.shared
+    }
+
     func start() {
         if clock == nil {
             clock = Task { [weak self] in
@@ -172,14 +182,6 @@ final class AppModel {
             if force { loadDemo() }
             return
         }
-        guard let baseURL = settings.baseURL else {
-            problem = nil
-            snapshot = nil
-            series = [:]
-            recentSeries = [:]
-            combinedHistory = []
-            return
-        }
         guard !isLoading else {
             // A refresh asked for by hand is never dropped: it runs once this one lands.
             if force { forceQueued = true }
@@ -200,11 +202,11 @@ final class AppModel {
             }
         }
 
-        let client = ServerClient(baseURL: baseURL, token: settings.token)
+        let client = backend
         if force { await client.refresh() }
 
         do {
-            async let long = client.state()
+            async let long = client.state(since: nil, points: 1500)
             async let short = client.state(since: Date().addingTimeInterval(-Forecast.usualHours * Forecast.hour), points: 5000)
             let state = try await long
             let recent = (try? await short)?.series
