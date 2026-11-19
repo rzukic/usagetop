@@ -11,8 +11,21 @@ struct AccountDetailView: View {
             summary
 
             if usage.isOK {
-                ForEach(usage.windows) { window in
+                // The limits shown in the overview first, the hidden ones after.
+                let hidden = usage.windows.filter { model.isHidden(usage, $0) }
+                ForEach(model.shownWindows(usage)) { window in
                     WindowDetailCard(usage: usage, window: window)
+                }
+                if !hidden.isEmpty {
+                    Label("Hidden from the overview", systemImage: "eye.slash")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.top, 4)
+                        .padding(.horizontal, 4)
+                    ForEach(hidden) { window in
+                        WindowDetailCard(usage: usage, window: window)
+                    }
                 }
             }
         }

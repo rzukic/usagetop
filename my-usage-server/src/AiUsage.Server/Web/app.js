@@ -835,7 +835,12 @@ function renderUsage() {
     const hidden = hiddenLimits();
     const account = usage.account || usage.id;
     const hiddenCount = usage.windows.filter(window => hidden.has(seriesKey(usage, window.label))).length;
-    for (const window of usage.windows) {
+    // The limits shown in the apps' overviews first, the hidden ones after them.
+    const ordered = [
+      ...usage.windows.filter(window => !hidden.has(seriesKey(usage, window.label))),
+      ...usage.windows.filter(window => hidden.has(seriesKey(usage, window.label))),
+    ];
+    for (const window of ordered) {
       const key = seriesKey(usage, window.label);
       const isHidden = hidden.has(key);
       if (isHidden && !showingHidden.has(account)) continue;
