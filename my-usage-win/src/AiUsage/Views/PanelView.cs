@@ -197,6 +197,7 @@ public sealed partial class PanelView : UserControl
         PanelPrefs.Current.Changed += ApplyLook;
         App.Repository.Changed += _ => Dispatcher.BeginInvoke(Refresh);
         _clock.Tick += (_, _) => Refresh();
+        Updater.Current.Changed += OnUpdaterChanged;
         _clock.Start();
 
         ApplyLook();
@@ -507,6 +508,8 @@ public sealed partial class PanelView : UserControl
         RenderRail(snapshot);
         RenderHeader(snapshot);
         RenderFooter(snapshot);
+        // "checked 2h ago" ages with the clock; the rest of the section is left alone.
+        ShowUpdateState();
     }
 
     private void Render()
@@ -564,11 +567,14 @@ public sealed partial class PanelView : UserControl
                 i < 9 ? $"Ctrl+{i + 1}" : null, usage.DisplayName, () => Go(PageKind.Account, key)));
         }
 
-        _railBottom.Children.Add(RailButton(RailIcon(RailIcons.Gear), _page == PageKind.Settings, "Ctrl+,", "Settings",
-            () => Go(PageKind.Settings, null)));
+        // A downloaded update is a dot on the gear, nothing louder: it goes in by itself anyway.
+        _railShowsUpdate = UpdateWaiting;
+        _railBottom.Children.Add(RailButton(RailIcon(RailIcons.Gear), _page == PageKind.Settings, "Ctrl+,",
+            _railShowsUpdate ? "Settings · an update is ready" : "Settings",
+            () => Go(PageKind.Settings, null), dot: _railShowsUpdate));
     }
 
-    private FrameworkElement RailButton(UIElement content, bool selected, string? shortcut, string name, Action go)
+    private FrameworkElement RailButton(UIElement content, bool selected, string? shortcut, string name, Action go, bool dot = false)
     {
         var holder = new Grid { Width = 42, Height = 42, Margin = new Thickness(0, 2, 0, 2), Background = Brushes.Transparent };
         var hover = new Ellipse { Fill = new SolidColorBrush(Color.FromArgb(0x14, 0xFF, 0xFF, 0xFF)), Opacity = 0 };
@@ -590,6 +596,23 @@ public sealed partial class PanelView : UserControl
             if (!selected && element is System.Windows.Shapes.Path mark) mark.Fill = Secondary;
         }
         holder.Children.Add(content);
+        if (dot)
+        {
+            // At the icon's top-right corner, ringed in the panel's colour so it
+            // reads as a mark of its own rather than part of the gear.
+            holder.Children.Add(new Ellipse
+            {
+                Width = 7,
+                Height = 7,
+                Fill = new SolidColorBrush(Severity.Normal),
+                Stroke = new SolidColorBrush(Color.FromRgb(0x14, 0x14, 0x18)),
+                StrokeThickness = 1.5,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, 10, 10, 0),
+                IsHitTestVisible = false,
+            });
+        }
 
         // Held Ctrl shows what each item's shortcut is.
         if (_ctrlHeld && shortcut != null)
@@ -639,7 +662,7 @@ public sealed partial class PanelView : UserControl
                 break;
             case PageKind.Settings:
                 _title.Text = "Settings";
-                _subtitle.Text = "Server, accounts, tray, look";
+                _subtitle.Text = "Server, accounts, tray, look, updates";
                 break;
             default:
                 var usage = snapshot?.Usages.FirstOrDefault(u => u.AccountKey == _account);
@@ -1105,8 +1128,10 @@ public sealed partial class PanelView : UserControl
         }
         _content.Children.Add(Section("General", "\uE713", general));
 
-        var version = typeof(PanelView).Assembly.GetName().Version is { } v ? $"{v.Major}.{v.Minor}.{v.Build}" : "dev";
-        _content.Children.Add(Text($"usagetop {version} · Ctrl+R refresh · Ctrl+1–9 accounts · Esc back", Micro, FontWeights.Normal, Secondary, new Thickness(0, 4, 0, 6)));
+        _content.Children.Add(UpdatesSection());
+
+        // The version is in the Updates section; with a beta's it would not fit this line.
+        _content.Children.Add(Text("Ctrl+R refresh · Ctrl+1–9 accounts · Esc back", Micro, FontWeights.Normal, Secondary, new Thickness(0, 4, 0, 6)));
         ((TextBlock)_content.Children[^1]).HorizontalAlignment = HorizontalAlignment.Center;
     }
 

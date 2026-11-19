@@ -35,6 +35,12 @@ public sealed class PanelPrefs
     /// <summary>The figure as a number in place of the ring: a 16px icon has no room beside it.</summary>
     public bool TrayShowsNumber { get; set; }
 
+    /// <summary>
+    /// Also take GitHub pre-releases (v1.2.1-beta.1). Releases still come too:
+    /// whichever is newest wins, so a beta user is never left behind a release.
+    /// </summary>
+    public bool BetaUpdates { get; set; }
+
     public event Action? Changed;
 
     private static string FilePath => Path.Combine(AppPaths.Root, "panel.json");

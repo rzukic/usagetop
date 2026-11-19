@@ -103,6 +103,9 @@ public partial class App : Application
         _timer.Tick += (_, _) => _ = RefreshAsync();
         _timer.Start();
 
+        // An installed copy keeps itself current; a build run from its folder does not.
+        Updater.Current.Start();
+
         // `AiUsage.exe --open` starts with the window up and `--flyout` with the
         // popup, for a shortcut or the Run key; without either the app is only the
         // tray icon.
@@ -247,6 +250,9 @@ public partial class App : Application
 
     public void QuitApp()
     {
+        // A downloaded update goes in as the app leaves, unless the
+        // "Restart to update" button already handed it over.
+        Updater.Current.ApplyOnQuit();
         _timer?.Stop();
         _flyout?.Close();
         _main?.Close();

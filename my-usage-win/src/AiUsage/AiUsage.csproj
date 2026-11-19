@@ -12,8 +12,13 @@
     <RootNamespace>AiUsage</RootNamespace>
     <!-- Program.Main answers the installer before WPF starts (see Program.cs). -->
     <StartupObject>AiUsage.Program</StartupObject>
-    <!-- The release version: pack.ps1 builds the installer and update packages for it. -->
-    <Version>1.1.0</Version>
+    <!-- The release version: pack.ps1 builds the installer and update packages for
+         it. A release build takes its version from the git tag instead (pack.ps1
+         -Version), so bump this to match before tagging. -->
+    <Version>1.2.0</Version>
+    <!-- Keep the product version as the plain release version (1.2.0), without the
+         "+<commit>" the SDK would append. -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <Product>usagetop</Product>
     <AssemblyTitle>usagetop</AssemblyTitle>
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>

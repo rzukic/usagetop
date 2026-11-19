@@ -103,6 +103,40 @@ Windows may still throttle a background app on battery or with Battery Saver on.
 The reading is cached in `%APPDATA%\AiUsage\snapshot.json`, so the app opens on
 the last known numbers and replaces them when the fetch lands.
 
+## Updates
+
+An installed copy (from `usagetop-win-Setup.exe`) keeps itself current from the
+GitHub releases of `rzukic/usagetop`, with Velopack. A copy run from a build
+folder is not installed and never updates; **Settings → Updates** says so.
+
+- It looks a minute after starting, then every six hours, and when you press
+  **Check now**. Each look is one unauthenticated GitHub API call, and GitHub
+  allows 60 an hour per address, so it never looks more often on its own.
+- A newer version downloads in the background. When it is ready, the status
+  line says so, the gear in the rail gets a small dot, and **Restart to update**
+  puts it in and starts the app again.
+- Without that button it still goes in: quietly when you quit usagetop from
+  the tray or panel, or, failing that, by Velopack the next time the app starts.
+- **Beta versions** also takes GitHub pre-releases (tags like `v1.2.1-beta.1`).
+  Releases still come through: the newest version of either kind wins. A beta
+  downloaded before you turn the switch off is thrown away, not installed.
+- A failed look (offline, no releases yet, GitHub's limit) is only a line in
+  Settings, "Couldn't check for updates", with the reason in its tooltip. There
+  are no pop-ups or tray balloons.
+
+To try an update end to end without publishing, set `USAGETOP_UPDATE_SOURCE` to
+a folder, or an http(s) address of a folder, holding the files `pack.ps1` makes
+(`releases.win.json` and the `.nupkg` packages), then start the installed copy:
+
+```
+$env:USAGETOP_UPDATE_SOURCE = "C:\path\to\build\releases"
+& "$env:LOCALAPPDATA\usagetop\current\AiUsage.exe"
+```
+
+With it set, the app reads that folder instead of GitHub (the beta switch then
+has no effect: the folder offers whatever its feed lists). Pack a higher
+version with `pack.ps1 -Version 1.2.1` to have something to update to.
+
 ## Where things live
 
 ```
