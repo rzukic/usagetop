@@ -46,7 +46,10 @@ public sealed class PanelWindow : Window
         CanResize = false;
         ShowInTaskbar = false;
         Topmost = true;
-        SizeToContent = SizeToContent.Height;
+        // Its height is worked out here (Fit), not left to the toolkit: once a
+        // window manager has sized a window, the toolkit stops sizing it to
+        // its content, and it kept the last page's height.
+        SizeToContent = SizeToContent.Manual;
         // A tiling window manager places its floating windows itself, and puts
         // one that names no place of its own in the corner: so it is centred.
         WindowStartupLocation = Desktop.IsTiling ? WindowStartupLocation.CenterScreen : WindowStartupLocation.Manual;
@@ -54,6 +57,10 @@ public sealed class PanelWindow : Window
         X11Properties.SetWmClass(this, "usagetop");
 
         View = new PanelView(model);
+        View.Redrawn += () =>
+        {
+            if (IsVisible) Fit();
+        };
 
         if (_shaped)
         {
@@ -98,13 +105,17 @@ public sealed class PanelWindow : Window
 
         Opened += (_, _) =>
         {
+            Fit();
             Place();
             if (Environment.GetEnvironmentVariable("USAGETOP_DEBUG") is { Length: > 0 })
             {
                 Console.Error.WriteLine($"panel: shaped {_shaped}, transparency {ActualTransparencyLevel}, at {Position}, size {Bounds.Size}");
             }
         };
-        SizeChanged += (_, _) => Place();
+        SizeChanged += (_, _) =>
+        {
+            if (IsVisible) Place();
+        };
         Deactivated += (_, _) =>
         {
             if (!CloseOnBlur || !IsVisible) return;
@@ -157,27 +168,44 @@ public sealed class PanelWindow : Window
     public void Reveal()
     {
         View.Rebuild();
-        FitScreen();
+        Fit();
         Show();
         Activate();
     }
 
-    /// <summary>Never taller than the screen: the page scrolls for whatever does not fit.</summary>
-    private void FitScreen()
+    /// <summary>
+    /// As tall as the panel wants to be, but never taller than the room it has
+    /// on the screen: the page scrolls for whatever does not fit. Placed again
+    /// for the new height, so a panel hung from a bar stays hung from it.
+    /// </summary>
+    private void Fit()
     {
-        var screen = Screens.ScreenFromWindow(this) ?? Screens.Primary;
-        if (screen == null) return;
-        var height = screen.WorkingArea.Height / screen.Scaling;
+        var room = RoomOnScreen();
+        var panel = Math.Min(View.WantedHeight(), room);
+        var height = panel + (_shaped ? ShadowAbove + ShadowBelow : 0);
+        if (Environment.GetEnvironmentVariable("USAGETOP_DEBUG") is { Length: > 0 })
+        {
+            Console.Error.WriteLine($"fit: wants {View.WantedHeight()}, room {room}, panel {panel}");
+        }
+        if (Math.Abs(Height - height) < 0.5) return;
+        Height = height;
+        if (IsVisible) Place();
+    }
+
+    /// <summary>How tall the panel itself may be on its screen, in units.</summary>
+    private double RoomOnScreen()
+    {
+        var screen = (Anchor is { } spot ? Screens.ScreenFromPoint(spot.Center) : null)
+            ?? Screens.ScreenFromWindow(this) ?? Screens.Primary;
+        if (screen == null) return 700;
+        var area = screen.WorkingArea;
         if (Anchor is { } anchor)
         {
             // Hung under a bar's item: from there down to the screen's edge.
-            var below = (screen.WorkingArea.Bottom - anchor.Bottom) / screen.Scaling;
-            MaxHeight = below - AnchorGap - EdgeGap + (_shaped ? ShadowAbove + ShadowBelow : 0);
-            return;
+            return (area.Bottom - anchor.Bottom) / screen.Scaling - AnchorGap - EdgeGap;
         }
-        MaxHeight = Desktop.IsTiling
-            ? height - TilingRoom
-            : height - EdgeGap * 2 + (_shaped ? ShadowAbove + ShadowBelow : 0);
+        var height = area.Height / screen.Scaling;
+        return Desktop.IsTiling ? height - TilingRoom : height - EdgeGap * 2;
     }
 
     /// <summary>

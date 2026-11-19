@@ -206,6 +206,10 @@ public sealed class App : Application
                 Panel().Reveal(anchor);
                 Panel().View.Show(new Pane.Settings());
                 return "";
+            case "overview":
+                Panel().Reveal(anchor);
+                Panel().View.Show(new Pane.Overview());
+                return "";
             case "hide":
                 _panel?.Hide();
                 return "";

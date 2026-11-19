@@ -12,7 +12,7 @@ public static class Program
           usagetop --hidden        start as the tray icon alone: for autostart
           usagetop toggle          show the panel, or put it away: for a key binding
                                    (--anchor x,y,w,h hangs it under that spot of the screen)
-          usagetop show | hide
+          usagetop show | hide | overview | settings
           usagetop refresh         ask every provider now
           usagetop status          the reading as text
           usagetop status --json   everything, for a script
@@ -93,8 +93,8 @@ public static class Program
             case "hide" or "refresh" or "quit":
                 return Ask(command);
 
-            case "settings":
-                if (Ipc.Send("settings" + (anchor == null ? "" : $" --anchor {anchor}")) != null) return 0;
+            case "settings" or "overview":
+                if (Ipc.Send(command + (anchor == null ? "" : $" --anchor {anchor}")) != null) return 0;
                 App.Options = new StartOptions(Hidden: true, Sample: sample, StateFile: state);
                 return BuildAvaloniaApp().StartWithClassicDesktopLifetime(args, Avalonia.Controls.ShutdownMode.OnExplicitShutdown);
 

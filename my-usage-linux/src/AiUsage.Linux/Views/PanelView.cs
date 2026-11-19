@@ -33,6 +33,9 @@ public sealed class PanelView : Border
     private readonly bool _flat;
     private ScrollViewer? _scroller;
     private SettingsPage? _settings;
+    private Control? _header;
+    private Control? _page;
+    private Control? _footer;
 
     /// <summary>
     /// <paramref name="flat"/> lays the page out in full, without scrolling: for
@@ -69,6 +72,31 @@ public sealed class PanelView : Border
     /// <summary>The panel shows Settings, where a new reading should not redraw what is being typed.</summary>
     public bool Editing => Pane is Pane.Settings;
 
+    /// <summary>Drawn again: the window may want another height.</summary>
+    public event Action? Redrawn;
+
+    /// <summary>
+    /// How tall the panel would like to be: everything shown without scrolling,
+    /// and never shorter than the rail, as on the Mac. The window takes this,
+    /// capped to its screen, and the page scrolls for whatever does not fit.
+    /// Each part is measured on its own, never the window, so the number does
+    /// not depend on the height it is asking for.
+    /// </summary>
+    public double WantedHeight()
+    {
+        if (_header == null || _page == null || _footer == null) return 200;
+        var width = PanelWidth - RailWidth - BorderThickness.Left - BorderThickness.Right;
+        double Tall(Control part)
+        {
+            part.Measure(new Size(width, double.PositiveInfinity));
+            return part.DesiredSize.Height;
+        }
+
+        var rail = 150 + 48 * _model.RailOrder().Count;
+        var parts = Tall(_header) + Math.Max(Tall(_page), 60) + Tall(_footer);
+        return Math.Ceiling(Math.Max(parts, rail) + BorderThickness.Top + BorderThickness.Bottom);
+    }
+
     public void Rebuild()
     {
         // An account that went away takes its page with it.
@@ -101,14 +129,21 @@ public sealed class PanelView : Border
         }
         else
         {
-            var offset = _scroller?.Offset ?? default;
-            _scroller = new ScrollViewer
+            // One scroll view for the panel's whole life: a new one on every
+            // redraw (every half minute) would jump back to the top each time.
+            if (_scroller == null)
             {
-                Content = page,
-                HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
-                VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Hidden,
-                Offset = offset,
-            };
+                _scroller = new ScrollViewer
+                {
+                    HorizontalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Disabled,
+                    VerticalScrollBarVisibility = Avalonia.Controls.Primitives.ScrollBarVisibility.Auto,
+                };
+            }
+            else if (_scroller.Parent is Panel old)
+            {
+                old.Children.Remove(_scroller);
+            }
+            _scroller.Content = page;
             Grid.SetRow(_scroller, 1);
             right.Children.Add(_scroller);
         }
@@ -117,12 +152,16 @@ public sealed class PanelView : Border
         footer.Margin = new Thickness(14, 12);
         Grid.SetRow(footer, 2);
         right.Children.Add(footer);
+        _header = header;
+        _page = page;
+        _footer = footer;
 
         var body = new Grid { ColumnDefinitions = new ColumnDefinitions($"{RailWidth},*") };
         body.Children.Add(Rail());
         Grid.SetColumn(right, 1);
         body.Children.Add(right);
         Child = body;
+        Redrawn?.Invoke();
     }
 
     private ProviderUsage? Usage(string key) => _model.Snapshot?.Usages.FirstOrDefault(u => u.AccountKey == key);

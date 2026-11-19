@@ -59,8 +59,9 @@ check "doctor sees compositing" "$("$U" doctor | grep compositing)" 'yes'
 start
 id=$(window); read -r x y w h <<< "$(geometry "$id")"
 check "a window with an alpha channel" "$(xwininfo -id "$id" | grep Depth)" '32'
-# The window's last pixel is in the shadow's room, outside the panel: fully see-through.
-check "see-through outside the panel" "$(xwd -id "$id" -silent | tail -c 4 | od -An -tx1 | tr -d ' ')" '^00000000$'
+# The window's last pixel is in the shadow's room, outside the panel: see-through
+# but for the faint end of the shadow (an alpha well under 16 of 255).
+check "see-through outside the panel" "$(xwd -id "$id" -silent | tail -c 4 | od -An -tx1 | tr -d ' ')" '^0000000[0-9a-f]$'
 check "wide enough for the panel and its shadow" "$w" '^484$'
 check "8 from the right edge" "$(( 1600 - (x + w - 30) ))" '^8$'
 check "8 from the top" "$(( y + 22 ))" '^8$'
