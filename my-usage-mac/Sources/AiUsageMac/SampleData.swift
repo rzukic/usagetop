@@ -79,6 +79,40 @@ enum SampleData {
         return Result(snapshot: snapshot, series: series, combined: combined)
     }
 
+    /// The sample as the server would send it from `/api/state`, for the other
+    /// apps' screenshots (`--export-sample <file>`): they draw the same accounts
+    /// from it, shifting its times forward to their own now.
+    static func wire(now: Date) -> Data {
+        let sample = make(now: now)
+        func ms(_ date: Date) -> Double { (date.timeIntervalSince1970 * 1000).rounded() }
+        func points(_ list: [SeriesPoint]) -> [[Double]] { list.map { [ms($0.date), $0.value] } }
+        let usages: [[String: Any]] = sample.snapshot.usages.map { usage in
+            var entry: [String: Any] = [
+                "id": usage.providerKey, "account": usage.account, "state": usage.state,
+                "fetchedAt": usage.fetchedAt ?? WireDate.format(now), "stale": usage.stale, "transient": false,
+                "windows": usage.windows.map { window -> [String: Any] in
+                    var w: [String: Any] = ["label": window.label, "countsTowardCombined": window.countsTowardCombined]
+                    if let percent = window.remainingPercent { w["remainingPercent"] = percent }
+                    if let reset = window.resetAt { w["resetAt"] = reset }
+                    if let detail = window.detail { w["detail"] = detail }
+                    return w
+                },
+            ]
+            if let name = usage.accountName { entry["accountName"] = name }
+            if let plan = usage.plan { entry["plan"] = plan }
+            if let message = usage.message { entry["message"] = message }
+            return entry
+        }
+        var snapshot: [String: Any] = ["fetchedAt": sample.snapshot.fetchedAt ?? WireDate.format(now), "usages": usages]
+        if let combined = sample.snapshot.combinedPercent { snapshot["combinedPercent"] = combined }
+        if let providers = sample.snapshot.combinedProviders { snapshot["combinedProviders"] = providers }
+        let state: [String: Any] = [
+            "serverTime": ms(now), "snapshot": snapshot,
+            "combined": points(sample.combined), "series": sample.series.mapValues(points),
+        ]
+        return (try? JSONSerialization.data(withJSONObject: state, options: [.sortedKeys])) ?? Data()
+    }
+
     /// Walks each cycle from its refill to its end, spending more in working
     /// hours than at night, so the line is a believable sawtooth.
     private static func history(_ spec: Spec, now: Date, reset: Date?, using generator: inout SeededGenerator) -> [SeriesPoint] {

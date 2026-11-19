@@ -12,6 +12,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         ProcessInfo.processInfo.disableAutomaticTermination("usagetop lives in the menu bar")
         ProcessInfo.processInfo.disableSuddenTermination()
 
+        // `--export-sample <file>`: the sample accounts and their history, as the
+        // server sends them, for the other apps' screenshots.
+        if let index = CommandLine.arguments.firstIndex(of: "--export-sample"), index + 1 < CommandLine.arguments.count {
+            let data = MainActor.assumeIsolated { SampleData.wire(now: Date()) }
+            try? data.write(to: URL(fileURLWithPath: CommandLine.arguments[index + 1]))
+            exit(data.isEmpty ? 1 : 0)
+        }
+
         // `--local-selftest`: exercises the no-server mode against a throwaway
         // account store, prints what it saw, and quits.
         if CommandLine.arguments.contains("--local-selftest") {
