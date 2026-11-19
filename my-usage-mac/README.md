@@ -11,13 +11,17 @@ the sign-ins.
 ## Build
 
 ```
-./build.sh              # release
-./build.sh debug        # debug
+./build.sh              # release, universal (Apple silicon and Intel)
+./build.sh debug        # debug, for this Mac only
 ./build.sh release run  # build, then launch
 ```
 
-`build.sh` wraps the SwiftPM executable in `AiUsage.app` with `LSUIElement` set,
-so it lives in the menu bar only. Needs macOS 26 or newer and Xcode 26.
+`build.sh` wraps the SwiftPM executable in `usagetop.app` with `LSUIElement` set,
+so it lives in the menu bar only. Needs macOS 26 or newer and Xcode 26. The
+app takes the project's version, `<Version>` in
+`../my-usage-win/src/AiUsage/AiUsage.csproj`; `VERSION=1.2.3 ./build.sh` sets
+another. It is signed ad hoc: there is no Developer ID yet, so a copy that was
+downloaded rather than built has to be allowed once (see the root `README.md`).
 
 ## What it shows
 
@@ -45,7 +49,7 @@ something. A bar is muted blue while healthy, amber under 40%, red under 15%.
 
 ## Sample data
 
-`open AiUsage.app --args --demo` shows believable sample readings instead of the
+`open usagetop.app --args --demo` shows believable sample readings instead of the
 server's; before a server is set, the panel offers the same. `--open` opens the
 panel at launch. `--demo --snapshot <folder>` draws every page, dark and light,
 to PNGs and quits (glass is stood in for by a flat backdrop there).

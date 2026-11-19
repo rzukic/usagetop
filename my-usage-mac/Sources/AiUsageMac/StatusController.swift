@@ -544,7 +544,7 @@ enum MenuBarLimits {
         let image = NSImage(size: NSSize(width: max(total, 1), height: height), flipped: true) { _ in
             let alpha: CGFloat = stale ? 0.55 : 1
             var x: CGFloat = 0
-            for (markImage, label, figure, level, width) in laidOut {
+            for (markImage, label, figure, _, width) in laidOut {
                 // respectFlipped: this canvas is flipped, and the marks are not symmetric.
                 markImage?.draw(in: NSRect(x: x, y: (height - mark) / 2, width: mark, height: mark),
                                 from: .zero, operation: .sourceOver, fraction: alpha,
