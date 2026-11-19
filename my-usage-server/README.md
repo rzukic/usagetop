@@ -134,13 +134,34 @@ them being read off a backup and nothing more.
 
 ### Docker and Coolify
 
-`my-usage-server/Dockerfile` builds from the repository root, because the
-server shares the Windows app's core:
+Every release is also an image, for `linux/amd64` and `linux/arm64`:
+`ghcr.io/rzukic/usagetop-server`, tagged with the version (`:1.2.1`) and
+`:latest`.
+
+```
+docker run -d -p 8377:8377 -v usagetop-data:/data \
+  -e AIUSAGE_SECRET=… -e AIUSAGE_API_TOKEN=… ghcr.io/rzukic/usagetop-server
+```
+
+It listens on port 8377, runs as a non-root user and keeps everything in
+`/data`: mount a volume there, or the sign-ins and the history go with the
+container. Both variables can be left out: the image then makes a key and a
+token of its own in the volume, and `docker exec <container> dotnet
+aiusage-server.dll token` prints the token. To update, pull the newer image
+and start the container again on the same volume.
+
+To build it yourself: `my-usage-server/Dockerfile` builds from the repository
+root, because the server shares the Windows app's core.
 
 ```
 docker build -f my-usage-server/Dockerfile -t aiusage-server .
 docker run -d -p 8377:8377 -v aiusage-data:/data   -e AIUSAGE_SECRET=… -e AIUSAGE_API_TOKEN=… aiusage-server
 ```
+
+The build stage runs on the building machine's own architecture and publishes
+for the image's, so `docker buildx build --platform linux/amd64,linux/arm64`
+makes both without compiling under emulation; `release-mac.sh` at the
+repository root does that for a release.
 
 On Coolify: a Dockerfile application with base directory `/`, Dockerfile
 `/my-usage-server/Dockerfile`, port 8377, a persistent volume on `/data`, and
@@ -194,7 +215,9 @@ WantedBy=multi-user.target
 
 Put `AIUSAGE_SECRET=…` in `/etc/aiusage.env`, readable by root only.
 
-The Linux build publishes, but has only been run on Windows so far.
+Both archives have been started on Ubuntu 24.04 and Debian 12. The one thing
+they take from the system is OpenSSL (`libssl`), which any ordinary install
+has; a bare container image may not (`apt-get install libssl3`).
 
 ## How it polls
 
