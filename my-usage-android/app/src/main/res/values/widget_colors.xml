@@ -2,8 +2,8 @@
 <!-- The widget follows the system's light or dark setting; the app itself stays dark.
      Light is the default here, dark lives in values-night. A launcher cannot blur what
      is behind a widget, so the panel is nearly opaque: the text needs the floor.
-     The ring colours are not here: rings are images drawn for both themes at once,
-     see WidgetArt. -->
+     Rings and the line are shapes the ImageView colours from here, so they follow
+     the setting too (see WidgetArt). -->
 <resources>
     <color name="widget_panel">#E6FAFAFC</color>
     <color name="widget_hairline">#0F000000</color>
@@ -17,4 +17,10 @@
     <color name="widget_critical">#FFB8322A</color>
     <color name="widget_action">#FF3F6CAD</color>
     <color name="widget_stale_fill">#2EE0A33C</color>
+    <!-- Rings and the combined line are shapes coloured from here (see WidgetArt). -->
+    <color name="widget_track">#21000000</color>
+    <color name="widget_ring_normal">#FF5A86C2</color>
+    <color name="widget_ring_warning">#FFC98A20</color>
+    <color name="widget_ring_critical">#FFCC4B40</color>
+    <color name="widget_line">#FF4F7DBE</color>
 </resources>

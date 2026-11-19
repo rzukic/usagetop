@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- "2h old": shown only once a reading is stale, so it is never noise. -->
+    <style name="WidgetStaleChip">
+        <item name="android:layout_width">wrap_content</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:background">@drawable/widget_stale_chip</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:paddingStart">7dp</item>
+        <item name="android:paddingEnd">7dp</item>
+        <item name="android:paddingTop">2dp</item>
+        <item name="android:paddingBottom">2dp</item>
+        <item name="android:textColor">@color/widget_warning</item>
+        <item name="android:textSize">11sp</item>
+        <item name="android:visibility">gone</item>
+    </style>
+</resources>

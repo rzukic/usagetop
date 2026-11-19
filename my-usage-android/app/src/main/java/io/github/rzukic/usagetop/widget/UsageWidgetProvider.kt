@@ -31,6 +31,16 @@ class UsageWidgetProvider : AppWidgetProvider() {
         }
     }
 
+    /** Resized: before Android 12 the size decides which layout it gets, so draw again. */
+    override fun onAppWidgetOptionsChanged(
+        context: Context,
+        appWidgetManager: AppWidgetManager,
+        appWidgetId: Int,
+        newOptions: android.os.Bundle,
+    ) {
+        render(context)
+    }
+
     override fun onDisabled(context: Context) {
         super.onDisabled(context)
         WidgetTicker.cancel(context)
@@ -49,7 +59,7 @@ class UsageWidgetProvider : AppWidgetProvider() {
             if (ids.isEmpty()) return
 
             val snapshot = UsageRepository(context).cached()
-            manager.updateAppWidget(ids, WidgetRenderer.build(context, snapshot))
+            ids.forEach { id -> manager.updateAppWidget(id, WidgetRenderer.build(context, snapshot, manager, id)) }
             manager.notifyAppWidgetViewDataChanged(ids, R.id.widget_list)
             WidgetTicker.schedule(context)
         }

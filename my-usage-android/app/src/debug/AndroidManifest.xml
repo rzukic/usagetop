@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only: a screen that draws the widget at every size, light and dark,
+     without placing it on a home screen. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <activity
+            android:name=".widget.WidgetPreviewActivity"
+            android:exported="true"
+            android:theme="@style/Theme.AiUsage" />
+    </application>
+</manifest>

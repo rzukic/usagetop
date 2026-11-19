@@ -6,7 +6,7 @@ import android.widget.RemoteViews
 import android.widget.RemoteViewsService
 import io.github.rzukic.usagetop.data.UsageRepository
 
-/** Backs the widget's scrolling list. */
+/** Backs the 4x4 widget's list of accounts. */
 class UsageWidgetService : RemoteViewsService() {
     override fun onGetViewFactory(intent: Intent): RemoteViewsFactory =
         UsageViewsFactory(applicationContext)
@@ -29,7 +29,7 @@ private class UsageViewsFactory(private val context: Context) :
 
     override fun getCount(): Int = entries.size
 
-    /** Two layouts: a bucket heading and a window row. */
+    /** Two layouts: an account with its ring, and one that needs a sign-in. */
     override fun getViewTypeCount(): Int = 2
 
     override fun getItemId(position: Int): Long = position.toLong()
@@ -39,8 +39,9 @@ private class UsageViewsFactory(private val context: Context) :
     override fun getLoadingView(): RemoteViews? = null
 
     override fun getViewAt(position: Int): RemoteViews = when (val entry = entries.getOrNull(position)) {
-        is WidgetRenderer.Entry.Group -> WidgetRenderer.groupViews(context, entry.label)
-        is WidgetRenderer.Entry.Row -> WidgetRenderer.rowViews(context, entry.usage, entry.window)
-        null -> WidgetRenderer.groupViews(context, "")
+        is WidgetRenderer.Entry.Line -> WidgetRenderer.rowViews(context, entry.line, compact = false)
+        is WidgetRenderer.Entry.Out -> WidgetRenderer.outViews(context, entry.out)
+        // The list shrank between getCount and here; an empty sign-in row is harmless.
+        null -> RemoteViews(context.packageName, io.github.rzukic.usagetop.R.layout.widget_account_out)
     }
 }

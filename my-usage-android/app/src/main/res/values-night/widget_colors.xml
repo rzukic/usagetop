@@ -10,4 +10,9 @@
     <color name="widget_critical">#FFEE6A5F</color>
     <color name="widget_action">#FF9CC0F0</color>
     <color name="widget_stale_fill">#29E0A33C</color>
+    <color name="widget_track">#24FFFFFF</color>
+    <color name="widget_ring_normal">#FF7FA6DD</color>
+    <color name="widget_ring_warning">#FFE8AE4A</color>
+    <color name="widget_ring_critical">#FFEA6A5E</color>
+    <color name="widget_line">#FF7FA6DD</color>
 </resources>
