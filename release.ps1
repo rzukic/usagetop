@@ -49,7 +49,7 @@ $semver = '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(-((0|[1-9]\d*|\d*[a-zA-Z-][
 if ($Version -cnotmatch $semver) { throw "'$Version' is not a version like 1.2.0 or 1.2.1-beta.1." }
 $tag = "v$Version"
 $beta = $Version.Contains('-')
-$pre = if ($beta) { @('--pre') } else { @() }
+[string[]]$pre = if ($beta) { '--pre' } else { @() }
 Write-Host "usagetop $Version$(if ($beta) { ' (pre-release)' })"
 
 # What is released is exactly a commit that is on GitHub: nothing uncommitted,
@@ -105,7 +105,7 @@ try {
     }
 
     Invoke-Step 'Notes' {
-        $filter = if ($beta) { @() } else { @('--exclude-pre-releases') }
+        [string[]]$filter = if ($beta) { @() } else { '--exclude-pre-releases' }
         $previous = gh release list -R $repo --exclude-drafts @filter --limit 1 --json tagName --jq '.[0].tagName // empty'
         $fields = @('-f', "tag_name=$tag")
         if ($previous) { $fields += @('-f', "previous_tag_name=$previous") }
