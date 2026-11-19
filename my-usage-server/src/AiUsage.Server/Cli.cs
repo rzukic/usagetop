@@ -18,7 +18,7 @@ public static class Cli
         aiusage-server                     run the server
         aiusage-server status              what every provider last reported
         aiusage-server refresh             ask every provider now
-        aiusage-server signin <provider>   sign in to claude, chatgpt or muse
+        aiusage-server signin <provider>   sign in to claude, chatgpt, muse or antigravity
         aiusage-server key <provider>      store an API key for mistral or kimi
         aiusage-server signout <provider>  forget a provider's credentials
         aiusage-server token               print the token clients must send

@@ -97,6 +97,7 @@ class MainActivity : AppCompatActivity() {
         binding.claudeSignIn.setOnClickListener { signIn(OAuthConfig.CLAUDE.providerId) }
         binding.chatgptSignIn.setOnClickListener { signIn(OAuthConfig.CHATGPT.providerId) }
         binding.museSignIn.setOnClickListener { signIn(ProviderId.MUSE) }
+        binding.antigravitySignIn.setOnClickListener { signIn(OAuthConfig.ANTIGRAVITY.providerId) }
         binding.mistralGetKey.setOnClickListener { openUrl(MISTRAL_KEYS) }
         binding.kimiGetKey.setOnClickListener { openUrl(KIMI_KEYS) }
 
@@ -473,6 +474,7 @@ class MainActivity : AppCompatActivity() {
         binding.claudeSignIn.isEnabled = !busy
         binding.chatgptSignIn.isEnabled = !busy
         binding.museSignIn.isEnabled = !busy
+        binding.antigravitySignIn.isEnabled = !busy
         binding.btnRefresh.isEnabled = !busy
         binding.btnSave.isEnabled = !busy
     }
@@ -561,6 +563,7 @@ class MainActivity : AppCompatActivity() {
         binding.mistralStatus.text = describe(snapshot, ProviderId.MISTRAL)
         binding.kimiStatus.text = describe(snapshot, ProviderId.KIMI)
         binding.museStatus.text = describe(snapshot, ProviderId.MUSE)
+        binding.antigravityStatus.text = describe(snapshot, ProviderId.ANTIGRAVITY)
     }
 
     private fun describe(snapshot: Snapshot?, id: ProviderId): String {

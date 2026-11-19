@@ -54,7 +54,7 @@ public class AccountCredentialTests
         credentials.AddAccount(ProviderId.Kimi, null);
 
         Assert.Equal(
-            ["claude", "claude-2", "chatgpt", "mistral", "kimi", "kimi-3", "muse"],
+            ["claude", "claude-2", "chatgpt", "mistral", "kimi", "kimi-3", "muse", "antigravity"],
             credentials.Accounts().Select(a => a.Key));
         Assert.Equal("Work", credentials.FindAccount(work.Key)!.Name);
     }

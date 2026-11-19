@@ -7,6 +7,7 @@ public enum ProviderId
     Mistral,
     Kimi,
     Muse,
+    Antigravity,
 }
 
 public enum UsageState
@@ -26,9 +27,10 @@ public static class ProviderCatalog
     public static readonly ProviderInfo Mistral = new(ProviderId.Mistral, "mistral", "Mistral", "M");
     public static readonly ProviderInfo Kimi = new(ProviderId.Kimi, "kimi", "Kimi", "K");
     public static readonly ProviderInfo Muse = new(ProviderId.Muse, "muse", "Muse", "U");
+    public static readonly ProviderInfo Antigravity = new(ProviderId.Antigravity, "antigravity", "Antigravity", "A");
 
     public static readonly IReadOnlyList<ProviderInfo> All =
-        [Claude, ChatGpt, Mistral, Kimi, Muse];
+        [Claude, ChatGpt, Mistral, Kimi, Muse, Antigravity];
 
     public static ProviderInfo Of(ProviderId id) => All.First(p => p.Id == id);
 

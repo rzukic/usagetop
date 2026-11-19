@@ -76,6 +76,21 @@ public sealed class SignInService(Credentials credentials, Poller poller, ILogge
                     + "does not load. Paste that page's full address.");
             }
 
+            case ProviderId.Antigravity:
+            {
+                // Google takes any loopback port for an installed app. A random high
+                // one, so the code is unlikely to land on something that is listening.
+                var config = OAuthConfig.Antigravity;
+                var port = Random.Shared.Next(49152, 65535);
+                var pending = Begin(account, view, config, $"http://localhost:{port}{config.CallbackPath}");
+                return new SignInStep(
+                    "redirect",
+                    AuthorizeUrl(pending),
+                    null,
+                    "Open the link and sign in with the Google account that has the plan. The browser "
+                    + "then lands on a localhost page that does not load. Paste that page's full address.");
+            }
+
             case ProviderId.Muse:
             {
                 var started = await DeviceLogin.StartAsync(cancellation);

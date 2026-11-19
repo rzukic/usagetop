@@ -84,6 +84,10 @@ public static class ProviderArt
         "-1.13-.464-2.046 0-2.221.63-4.535 1.66-6.088.454-.687.964-1.226 1.533-1.533a2.264 2.264 " +
         "0 0 1 1.088-.285z";
 
+    private const string AntigravityPath =
+        "M21.751 22.607c1.34 1.005 3.35.335 1.508-1.508C17.73 15.74 18.904 1 12.037 1 5.17 1 6.342 15" +
+        ".74.815 21.1c-2.01 2.009.167 2.511 1.507 1.506 5.192-3.517 4.857-9.714 9.715-9.714 4.857 0 4.522 6.197 9.714 9.715z";
+
     private static readonly Dictionary<ProviderId, Geometry> Cache = [];
 
     public static Geometry Logo(ProviderId id)
@@ -96,6 +100,7 @@ public static class ProviderArt
             ProviderId.ChatGpt => ChatGptPath,
             ProviderId.Mistral => MistralPath,
             ProviderId.Kimi => KimiPath,
+            ProviderId.Antigravity => AntigravityPath,
             _ => MusePath,
         });
         geometry.Freeze();

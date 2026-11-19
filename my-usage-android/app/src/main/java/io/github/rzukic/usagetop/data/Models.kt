@@ -7,7 +7,8 @@ enum class ProviderId(val key: String, val displayName: String, val monogram: St
     CHATGPT("chatgpt", "ChatGPT", "G"),
     MISTRAL("mistral", "Mistral", "M"),
     KIMI("kimi", "Kimi", "K"),
-    MUSE("muse", "Muse", "U");
+    MUSE("muse", "Muse", "U"),
+    ANTIGRAVITY("antigravity", "Antigravity", "A");
 
     companion object {
         fun fromKey(key: String): ProviderId? = values().firstOrNull { it.key == key }

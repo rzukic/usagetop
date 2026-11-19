@@ -402,7 +402,7 @@ private struct Onboarding: View {
             VStack(alignment: .leading, spacing: 5) {
                 Text("Connect your usage server")
                     .font(.system(size: 15, weight: .semibold, design: .rounded))
-                Text("It polls Claude, ChatGPT, Mistral, Kimi and Muse, keeps the history and holds the sign-ins. This app just reads it.")
+                Text("It polls Claude, ChatGPT, Mistral, Kimi, Muse and Antigravity, keeps the history and holds the sign-ins. This app just reads it.")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

@@ -160,3 +160,79 @@ public class ProviderHelpersTests
         Assert.Equal(transient, usage.Transient);
     }
 }
+
+public class AntigravityProviderTests
+{
+    private const string Summary =
+        """
+        {
+          "groups": [
+            {"displayName": "Gemini Models", "buckets": [
+              {"bucketId": "gemini-weekly", "window": "weekly", "resetTime": "2026-11-26T14:33:54Z", "remainingFraction": 0.9415697},
+              {"bucketId": "gemini-5h", "window": "5h", "resetTime": "2026-11-19T19:33:54Z", "remainingFraction": 0.79549384}]},
+            {"displayName": "Claude and GPT models", "buckets": [
+              {"bucketId": "3p-weekly", "window": "weekly", "resetTime": "2026-11-26T15:59:58Z", "remainingFraction": 1},
+              {"bucketId": "3p-5h", "window": "5h", "resetTime": "2026-11-19T20:59:58Z", "remainingFraction": 1}]},
+            {"displayName": "Gemini 4 Argon", "buckets": [
+              {"bucketId": "gemini-argon-wtu-weekly", "displayName": "Gemini 4 Argon Weekly Limit", "window": "weekly",
+               "resetTime": "2026-11-26T15:59:58Z", "remainingFraction": 1}]}
+          ]
+        }
+        """;
+
+    private static List<UsageWindow> Windows(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        return AntigravityProvider.Windows(document.RootElement);
+    }
+
+    [Fact]
+    public void Every_group_becomes_windows_and_only_the_gemini_group_counts()
+    {
+        var windows = Windows(Summary);
+
+        Assert.Equal(["7d", "5h", "Claude & GPT 7d", "Claude & GPT 5h", "Gemini 4 Argon 7d"], windows.Select(w => w.Label));
+        Assert.Equal(94.15697f, windows[0].RemainingPercent!.Value, 3);
+        Assert.Equal(DateTimeOffset.Parse("2026-11-26T14:33:54Z"), windows[0].ResetAt);
+        Assert.Equal([true, true, false, false, false], windows.Select(w => w.CountsTowardCombined));
+    }
+
+    [Fact]
+    public void The_combined_figure_takes_the_gemini_week()
+    {
+        var usage = new ProviderUsage { Id = ProviderId.Antigravity, Windows = Windows(Summary) };
+
+        var counted = Assert.Single(CombinedUsage.LongWindows(usage));
+        Assert.Equal("7d", counted.Label);
+    }
+
+    [Fact]
+    public void A_switched_off_bucket_or_one_without_a_figure_is_skipped()
+    {
+        var windows = Windows(
+            """
+            {"groups": [{"displayName": "Gemini Models", "buckets": [
+              {"window": "weekly", "remainingFraction": 0.5, "disabled": true},
+              {"window": "5h"},
+              {"window": "weekly", "remainingFraction": 0}]}]}
+            """);
+
+        var week = Assert.Single(windows);
+        Assert.Equal(0f, week.RemainingPercent);
+    }
+
+    [Fact]
+    public void The_plan_is_the_paid_tier_and_a_consumer_has_no_project_of_its_own()
+    {
+        using var consumer = JsonDocument.Parse(
+            """
+            {"currentTier": {"id": "free-tier", "name": "Antigravity"}, "cloudaicompanionProject": "some-project",
+             "gcpManaged": false, "paidTier": {"id": "g1-pro-tier", "name": "Google AI Pro"}}
+            """);
+        Assert.Equal(("Google AI Pro", null), AntigravityProvider.Account(consumer.RootElement));
+
+        using var managed = JsonDocument.Parse(
+            """{"currentTier": {"name": "Standard"}, "cloudaicompanionProject": "work-project", "gcpManaged": true}""");
+        Assert.Equal(("Standard", "work-project"), AntigravityProvider.Account(managed.RootElement));
+    }
+}

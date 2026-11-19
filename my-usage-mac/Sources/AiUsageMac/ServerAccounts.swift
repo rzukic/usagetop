@@ -31,7 +31,7 @@ final class ServerAccounts {
     private(set) var busy: Set<String> = []
 
     /// The providers an account can be added for, in the rail's order.
-    static let providers = ["claude", "chatgpt", "mistral", "kimi", "muse"]
+    static let providers = ["claude", "chatgpt", "mistral", "kimi", "muse", "antigravity"]
 
     private weak var app: AppModel?
     private var polls: [String: Task<Void, Never>] = [:]

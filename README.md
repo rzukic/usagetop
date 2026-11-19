@@ -2,7 +2,8 @@
 
 # usagetop
 
-How much of each AI subscription is left: Claude, ChatGPT, Mistral, Kimi and Muse.
+How much of each AI subscription is left: Claude, ChatGPT, Mistral, Kimi, Muse
+and Google AI (Antigravity).
 Every limit with its pace and a forecast of when it runs out, in a Windows tray
 app, a macOS menu bar app, an Android app and widget, and the server's web dashboard.
 
@@ -138,10 +139,12 @@ too.
 ## License
 
 MIT, see `LICENSE`. The Windows app bundles the Inter typeface, under the SIL
-Open Font License (`my-usage-win/src/AiUsage/Assets/Fonts/OFL.txt`).
+Open Font License (`my-usage-win/src/AiUsage/Assets/Fonts/OFL.txt`). The
+provider marks are from simple-icons (CC0), Antigravity's from LobeHub's icon set
+(MIT).
 
 This project is not affiliated with or endorsed by Anthropic, OpenAI, Mistral AI,
-Moonshot AI or Meta. Their names and logos are trademarks of their owners and are
+Moonshot AI, Meta or Google. Their names and logos are trademarks of their owners and are
 shown only to tell the accounts apart. The apps read usage through the same
 endpoints the providers' own apps and CLIs use, which are not public APIs and can
 change or stop working without notice.

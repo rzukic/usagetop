@@ -185,6 +185,7 @@ struct Provider {
         "mistral": "Mistral",
         "kimi": "Kimi",
         "muse": "Muse",
+        "antigravity": "Antigravity",
     ]
 
     var displayName: String { Provider.names[key] ?? key.capitalized }

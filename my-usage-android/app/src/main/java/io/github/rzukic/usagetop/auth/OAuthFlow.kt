@@ -66,7 +66,7 @@ object OAuthFlow {
                 "redirect_uri" to redirectUri,
                 "client_id" to config.clientId,
                 "code_verifier" to verifier,
-            )
+            ) + secret(config)
             Http.postForm(config.tokenUrl, JSON_HEADERS, body)
         }
 
@@ -96,7 +96,7 @@ object OAuthFlow {
                     "refresh_token" to refreshToken,
                     "client_id" to config.clientId,
                     "scope" to config.scopes,
-                )
+                ) + secret(config)
                 Http.postForm(config.tokenUrl, JSON_HEADERS, body)
             }
 
@@ -146,6 +146,9 @@ object OAuthFlow {
         }
         return null
     }
+
+    private fun secret(config: OAuthConfig): String =
+        config.clientSecret?.let { "&client_secret=${encode(it)}" }.orEmpty()
 
     private fun form(vararg pairs: Pair<String, String>): String =
         pairs.joinToString("&") { (name, value) -> "$name=${encode(value)}" }

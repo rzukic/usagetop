@@ -96,7 +96,7 @@ final class AppModel {
     /// The order is the one set in Settings; accounts it does not mention
     /// follow, by provider.
     var railOrder: [ProviderUsage] {
-        let rank = ["claude", "chatgpt", "mistral", "kimi", "muse"]
+        let rank = ["claude", "chatgpt", "mistral", "kimi", "muse", "antigravity"]
         let chosen = settings.accountOrder
         return (snapshot?.usages ?? []).sorted { lhs, rhs in
             let lc = chosen.firstIndex(of: lhs.account) ?? Int.max

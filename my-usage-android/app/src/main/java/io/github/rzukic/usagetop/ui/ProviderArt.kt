@@ -14,5 +14,6 @@ object ProviderArt {
         ProviderId.MISTRAL -> R.drawable.ic_logo_mistral
         ProviderId.KIMI -> R.drawable.ic_logo_kimi
         ProviderId.MUSE -> R.drawable.ic_logo_muse
+        ProviderId.ANTIGRAVITY -> R.drawable.ic_logo_antigravity
     }
 }

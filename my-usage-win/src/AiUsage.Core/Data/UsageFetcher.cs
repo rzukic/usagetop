@@ -17,6 +17,7 @@ public sealed class UsageFetcher
         new MistralProvider(),
         new KimiProvider(),
         new MuseProvider(),
+        new AntigravityProvider(),
     ];
 
     private readonly IReadOnlyList<IUsageProvider> _providers;

@@ -445,12 +445,13 @@ public partial class MainWindow : Window
         header.Children.Add(status);
         stack.Children.Add(header);
 
-        // The two providers with a real browser sign-in, and Muse's device code.
+        // The providers with a real browser sign-in, and Muse's device code.
         if (OAuthConfig.ForProvider(info.Id) is { } config)
         {
             var button = new Button
             {
-                Content = $"Sign in with {info.DisplayName}",
+                // Antigravity's sign-in is the Google account's.
+                Content = info.Id == ProviderId.Antigravity ? "Sign in with Google" : $"Sign in with {info.DisplayName}",
                 Style = (Style)FindResource("PillButton"),
                 Margin = new Thickness(0, 10, 0, 0),
                 HorizontalAlignment = HorizontalAlignment.Stretch,

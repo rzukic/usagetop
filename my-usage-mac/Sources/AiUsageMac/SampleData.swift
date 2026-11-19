@@ -37,6 +37,12 @@ enum SampleData {
             ("mistral", "mistral", nil, "Pro", "OK", nil, [
                 Spec(label: "Vibe", level: 76, resetIn: 12 * d, period: nil),
             ]),
+            ("antigravity", "antigravity", nil, "Google AI Pro", "OK", nil, [
+                Spec(label: "7d", level: 64, resetIn: 5 * d + 3 * h, period: 7 * d),
+                Spec(label: "5h", level: 82, resetIn: 1 * h + 50 * 60, period: 5 * h),
+                Spec(label: "Claude & GPT 7d", level: 100, resetIn: 5 * d + 4 * h, period: 7 * d, counts: false),
+                Spec(label: "Gemini 4 Argon 7d", level: 88, resetIn: 5 * d + 4 * h, period: 7 * d, counts: false),
+            ]),
             ("claude", "claude-2", "Work", "Team", "ERROR", "Signed out — sign in again on the server", []),
         ]
 

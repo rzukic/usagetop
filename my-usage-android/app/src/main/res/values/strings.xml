@@ -10,6 +10,8 @@
     <string name="sign_in_claude">Sign in with Claude</string>
     <string name="sign_in_chatgpt">Sign in with ChatGPT</string>
     <string name="sign_in_muse">Sign in with Muse</string>
+    <string name="sign_in_antigravity">Sign in with Google</string>
+    <string name="antigravity_caption">The Google account with the Google AI plan Antigravity uses.</string>
     <string name="open_key_console">Open API key console</string>
     <string name="signing_in">Waiting for browser…</string>
     <string name="sign_in_failed">Sign-in failed</string>

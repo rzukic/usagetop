@@ -7,6 +7,7 @@ import io.github.rzukic.usagetop.providers.ChatGptProvider
 import io.github.rzukic.usagetop.providers.ClaudeProvider
 import io.github.rzukic.usagetop.providers.KimiProvider
 import io.github.rzukic.usagetop.providers.MistralProvider
+import io.github.rzukic.usagetop.providers.AntigravityProvider
 import io.github.rzukic.usagetop.providers.MuseProvider
 import io.github.rzukic.usagetop.providers.UsageProvider
 import io.github.rzukic.usagetop.providers.networkError
@@ -29,6 +30,7 @@ class UsageRepository(context: Context) {
         MistralProvider(),
         KimiProvider(),
         MuseProvider(),
+        AntigravityProvider(),
     )
 
     /**

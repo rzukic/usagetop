@@ -23,6 +23,11 @@ enum class OAuthConfig(
     val extraAuthParams: Map<String, String> = emptyMap(),
     /** Claude's token endpoint takes JSON, OpenAI's takes form encoding. */
     val jsonTokenRequest: Boolean = false,
+    /**
+     * Sent with every token request when the client has one. Google's installed-app
+     * client has a secret that is not one: it ships inside every copy of Antigravity.
+     */
+    val clientSecret: String? = null,
 ) {
     CLAUDE(
         providerId = ProviderId.CLAUDE,
@@ -51,6 +56,24 @@ enum class OAuthConfig(
             "id_token_add_organizations" to "true",
             "codex_cli_simplified_flow" to "true",
         ),
+    ),
+
+    /**
+     * Antigravity's own Google client. cloud-platform is the narrowest scope the
+     * quota endpoint accepts.
+     */
+    ANTIGRAVITY(
+        providerId = ProviderId.ANTIGRAVITY,
+        authorizeUrl = "https://accounts.google.com/o/oauth2/v2/auth",
+        tokenUrl = "https://oauth2.googleapis.com/token",
+        clientId = "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com",
+        scopes = "https://www.googleapis.com/auth/cloud-platform",
+        callbackPath = "/oauth-callback",
+        fixedPort = null,
+        // A refresh token, and a new one on every sign-in rather than none when
+        // the account has approved this client before.
+        extraAuthParams = mapOf("access_type" to "offline", "prompt" to "consent"),
+        clientSecret = "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", // gitleaks:allow (public: it ships in every Antigravity install)
     );
 
     companion object {

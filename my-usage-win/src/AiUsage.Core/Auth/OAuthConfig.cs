@@ -5,8 +5,11 @@ namespace AiUsage.Auth;
 /// <summary>
 /// OAuth endpoints for the providers that actually have a browser sign-in.
 ///
-/// Both are public clients (no secret) using authorization code + PKCE, and both
-/// accept a loopback redirect, so the app can run its own callback listener.
+/// All use authorization code + PKCE and accept a loopback redirect, so the app
+/// can run its own callback listener. Claude's and OpenAI's are public clients;
+/// Google's installed-app client has a secret that is not one: it ships inside
+/// every copy of Antigravity, as Google's own documentation for installed apps
+/// expects.
 /// Mistral and Moonshot have no OAuth server at all -- they only issue static API
 /// keys, so they are not listed here. Muse has one, but it signs in with a device
 /// code rather than a redirect, so it lives in <see cref="DeviceLogin"/>.
@@ -22,7 +25,9 @@ public sealed record OAuthConfig(
     int? FixedPort,
     IReadOnlyDictionary<string, string>? ExtraAuthParams = null,
     /// <summary>Claude's token endpoint takes JSON, OpenAI's takes form encoding.</summary>
-    bool JsonTokenRequest = false)
+    bool JsonTokenRequest = false,
+    /// <summary>Sent with every token request when the client has one.</summary>
+    string? ClientSecret = null)
 {
     public static readonly OAuthConfig Claude = new(
         ProviderId.Claude,
@@ -52,7 +57,29 @@ public sealed record OAuthConfig(
             ["codex_cli_simplified_flow"] = "true",
         });
 
-    public static readonly IReadOnlyList<OAuthConfig> All = [Claude, ChatGpt];
+    /// <summary>
+    /// Antigravity's own Google client. cloud-platform is the narrowest scope the
+    /// quota endpoint accepts; a token with it can also call Google Cloud APIs as
+    /// the account, which is why the server keeps its tokens sealed.
+    /// </summary>
+    public static readonly OAuthConfig Antigravity = new(
+        ProviderId.Antigravity,
+        "https://accounts.google.com/o/oauth2/v2/auth",
+        "https://oauth2.googleapis.com/token",
+        "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com",
+        "https://www.googleapis.com/auth/cloud-platform",
+        "/oauth-callback",
+        null,
+        new Dictionary<string, string>
+        {
+            // A refresh token, and a new one on every sign-in rather than none
+            // when the account has approved this client before.
+            ["access_type"] = "offline",
+            ["prompt"] = "consent",
+        },
+        ClientSecret: "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"); // gitleaks:allow (public: it ships in every Antigravity install)
+
+    public static readonly IReadOnlyList<OAuthConfig> All = [Claude, ChatGpt, Antigravity];
 
     public static OAuthConfig? ForProvider(ProviderId id) => All.FirstOrDefault(c => c.ProviderId == id);
 }

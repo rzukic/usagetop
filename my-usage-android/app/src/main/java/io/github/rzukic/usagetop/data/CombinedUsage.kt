@@ -19,7 +19,8 @@ object CombinedUsage {
     /**
      * The windows that count as a provider's long limit: the tier that resets
      * furthest away. Claude and ChatGPT contribute their 7-day window, Kimi its
-     * monthly one, Mistral its Vibe allowance, Muse its weekly one.
+     * monthly one, Mistral its Vibe allowance, Muse its weekly one, Antigravity its
+     * Gemini group's weekly one.
      *
      * Windows that do not count toward the combined figure are left out: Claude's
      * Fable window is a slice of its 7-day one, and Mistral's API credit cannot be

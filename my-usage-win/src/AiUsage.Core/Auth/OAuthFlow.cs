@@ -97,7 +97,8 @@ public static class OAuthFlow
                 ("code", code),
                 ("redirect_uri", redirectUri),
                 ("client_id", config.ClientId),
-                ("code_verifier", verifier));
+                ("code_verifier", verifier))
+                + Secret(config);
             response = await Http.PostFormAsync(config.TokenUrl, JsonHeaders, body, cancellation);
         }
 
@@ -138,7 +139,8 @@ public static class OAuthFlow
                     ("grant_type", "refresh_token"),
                     ("refresh_token", refreshToken),
                     ("client_id", config.ClientId),
-                    ("scope", config.Scopes));
+                    ("scope", config.Scopes))
+                    + Secret(config);
                 response = await Http.PostFormAsync(config.TokenUrl, JsonHeaders, body, cancellation);
             }
 
@@ -229,6 +231,9 @@ public static class OAuthFlow
                 return null;
         }
     }
+
+    private static string Secret(OAuthConfig config) =>
+        config.ClientSecret is { } secret ? $"&client_secret={Encode(secret)}" : "";
 
     private static string Form(params (string Name, string Value)[] pairs) =>
         string.Join("&", pairs.Select(p => $"{p.Name}={Encode(p.Value)}"));

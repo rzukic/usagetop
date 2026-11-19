@@ -10,6 +10,7 @@ const PROVIDERS = [
   { key: 'mistral', name: 'Mistral', kind: 'key' },
   { key: 'kimi', name: 'Kimi', kind: 'key' },
   { key: 'muse', name: 'Muse', kind: 'signin' },
+  { key: 'antigravity', name: 'Antigravity', kind: 'signin' },
 ];
 
 const TOKEN_KEY = 'aiusage-token';

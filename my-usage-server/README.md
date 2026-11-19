@@ -25,6 +25,7 @@ these commands talk to it rather than to its files.
 dotnet run --project src/AiUsage.Server -- key mistral       # paste the API key
 dotnet run --project src/AiUsage.Server -- key kimi
 dotnet run --project src/AiUsage.Server -- signin muse       # device code
+dotnet run --project src/AiUsage.Server -- signin antigravity # paste the address the browser lands on
 dotnet run --project src/AiUsage.Server -- signin claude     # paste the code the page shows
 dotnet run --project src/AiUsage.Server -- signin chatgpt    # paste the address the browser lands on
 dotnet run --project src/AiUsage.Server -- status
@@ -35,7 +36,7 @@ dotnet run --project src/AiUsage.Server -- status
 | *(none)* or `run` | Run the server |
 | `status` | What every provider last reported |
 | `refresh` | Ask every provider now (at most once every 30 seconds) |
-| `signin <provider>` | Sign in to `claude`, `chatgpt` or `muse` |
+| `signin <provider>` | Sign in to `claude`, `chatgpt`, `muse` or `antigravity` |
 | `key <provider>` | Store an API key for `mistral` or `kimi` |
 | `signout <provider>` | Forget a provider's credentials |
 | `token` | Print the token clients must send |
@@ -92,6 +93,21 @@ token are static and safe to use in both places.
 
 The Claude sign-in asks for the `user:profile` scope only, which is all the
 usage endpoint needs. The token it stores cannot run models or create API keys.
+
+### Antigravity
+
+A Google AI plan (Pro, Ultra) is read the way the Antigravity CLI's `/quota`
+reads it: every model group's weekly and five-hour limits, "Gemini Models",
+"Claude and GPT models" and, on Pro, Gemini Argon's own weekly one. The Gemini
+group's week is the plan's main allowance and the only one in the combined
+figure; the others show on the account's card.
+
+The sign-in is the Google account's, through Antigravity's own OAuth client.
+Google's refresh tokens are not single-use, so this one sits beside the CLI's
+without either signing the other out. It needs the `cloud-platform` scope, the
+narrowest the quota endpoint accepts, which also lets the token call Google
+Cloud APIs as the account; keep `AIUSAGE_SECRET` set. The endpoint only answers
+a client that names itself as Antigravity, so the server does.
 
 ## Settings
 
