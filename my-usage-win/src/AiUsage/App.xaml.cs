@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows;
@@ -38,8 +40,11 @@ public partial class App : Application
     private MainWindow? _main;
     private DispatcherTimer? _timer;
 
-    public static UsageRepository Repository { get; } =
-        new(new Credentials(AppPaths.Credentials, new DpapiSealer()));
+    private static UsageRepository? _repository;
+
+    /// <summary>Made on first use, so sample data can take its place before anything reads the user's.</summary>
+    public static UsageRepository Repository =>
+        _repository ??= new(new Credentials(AppPaths.Credentials, new DpapiSealer()));
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -50,7 +55,24 @@ public partial class App : Application
         {
             try
             {
-                PanelView.Snapshots(e.Args[snapshot + 1]);
+                // `--state <file>`, a server's /api/state answer, draws that in place
+                // of anything of the user's: no credentials, cache, history, saved
+                // look or Settings page. Moved up to now and in US English, it is
+                // what the README's pictures are made from.
+                var state = Array.FindIndex(e.Args, a => a.Equals("--state", StringComparison.OrdinalIgnoreCase));
+                if (state >= 0 && state + 1 < e.Args.Length)
+                {
+                    var sample = ServerState.Parse(File.ReadAllText(e.Args[state + 1]))
+                        ?? throw new FormatException("The state has no reading");
+                    _repository = new UsageRepository(
+                        sample.ShiftedBy(DateTimeOffset.UtcNow - sample.ServerTime),
+                        Credentials.InMemory(new DpapiSealer()));
+                    PanelPrefs.UseDefaults();
+                    var english = CultureInfo.GetCultureInfo("en-US");
+                    CultureInfo.CurrentCulture = CultureInfo.CurrentUICulture = english;
+                    CultureInfo.DefaultThreadCurrentCulture = CultureInfo.DefaultThreadCurrentUICulture = english;
+                }
+                PanelView.Snapshots(e.Args[snapshot + 1], settings: state < 0);
             }
             catch (Exception exception)
             {

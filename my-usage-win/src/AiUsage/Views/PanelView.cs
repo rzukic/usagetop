@@ -303,17 +303,15 @@ public sealed partial class PanelView : UserControl
     /// <summary>
     /// Every page drawn to a PNG, for checking the layout without a screen
     /// (`AiUsage.exe --snapshot <folder>`). The backdrop is the window manager's,
-    /// so it is stood in for by the solid panel colour.
+    /// so it is stood in for by the solid panel colour. <paramref name="settings"/>
+    /// false leaves out the one page that shows this PC's own settings.
     /// </summary>
-    public static void Snapshots(string folder)
+    public static void Snapshots(string folder, bool settings = true)
     {
         System.IO.Directory.CreateDirectory(folder);
         var panel = new PanelView();
-        var pages = new List<(string Name, PageKind Page, string? Account)>
-        {
-            ("overview", PageKind.Overview, null),
-            ("settings", PageKind.Settings, null),
-        };
+        var pages = new List<(string Name, PageKind Page, string? Account)> { ("overview", PageKind.Overview, null) };
+        if (settings) pages.Add(("settings", PageKind.Settings, null));
         pages.AddRange(RailOrder().Select(u => (u.AccountKey, PageKind.Account, (string?)u.AccountKey)));
 
         foreach (var (name, page, account) in pages)

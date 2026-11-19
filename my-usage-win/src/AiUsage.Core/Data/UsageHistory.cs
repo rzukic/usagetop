@@ -33,9 +33,20 @@ public sealed class UsageHistory
     private readonly object _gate = new();
     private Dictionary<string, List<UsagePoint>> _series;
 
+    /// <summary>False for a history that only shows a state it was given.</summary>
+    private readonly bool _stored = true;
+
     public UsageHistory()
     {
         _series = Load();
+    }
+
+    /// <summary>The history in <paramref name="state"/> and nothing else: the file is neither read nor written.</summary>
+    public UsageHistory(ServerState state)
+    {
+        _stored = false;
+        _series = state.Series.ToDictionary(pair => pair.Key, pair => pair.Value.ToList(), StringComparer.Ordinal);
+        _series[CombinedKey] = state.Combined.ToList();
     }
 
     /// <summary>Appends the snapshot's readings, skipping ones that add no information.</summary>
@@ -233,6 +244,7 @@ public sealed class UsageHistory
 
     private void Save()
     {
+        if (!_stored) return;
         try
         {
             var raw = _series.ToDictionary(

@@ -65,6 +65,28 @@ public class ServerStateTests
     }
 
     [Fact]
+    public void A_sample_moved_to_now_moves_every_moment_and_shows_only_itself()
+    {
+        var state = ServerState.Parse(Answer)!;
+        var offset = TimeSpan.FromDays(9);
+        var moved = state.ShiftedBy(offset);
+
+        Assert.Equal(state.ServerTime + offset, moved.ServerTime);
+        Assert.Equal(state.Snapshot.FetchedAt + offset, moved.Snapshot.FetchedAt);
+        Assert.Equal(state.Snapshot.Usages[0].FetchedAt + offset, moved.Snapshot.Usages[0].FetchedAt);
+        Assert.Equal(state.Snapshot.Usages[0].Windows[0].ResetAt + offset, moved.Snapshot.Usages[0].Windows[0].ResetAt);
+        Assert.Null(moved.Snapshot.Usages[0].Windows[1].ResetAt);
+        Assert.Equal(state.Combined.Select(p => p.At + offset), moved.Combined.Select(p => p.At));
+        Assert.Equal(state.Series["mistral|Vibe"][0].At + offset, moved.Series["mistral|Vibe"][0].At);
+
+        var repository = new UsageRepository(moved, Credentials.InMemory(new AesSealer(new byte[32])));
+        Assert.Same(moved.Snapshot, repository.Cached());
+        Assert.False(repository.UsesServer);
+        Assert.Equal(moved.Combined, repository.History.Combined());
+        Assert.Same(moved.Snapshot, repository.RefreshAsync(force: true).Result);
+    }
+
+    [Fact]
     public void A_server_that_has_not_polled_yet_has_no_state()
     {
         Assert.Null(ServerState.Parse("""{ "serverTime": 1, "snapshot": null, "combined": [], "series": {} }"""));

@@ -78,6 +78,29 @@ public sealed record ServerState(
             series);
     }
 
+    /// <summary>
+    /// The same state with every moment in it moved by <paramref name="offset"/>:
+    /// readings, resets, history. Moved by now minus <see cref="ServerTime"/>, a
+    /// sample saved weeks ago looks as if it had just been taken.
+    /// </summary>
+    public ServerState ShiftedBy(TimeSpan offset)
+    {
+        List<UsagePoint> Move(IReadOnlyList<UsagePoint> points) =>
+            points.Select(p => p with { At = p.At + offset }).ToList();
+
+        var usages = Snapshot.Usages.Select(u => u with
+        {
+            FetchedAt = u.FetchedAt + offset,
+            Windows = u.Windows.Select(w => w with { ResetAt = w.ResetAt + offset }).ToList(),
+        }).ToList();
+
+        return new ServerState(
+            new Snapshot(usages, Snapshot.FetchedAt + offset),
+            ServerTime + offset,
+            Move(Combined),
+            Series.ToDictionary(pair => pair.Key, pair => (IReadOnlyList<UsagePoint>)Move(pair.Value), StringComparer.Ordinal));
+    }
+
     private static List<UsagePoint> Points(JsonNode? node)
     {
         var points = new List<UsagePoint>();

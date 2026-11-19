@@ -14,7 +14,7 @@ public sealed class UsageRepository
 
     private readonly object _gate = new();
     private readonly Credentials _credentials;
-    private readonly UsageHistory _history = new();
+    private readonly UsageHistory _history;
     private readonly UsageFetcher _fetcher = new();
     private Snapshot? _cached;
     private Task<Snapshot>? _inFlight;
@@ -24,10 +24,28 @@ public sealed class UsageRepository
     private string? _serverSynced;
     private DateTimeOffset? _serverSyncedTo;
 
+    /// <summary>Set for a repository that only shows a state it was given.</summary>
+    private readonly bool _fixed;
+
     public UsageRepository(Credentials credentials)
     {
         _credentials = credentials;
+        _history = new UsageHistory();
         _cached = LoadCached();
+    }
+
+    /// <summary>
+    /// A repository that shows <paramref name="state"/> and nothing else: no file
+    /// is read or written and nothing is fetched. `--snapshot --state` draws the
+    /// sample data in the README's pictures with it.
+    /// </summary>
+    public UsageRepository(ServerState state, Credentials credentials)
+    {
+        _credentials = credentials;
+        _history = new UsageHistory(state);
+        _cached = state.Snapshot;
+        _syncedAt = state.ServerTime;
+        _fixed = true;
     }
 
     public Credentials Credentials => _credentials;
@@ -59,6 +77,8 @@ public sealed class UsageRepository
     /// </summary>
     public Task<Snapshot> RefreshAsync(bool force = false, CancellationToken cancellation = default)
     {
+        if (_fixed) return Task.FromResult(_cached!);
+
         lock (_gate)
         {
             if (_inFlight is { } running) return running;

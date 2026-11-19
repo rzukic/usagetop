@@ -13,7 +13,12 @@ namespace AiUsage.Ui;
 /// </summary>
 public sealed class PanelPrefs
 {
-    public static PanelPrefs Current { get; } = Load();
+    private static PanelPrefs? _current;
+
+    public static PanelPrefs Current => _current ??= Load();
+
+    /// <summary>The defaults in place of what is saved, for pictures that should not depend on this PC.</summary>
+    public static void UseDefaults() => _current = new PanelPrefs();
 
     /// <summary>0 is a flat, opaque panel; 1 is the backdrop with only its tint.</summary>
     public double Glass { get; set; } = 1;

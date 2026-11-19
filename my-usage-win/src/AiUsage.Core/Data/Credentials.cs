@@ -23,10 +23,10 @@ public sealed class Credentials
     private const string KeyAccounts = "accounts";
 
     /// <summary>The file and what is in it, shared by every account's view.</summary>
-    private sealed class Vault(string path, ISecretSealer sealer)
+    private sealed class Vault(string? path, ISecretSealer sealer)
     {
         public readonly object Gate = new();
-        public readonly string Path = path;
+        public readonly string? Path = path;
         public readonly ISecretSealer Sealer = sealer;
         public Dictionary<string, string> Values = [];
     }
@@ -39,6 +39,12 @@ public sealed class Credentials
         _vault.Values = Load();
         Slot = "";
     }
+
+    /// <summary>
+    /// Credentials kept in memory only: none are read, and none are written. For
+    /// drawing sample data with no account of the user's anywhere near it.
+    /// </summary>
+    public static Credentials InMemory(ISecretSealer sealer) => new(new Vault(null, sealer), "");
 
     private Credentials(Vault vault, string slot)
     {
@@ -411,7 +417,7 @@ public sealed class Credentials
     {
         try
         {
-            if (!File.Exists(_vault.Path)) return new(StringComparer.Ordinal);
+            if (_vault.Path == null || !File.Exists(_vault.Path)) return new(StringComparer.Ordinal);
             var json = File.ReadAllText(_vault.Path);
             var sealedValues = JsonSerializer.Deserialize<Dictionary<string, string>>(json);
             if (sealedValues == null) return new(StringComparer.Ordinal);
@@ -432,6 +438,7 @@ public sealed class Credentials
 
     private void Save()
     {
+        if (_vault.Path == null) return;
         try
         {
             var sealedValues = _vault.Values.ToDictionary(pair => pair.Key, pair => _vault.Sealer.Seal(pair.Value));
