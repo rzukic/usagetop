@@ -38,7 +38,35 @@ public sealed class DrawdownChart : FrameworkElement
     private static readonly Brush PanelBrush = Frozen(Color.FromRgb(0x14, 0x14, 0x14));
     private static readonly Brush LabelBrush = Frozen(Color.FromRgb(0xF2, 0xF2, 0xF2));
     private static readonly Brush PlateBrush = Frozen(Color.FromArgb(0xE6, 0x16, 0x16, 0x1A));
+    private static readonly Pen PlatePen = FrozenPen(Frozen(Color.FromArgb(0x26, 0xFF, 0xFF, 0xFF)), 1);
+    private static readonly Pen HoverPen = FrozenPen(Frozen(Color.FromArgb(0x66, 0xFF, 0xFF, 0xFF)), 1);
+    private static readonly Pen DotPen = FrozenPen(PanelBrush, 1.5);
 
+    /// <summary>
+    /// How the last render mapped time to x, and the lines it drew: the history up
+    /// to now and the forecast past it. Hovering reads its values back from these.
+    /// </summary>
+    private sealed record Scale(
+        DateTimeOffset From,
+        double Millis,
+        double Width,
+        double Plot,
+        DateTimeOffset Now,
+        IReadOnlyList<UsagePoint> History,
+        IReadOnlyList<UsagePoint> Ahead);
+
+    private readonly DrawingVisual _hover = new();
+    private Scale? _scale;
+    private double? _pointer;
+
+    public DrawdownChart()
+    {
+        AddVisualChild(_hover);
+    }
+
+    protected override int VisualChildrenCount => 1;
+
+    protected override Visual GetVisualChild(int index) => _hover;
 
     public static readonly DependencyProperty PointsProperty = DependencyProperty.Register(
         nameof(Points),
@@ -156,11 +184,105 @@ public sealed class DrawdownChart : FrameworkElement
     {
         var width = ActualWidth;
         var height = ActualHeight;
+        _scale = null;
         if (width <= 0 || height <= 0) return;
+
+        // Transparent, but there: the whole chart takes the pointer, not just its lines.
+        context.DrawRectangle(Brushes.Transparent, null, new Rect(0, 0, width, height));
 
         if (Span is { } span) DrawSpan(context, width, height, span);
         else if (Forecast is { } forecast) DrawWindow(context, width, height, forecast);
         else DrawFitted(context, width, height);
+
+        DrawHover();
+    }
+
+    protected override void OnMouseMove(System.Windows.Input.MouseEventArgs e)
+    {
+        base.OnMouseMove(e);
+        _pointer = e.GetPosition(this).X;
+        DrawHover();
+    }
+
+    protected override void OnMouseLeave(System.Windows.Input.MouseEventArgs e)
+    {
+        base.OnMouseLeave(e);
+        _pointer = null;
+        DrawHover();
+    }
+
+    /// <summary>
+    /// The level under the pointer: a rule down the chart, a dot on the line, and
+    /// the figure with its moment on a plate, kept out of the line's way. Drawn on
+    /// its own layer, so moving the pointer does not redraw the series.
+    /// </summary>
+    private void DrawHover()
+    {
+        using var context = _hover.RenderOpen();
+        if (_pointer is not { } x || _scale is not { } scale) return;
+        if (x < 0 || x > scale.Width) return;
+
+        var at = scale.From + TimeSpan.FromMilliseconds(x / scale.Width * scale.Millis);
+        var ahead = at > scale.Now && scale.Ahead.Count >= 2;
+        var level = ahead ? Level(scale.Ahead, at, null) : Level(scale.History, at, scale.Now);
+        if (level is not { } value) return;
+
+        var y = scale.Plot - Math.Clamp(value, 0f, 100f) / 100.0 * scale.Plot;
+        context.DrawLine(HoverPen, new Point(x, 0), new Point(x, scale.Plot));
+        context.DrawEllipse(ahead ? SecondaryBrush : LineBrush(), DotPen, new Point(x, y), 3.5, 3.5);
+
+        var figure = Formatted(Format.Percent(value), LabelBrush, 11, FontWeights.SemiBold);
+        var moment = Formatted(
+            ahead ? "forecast " + Format.When(at) : Format.When(at),
+            SecondaryBrush,
+            11,
+            FontWeights.Normal);
+        const double pad = 7;
+        const double gap = 5;
+        var box = new Size(
+            figure.Width + gap + moment.Width + pad * 2,
+            Math.Max(figure.Height, moment.Height) + 4);
+
+        // Centred on the pointer but inside the chart, and below the line when it runs high.
+        var left = Math.Clamp(x - box.Width / 2, 0, Math.Max(0, scale.Width - box.Width));
+        var top = value > 70 ? scale.Plot - box.Height - 4 : 2;
+        context.DrawRoundedRectangle(
+            PlateBrush,
+            PlatePen,
+            new Rect(new Point(left, top), box),
+            box.Height / 2,
+            box.Height / 2);
+        context.DrawText(figure, new Point(left + pad, top + (box.Height - figure.Height) / 2));
+        context.DrawText(moment, new Point(left + pad + figure.Width + gap, top + (box.Height - moment.Height) / 2));
+    }
+
+    /// <summary>
+    /// The level the drawn line has at a moment: between two readings, where the
+    /// line between them is. After the last one it holds until <paramref name="until"/>;
+    /// before the first there is nothing to report.
+    /// </summary>
+    private static float? Level(IReadOnlyList<UsagePoint> points, DateTimeOffset at, DateTimeOffset? until)
+    {
+        if (points.Count == 0 || at < points[0].At) return null;
+        if (at >= points[^1].At)
+        {
+            return at == points[^1].At || until is { } end && at <= end ? points[^1].Percent : null;
+        }
+
+        // The last reading at or before the moment, and the one after it.
+        int low = 0, high = points.Count - 1;
+        while (high - low > 1)
+        {
+            var mid = (low + high) / 2;
+            if (points[mid].At <= at) low = mid;
+            else high = mid;
+        }
+
+        var a = points[low];
+        var b = points[high];
+        var span = (b.At - a.At).TotalMilliseconds;
+        if (span <= 0) return b.Percent;
+        return (float)(a.Percent + (b.Percent - a.Percent) * ((at - a.At).TotalMilliseconds / span));
     }
 
     /// <summary>A single window's card: the axis is exactly the readings it was given.</summary>
@@ -174,6 +296,14 @@ public sealed class DrawdownChart : FrameworkElement
         {
             DrawCollecting(context, width, height / 2);
             return;
+        }
+
+        // With "now" on the axis the level holds from the last reading up to it: the
+        // series only stores a change, so the last one can be hours old.
+        var now = DateTimeOffset.UtcNow;
+        if (Axis && now > points[^1].At)
+        {
+            points = [.. points, new UsagePoint(now, points[^1].Percent)];
         }
 
         var start = points[0].At;
@@ -192,6 +322,7 @@ public sealed class DrawdownChart : FrameworkElement
         }
 
         DrawSeries(context, points, XOf, YOf, height);
+        _scale = new Scale(start, total, width, height, end, points, []);
 
         if (Axis)
         {
@@ -269,11 +400,13 @@ public sealed class DrawdownChart : FrameworkElement
 
         var nowX = XOf(until);
         var future = to > until;
+        _scale = new Scale(from, millis, width, plot, until, held, []);
         if (future)
         {
             context.DrawLine(NowPen, new Point(nowX, 0), new Point(nowX, plot));
 
             var path = Data.Projection.Path(track, until, to);
+            _scale = _scale with { Ahead = path };
             if (path.Count >= 2)
             {
                 var line = new StreamGeometry();
@@ -408,6 +541,7 @@ public sealed class DrawdownChart : FrameworkElement
         }
 
         DrawProjection(context, XOf, YOf);
+        _scale = new Scale(start, millis, width, plot, now, visible, Projection ?? []);
 
         // Now splits history from projection.
         var nowX = XOf(now);
@@ -539,20 +673,7 @@ public sealed class DrawdownChart : FrameworkElement
         double size,
         Brush? plate = null)
     {
-        // The labels take the typeface of wherever the chart sits.
-        var face = new Typeface(
-            (FontFamily)GetValue(TextElement.FontFamilyProperty),
-            FontStyles.Normal,
-            FontWeights.Normal,
-            FontStretches.Normal);
-        var formatted = new FormattedText(
-            text,
-            CultureInfo.CurrentCulture,
-            FlowDirection.LeftToRight,
-            face,
-            size,
-            brush,
-            VisualTreeHelper.GetDpi(this).PixelsPerDip);
+        var formatted = Formatted(text, brush, size, FontWeights.Normal);
 
         var left = align switch
         {
@@ -569,6 +690,21 @@ public sealed class DrawdownChart : FrameworkElement
         }
         context.DrawText(formatted, new Point(left, y - formatted.Height));
     }
+
+    /// <summary>Text in the typeface of wherever the chart sits.</summary>
+    private FormattedText Formatted(string text, Brush brush, double size, FontWeight weight) =>
+        new(
+            text,
+            CultureInfo.CurrentCulture,
+            FlowDirection.LeftToRight,
+            new Typeface(
+                (FontFamily)GetValue(TextElement.FontFamilyProperty),
+                FontStyles.Normal,
+                weight,
+                FontStretches.Normal),
+            size,
+            brush,
+            VisualTreeHelper.GetDpi(this).PixelsPerDip);
 
     private Brush LineBrush() => Frozen(LineColor);
 

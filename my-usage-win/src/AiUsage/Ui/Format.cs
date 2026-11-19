@@ -16,11 +16,11 @@ public static class Format
     public static string Day(DateTimeOffset at) =>
         at.ToLocalTime().ToString("d MMM", Culture);
 
-    /// <summary>A moment ahead: "Thu 21:54" within the week, "12 Nov 21:54" past it.</summary>
+    /// <summary>A moment: "Thu 21:54" within six days either way, "12 Nov 21:54" further off.</summary>
     public static string When(DateTimeOffset at)
     {
         var local = at.ToLocalTime();
-        var pattern = at - DateTimeOffset.UtcNow < TimeSpan.FromDays(6) ? "ddd HH:mm" : "d MMM HH:mm";
+        var pattern = (at - DateTimeOffset.UtcNow).Duration() < TimeSpan.FromDays(6) ? "ddd HH:mm" : "d MMM HH:mm";
         return local.ToString(pattern, Culture);
     }
 
