@@ -7,6 +7,11 @@
 #
 # The app's version is the project's, <Version> in the Windows app's project
 # file; VERSION=1.2.3 ./build.sh overrides it.
+#
+# A release build is signed with the keychain's Developer ID Application
+# certificate when there is one, and ad hoc otherwise, which is all a copy
+# built to run on the same Mac needs. USAGETOP_SIGN_IDENTITY names another
+# identity; "-" forces ad hoc.
 set -euo pipefail
 
 cd "$(dirname "$0")"
@@ -59,11 +64,22 @@ for size in 16 32 128 256 512; do
 done
 iconutil -c icns "$ICONSET" -o "$APP/Contents/Resources/AppIcon.icns"
 
-# Ad-hoc signature: there is no Developer ID yet. An Apple silicon Mac runs
-# nothing unsigned, so a failure here is a failed build.
-codesign --force --sign - "$APP"
+# An Apple silicon Mac runs nothing unsigned, so a failure here is a failed
+# build. With a Developer ID the app also gets the hardened runtime and a
+# timestamp, both of which Apple's notary service asks for.
+IDENTITY="${USAGETOP_SIGN_IDENTITY:-}"
+if [[ -z "$IDENTITY" && "$CONFIG" == "release" ]]; then
+	IDENTITY="$(security find-identity -v -p codesigning 2>/dev/null | awk '/"Developer ID Application: / { print $2; exit }')"
+fi
+if [[ -n "$IDENTITY" && "$IDENTITY" != "-" ]]; then
+	codesign --force --options runtime --timestamp --sign "$IDENTITY" "$APP"
+	SIGNED="signed with a Developer ID"
+else
+	codesign --force --sign - "$APP"
+	SIGNED="signed ad hoc"
+fi
 
-echo "Built $(pwd)/$APP ($VERSION)"
+echo "Built $(pwd)/$APP ($VERSION, $SIGNED)"
 
 if [[ "${2:-}" == "run" ]]; then
 	open "$APP"

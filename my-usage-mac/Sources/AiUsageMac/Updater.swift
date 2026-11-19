@@ -19,9 +19,10 @@ private let log = Logger(subsystem: "io.github.rzukic.usagetop.mac", category: "
 ///
 /// What is checked before a download may replace the app: its SHA-256 against
 /// the one GitHub lists for the file, that it is this app (bundle identifier)
-/// in the version the release names, and that its signature is intact. The
-/// signature is ad hoc, so it says the bundle is whole, not who made it; that
-/// rests on the download coming from GitHub over HTTPS.
+/// in the version the release names, and that its signature is intact. When
+/// the running copy is signed with a Developer ID, the download must be signed
+/// by the same team, which says who made it. A copy signed ad hoc has no team
+/// to compare; for it the rest stands on the download coming from GitHub.
 ///
 /// A copy anywhere but an Applications folder (a build folder, Downloads) does
 /// nothing at all. USAGETOP_UPDATE_SOURCE, an http(s) address that answers
@@ -300,13 +301,34 @@ final class Updater {
             return "Its signature could not be read"
         }
         let flags = SecCSFlags(rawValue: kSecCSCheckAllArchitectures | kSecCSStrictValidate | kSecCSCheckNestedCode)
-        let status = SecStaticCodeCheckValidity(code, flags, nil)
+        var requirement: SecRequirement?
+        if let team = ownTeam {
+            let text = "anchor apple generic and certificate leaf[subject.OU] = \"\(team)\""
+            guard SecRequirementCreateWithString(text as CFString, [], &requirement) == errSecSuccess else {
+                return "Its signer could not be checked"
+            }
+        }
+        let status = SecStaticCodeCheckValidity(code, flags, requirement)
         guard status == errSecSuccess else {
             let message = SecCopyErrorMessageString(status, nil) as String? ?? "error \(status)"
-            return "Its signature is not intact (\(message))"
+            return requirement == nil ? "Its signature is not intact (\(message))"
+                : "It is not signed by this app's developer (\(message))"
         }
         return nil
     }
+
+    /// The team this running copy was signed by; nil for an ad hoc signature.
+    private static let ownTeam: String? = {
+        var me: SecCode?
+        guard SecCodeCopySelf([], &me) == errSecSuccess, let me else { return nil }
+        var code: SecStaticCode?
+        guard SecCodeCopyStaticCode(me, [], &code) == errSecSuccess, let code else { return nil }
+        var info: CFDictionary?
+        guard SecCodeCopySigningInformation(code, SecCSFlags(rawValue: kSecCSSigningInformation), &info) == errSecSuccess,
+              let team = (info as? [String: Any])?[kSecCodeInfoTeamIdentifier as String] as? String, !team.isEmpty
+        else { return nil }
+        return team
+    }()
 
     /// A download an earlier run (or this one) checked and left waiting, if it
     /// is still newer than what is running and still whole. Anything else in

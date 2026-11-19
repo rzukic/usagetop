@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Adds what only a Mac can build to a release that release.ps1 has published:
 #
-#   usagetop-mac.zip                 the Mac app, universal, attached to the release
+#   usagetop-mac.zip                 the Mac app, universal, signed and notarized,
+#                                    attached to the release
 #   ghcr.io/rzukic/usagetop-server   the server's image for linux/amd64 and
 #                                    linux/arm64, tagged <version> and latest
 #
@@ -18,6 +19,13 @@
 #
 # Needs:
 #   - Xcode 26
+#   - for a Mac app that opens without a Gatekeeper warning: a Developer ID
+#     Application certificate in the keychain, and notary credentials stored as
+#     the profile "usagetop" (or the one USAGETOP_NOTARY_PROFILE names):
+#         xcrun notarytool store-credentials usagetop --apple-id <id> --team-id <team>
+#     Without a certificate the app is signed ad hoc, and whoever downloads it
+#     has to allow it by hand. With one but no credentials the script stops:
+#     a signed app that is not notarized is refused just the same.
 #   - gh, signed in to an account that may write to the repository; for the
 #     image also with the write:packages scope:
 #         gh auth refresh -s write:packages
@@ -76,9 +84,25 @@ if [[ "$WHAT" != "image" ]]; then
 	codesign --verify --strict "$APP"
 
 	# ditto rather than zip: it keeps the bundle's signature and attributes intact.
-	step "Mac: package"
 	ZIP="$OUT/usagetop-mac.zip"
 	rm -f "$ZIP"
+
+	# Signed with a Developer ID, the app goes to Apple's notary service, and
+	# the ticket that comes back is stapled to it, so it also opens offline.
+	if codesign -dv "$APP" 2>&1 | grep -q '^TeamIdentifier=[A-Z0-9]\{10\}$'; then
+		step "Mac: notarize"
+		PROFILE="${USAGETOP_NOTARY_PROFILE:-usagetop}"
+		ditto -c -k --keepParent "$APP" "$ZIP"
+		xcrun notarytool submit "$ZIP" --keychain-profile "$PROFILE" --wait | tee "$OUT/notary.log"
+		grep -q 'status: Accepted' "$OUT/notary.log" || fail "Apple did not accept the app; see: xcrun notarytool log <id> --keychain-profile $PROFILE"
+		xcrun stapler staple "$APP"
+		spctl --assess --type execute "$APP" || fail "Gatekeeper still refuses the app."
+		rm -f "$ZIP" "$OUT/notary.log"
+	else
+		echo "No Developer ID certificate: the app is signed ad hoc and Gatekeeper will stop a download of it."
+	fi
+
+	step "Mac: package"
 	ditto -c -k --keepParent "$APP" "$ZIP"
 
 	step "Mac: upload"
