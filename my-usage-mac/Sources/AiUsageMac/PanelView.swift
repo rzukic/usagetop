@@ -367,10 +367,11 @@ private struct RailButtonStyle: ButtonStyle {
 
 /// A subscription in the rail: its mark inside a ring of what is left.
 private struct RailRing: View {
+    @Environment(AppModel.self) private var model
     let usage: ProviderUsage
 
     var body: some View {
-        let level = usage.isOK ? usage.tightest?.remainingPercent : nil
+        let level = usage.isOK ? model.tightest(usage)?.remainingPercent : nil
         Ring(percent: level, size: 32, lineWidth: 2.6) {
             ProviderMark(key: usage.providerKey, size: 14)
         }

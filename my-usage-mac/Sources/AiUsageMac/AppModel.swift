@@ -53,7 +53,45 @@ final class AppModel {
     /// when the server did not send one.
     var combinedPercent: Double? {
         if let combined = snapshot?.combinedPercent { return combined }
-        return snapshot?.usages.compactMap { $0.tightest?.remainingPercent }.min()
+        return snapshot?.usages.compactMap { tightest($0)?.remainingPercent }.min()
+    }
+
+    // MARK: Hidden limits
+
+    var hiddenKeys: Set<String> { Set(settings.hiddenLimits) }
+
+    func isHidden(_ usage: ProviderUsage, _ window: UsageWindow) -> Bool {
+        settings.hiddenLimits.contains(usage.seriesKey(window))
+    }
+
+    /// The windows the overview and the menu bar show for an account.
+    func shownWindows(_ usage: ProviderUsage) -> [UsageWindow] {
+        let hidden = hiddenKeys
+        return usage.windows.filter { !hidden.contains(usage.seriesKey($0)) }
+    }
+
+    /// The window that decides an account's ring: the tightest one not hidden.
+    func tightest(_ usage: ProviderUsage) -> UsageWindow? {
+        usage.tightest(hiding: hiddenKeys)
+    }
+
+    func setHidden(_ hide: Bool, _ usage: ProviderUsage, _ window: UsageWindow) {
+        setHidden(hide, key: usage.seriesKey(window))
+    }
+
+    /// "Antigravity · Claude & GPT weekly" for "antigravity|Claude & GPT 7d".
+    func hiddenName(_ key: String) -> String {
+        let parts = key.split(separator: "|", maxSplits: 1).map(String.init)
+        guard parts.count == 2 else { return key }
+        let account = (snapshot?.usages ?? []).first { $0.account == parts[0] }?.displayName
+            ?? Provider(key: String(parts[0].split(separator: "-").first ?? "")).displayName
+        return "\(account) · \(WindowName.display(parts[1]))"
+    }
+
+    func setHidden(_ hide: Bool, key: String) {
+        var keys = settings.hiddenLimits.filter { $0 != key }
+        if hide { keys.append(key) }
+        settings.hiddenLimits = keys
     }
 
     /// The limits closest to running out, across every working subscription:
@@ -64,7 +102,7 @@ final class AppModel {
     func mostAtRisk(_ count: Int) -> [(usage: ProviderUsage, window: UsageWindow)] {
         guard count > 0 else { return [] }
         let all = (snapshot?.usages ?? []).filter(\.isOK).flatMap { usage in
-            usage.windows
+            shownWindows(usage)
                 .filter { window in window.remainingPercent.map { Forecast.pace(window, now: now) != .empty && $0 >= 0.5 } ?? false }
                 .map { (usage: usage, window: $0) }
         }
@@ -84,8 +122,8 @@ final class AppModel {
         guard settings.overviewByRisk else { return railOrder }
         return (snapshot?.usages ?? []).sorted { lhs, rhs in
             if lhs.isOK != rhs.isOK { return lhs.isOK }
-            let left = lhs.tightest?.remainingPercent ?? 101
-            let right = rhs.tightest?.remainingPercent ?? 101
+            let left = tightest(lhs)?.remainingPercent ?? 101
+            let right = tightest(rhs)?.remainingPercent ?? 101
             if left == right { return lhs.displayName < rhs.displayName }
             return left < right
         }

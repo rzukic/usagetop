@@ -78,6 +78,26 @@ struct SettingsPane: View {
                 OrderSection()
             }
 
+            if !model.settings.hiddenLimits.isEmpty {
+                section("Hidden limits", symbol: "eye.slash") {
+                    ForEach(model.settings.hiddenLimits, id: \.self) { key in
+                        HStack {
+                            Text(model.hiddenName(key))
+                                .font(.system(size: 12))
+                                .lineLimit(1)
+                            Spacer()
+                            Button("Show") { model.setHidden(false, key: key) }
+                                .buttonStyle(.soft)
+                                .controlSize(.small)
+                        }
+                    }
+                    Text("Left out of the overview, the menu bar and the sidebar's rings; each still shows on its account's page, where the eye button hides or shows it.")
+                        .font(.system(size: 10.5))
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+
             section("Menu bar", symbol: "menubar.rectangle") {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {

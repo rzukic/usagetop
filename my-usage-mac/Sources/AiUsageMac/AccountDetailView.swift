@@ -20,7 +20,7 @@ struct AccountDetailView: View {
 
     private var summary: some View {
         HStack(spacing: 14) {
-            Ring(percent: usage.isOK ? usage.tightest?.remainingPercent : nil, size: 58, lineWidth: 5) {
+            Ring(percent: usage.isOK ? model.tightest(usage)?.remainingPercent : nil, size: 58, lineWidth: 5) {
                 ProviderMark(key: usage.providerKey, size: 22)
             }
 
@@ -29,7 +29,7 @@ struct AccountDetailView: View {
                     if let plan = usage.plan { Chip(text: plan, symbol: "creditcard") }
                     if usage.stale { Chip(text: "Earlier reading", tint: Palette.warning, symbol: "clock.arrow.circlepath") }
                 }
-                if usage.isOK, let tightest = usage.tightest, let level = tightest.remainingPercent {
+                if usage.isOK, let tightest = model.tightest(usage) ?? usage.tightest, let level = tightest.remainingPercent {
                     HStack(alignment: .firstTextBaseline, spacing: 4) {
                         Text(Format.percent(level))
                             .font(.system(size: 26, weight: .semibold, design: .rounded))
@@ -71,18 +71,39 @@ private struct WindowDetailCard: View {
     var body: some View {
         let outlook = model.outlook(for: usage, window)
         let pace = Forecast.pace(window, now: model.now)
+        let hidden = model.isHidden(usage, window)
 
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(window.displayLabel)
-                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text(window.displayLabel)
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        if hidden {
+                            Text("Hidden")
+                                .font(.system(size: 10.5, weight: .medium))
+                                .foregroundStyle(.secondary)
+                                .help("Left out of the overview, the menu bar and the sidebar's ring.")
+                        }
+                    }
                     Text(resetText)
                         .font(.system(size: 10.5))
                         .foregroundStyle(.secondary)
                         .monospacedDigit()
                 }
                 Spacer()
+                Button {
+                    model.setHidden(!hidden, usage, window)
+                } label: {
+                    Image(systemName: hidden ? "eye.slash" : "eye")
+                        .font(.system(size: 10, weight: .semibold))
+                        .frame(width: 22, height: 22)
+                }
+                .buttonStyle(.softCircle)
+                .help(hidden ? "Hidden from the overview and the menu bar. Click to show it again."
+                             : "Shown in the overview and the menu bar. Click to hide it.")
+                .accessibilityLabel(hidden ? "Show \(window.displayLabel)" : "Hide \(window.displayLabel)")
+                .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + 4 }
                 // At 0% the Empty badge below says it; the figure would only repeat it.
                 if Forecast.pace(window, now: model.now) == .empty {
                     PaceBadge(pace: .empty)
@@ -126,6 +147,7 @@ private struct WindowDetailCard: View {
             }
         }
         .padding(14)
+        .opacity(hidden ? 0.55 : 1)
         .card()
     }
 

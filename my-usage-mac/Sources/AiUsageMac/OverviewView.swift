@@ -129,9 +129,16 @@ private struct AccountCard: View {
                         .font(.system(size: 11.5))
                         .foregroundStyle(.secondary)
                 } else {
-                    VStack(spacing: 9) {
-                        ForEach(usage.windows) { window in
+                    let shown = model.shownWindows(usage)
+                    let hidden = usage.windows.count - shown.count
+                    VStack(alignment: .leading, spacing: 9) {
+                        ForEach(shown) { window in
                             WindowRow(window: window, now: model.now)
+                        }
+                        if hidden > 0 {
+                            Label(shown.isEmpty ? "All limits hidden" : "\(hidden) hidden", systemImage: "eye.slash")
+                                .font(.system(size: 10.5))
+                                .foregroundStyle(.secondary)
                         }
                     }
                 }

@@ -91,9 +91,13 @@ struct ProviderUsage: Decodable, Identifiable, Hashable {
 
     /// The window that decides how this subscription is doing: the lowest
     /// remaining level among the ones that count toward the combined figure.
-    var tightest: UsageWindow? {
-        let counted = windows.filter { $0.countsTowardCombined && $0.remainingPercent != nil }
-        let pool = counted.isEmpty ? windows.filter { $0.remainingPercent != nil } : counted
+    var tightest: UsageWindow? { tightest(hiding: []) }
+
+    /// The same, among the windows not hidden (keys as `seriesKey`).
+    func tightest(hiding hidden: Set<String>) -> UsageWindow? {
+        let shown = windows.filter { !hidden.contains(seriesKey($0)) && $0.remainingPercent != nil }
+        let counted = shown.filter(\.countsTowardCombined)
+        let pool = counted.isEmpty ? shown : counted
         return pool.min { ($0.remainingPercent ?? 100) < ($1.remainingPercent ?? 100) }
     }
 

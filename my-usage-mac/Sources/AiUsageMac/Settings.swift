@@ -53,6 +53,14 @@ final class Settings {
     }
     private static let orderKey = "accountOrder"
 
+    /// Limits left out of the overview, the menu bar and the rail's rings, as
+    /// "account|label" (the key their history is filed under). They stay on
+    /// their account's page. On this Mac only.
+    var hiddenLimits: [String] {
+        didSet { UserDefaults.standard.set(hiddenLimits, forKey: Self.hiddenKey) }
+    }
+    private static let hiddenKey = "hiddenLimits"
+
     /// The overview lists the account closest to running out first; off, it
     /// follows the sidebar's order.
     var overviewByRisk: Bool {
@@ -77,6 +85,7 @@ final class Settings {
         glass = min(max(UserDefaults.standard.object(forKey: Self.glassKey) as? Double ?? 1, 0), 1)
         tiles = min(max(UserDefaults.standard.object(forKey: Self.tilesKey) as? Double ?? 0, 0), 1)
         accountOrder = UserDefaults.standard.stringArray(forKey: Self.orderKey) ?? []
+        hiddenLimits = UserDefaults.standard.stringArray(forKey: Self.hiddenKey) ?? []
         overviewByRisk = UserDefaults.standard.object(forKey: Self.byRiskKey) as? Bool ?? true
     }
 
