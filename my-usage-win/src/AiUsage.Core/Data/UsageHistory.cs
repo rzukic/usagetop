@@ -214,7 +214,7 @@ public sealed class UsageHistory
     private List<UsagePoint> Read(string key) =>
         _series.TryGetValue(key, out var points) ? points : [];
 
-    private static string Key(string accountKey, string label) => $"{accountKey}|{label}";
+    private static string Key(string accountKey, string label) => Limits.Key(accountKey, label);
 
     // ---- Storage ----------------------------------------------------------
 

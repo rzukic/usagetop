@@ -415,3 +415,66 @@ public class SnapshotCodecTests
         Assert.Null(SnapshotCodec.Decode(null));
     }
 }
+
+public class LimitsTests
+{
+    private static ProviderUsage Antigravity() => new()
+    {
+        Id = ProviderId.Antigravity,
+        State = UsageState.Ok,
+        Windows =
+        [
+            new UsageWindow("Gemini 7d", 70f),
+            new UsageWindow("Claude & GPT 7d", 10f, CountsTowardCombined: false),
+            new UsageWindow("Gemini 4 Argon 7d", 40f, CountsTowardCombined: false),
+        ],
+    };
+
+    [Fact]
+    public void A_key_is_the_one_history_files_the_window_under()
+    {
+        var second = Antigravity() with { Slot = "2" };
+
+        Assert.Equal("antigravity|Claude & GPT 7d", Limits.Key(Antigravity(), Antigravity().Windows[1]));
+        Assert.Equal("antigravity-2|Gemini 7d", Limits.Key(second, second.Windows[0]));
+        Assert.Equal(("claude", "Fable 7d"), Limits.Split("claude|Fable 7d"));
+        Assert.Equal(("muse", "a|b"), Limits.Split("muse|a|b"));
+        Assert.Null(Limits.Split("claude"));
+        Assert.Null(Limits.Split("|7d"));
+    }
+
+    [Fact]
+    public void Hidden_windows_leave_the_shown_ones_and_the_rest_keep_their_order()
+    {
+        var usage = Antigravity();
+
+        Assert.Equal(3, Limits.Shown(usage, []).Count);
+        Assert.Equal(["Gemini 7d", "Gemini 4 Argon 7d"],
+            Limits.Shown(usage, ["antigravity|Claude & GPT 7d"]).Select(w => w.Label).ToArray());
+        // Another account's key with the same label is a different limit.
+        Assert.Equal(3, Limits.Shown(usage, ["antigravity-2|Claude & GPT 7d"]).Count);
+    }
+
+    [Fact]
+    public void The_tightest_is_taken_among_the_shown_windows_that_count_and_then_among_any_shown()
+    {
+        var usage = Antigravity();
+
+        // Gemini counts toward the combined figure, so it decides while it is shown.
+        Assert.Equal("Gemini 7d", Limits.Tightest(usage)?.Label);
+        // Hiding the Claude & GPT pool, the tightest of all, leaves Gemini deciding as before.
+        Assert.Equal("Gemini 7d", Limits.Tightest(usage, ["antigravity|Claude & GPT 7d"])?.Label);
+        // With nothing shown that counts, the lowest shown window decides.
+        Assert.Equal("Claude & GPT 7d", Limits.Tightest(usage, ["antigravity|Gemini 7d"])?.Label);
+        Assert.Equal("Gemini 4 Argon 7d", Limits.Tightest(usage, ["antigravity|Gemini 7d", "antigravity|Claude & GPT 7d"])?.Label);
+        Assert.Null(Limits.Tightest(usage, usage.Windows.Select(w => Limits.Key(usage, w)).ToArray()));
+    }
+
+    [Fact]
+    public void Hiding_a_limit_does_not_change_the_combined_figure()
+    {
+        // The combined figure has no notion of hidden limits; this pins that down.
+        var snapshot = new Snapshot([Antigravity()], Clock.T0);
+        Assert.Equal(70f, CombinedUsage.Of(snapshot).Percent);
+    }
+}

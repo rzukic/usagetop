@@ -6,10 +6,10 @@ namespace AiUsage.Ui;
 
 /// <summary>
 /// The panel's own preferences, as the Mac app keeps them: how much of it is
-/// glass, how solid its tiles are, the order of the accounts and whether the
-/// overview puts the account closest to running out first. Kept in a small file
-/// beside the app's other state; a change is raised at once so the panel
-/// follows a slider while it moves.
+/// glass, how solid its tiles are, the order of the accounts, whether the
+/// overview puts the account closest to running out first and which limits it
+/// leaves out. Kept in a small file beside the app's other state; a change is
+/// raised at once so the panel follows a slider while it moves.
 /// </summary>
 public sealed class PanelPrefs
 {
@@ -30,6 +30,20 @@ public sealed class PanelPrefs
     public List<string> Order { get; set; } = [];
 
     public bool OverviewByRisk { get; set; } = true;
+
+    /// <summary>
+    /// Limits left out of the overview, the tray and the rail's rings, as
+    /// "account|label" (<see cref="Limits.Key(string, string)"/>, the key their
+    /// history is filed under). They stay on their account's page. On this PC only.
+    /// </summary>
+    public List<string> HiddenLimits { get; set; } = [];
+
+    /// <summary>Hides or shows one limit, keeping the order the others were hidden in.</summary>
+    public void SetHidden(string key, bool hide) => Update(p =>
+    {
+        p.HiddenLimits = p.HiddenLimits.Where(k => k != key).ToList();
+        if (hide) p.HiddenLimits.Add(key);
+    });
 
     /// <summary>
     /// What the tray icon shows, the Windows side of the Mac's menu bar setting:
@@ -74,6 +88,7 @@ public sealed class PanelPrefs
         {
             if (File.Exists(FilePath) && JsonSerializer.Deserialize<PanelPrefs>(File.ReadAllText(FilePath)) is { } loaded)
             {
+                loaded.HiddenLimits ??= [];
                 return loaded;
             }
         }
