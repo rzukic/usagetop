@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- One window of an account in the 4x4: its name and when it resets, then what is
+     left of it, with a flame when it is ahead of pace. The figures line up on the right. -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginTop="1dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <TextView
+        android:id="@+id/limit_name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textColor="@color/widget_ink_secondary"
+        android:textSize="12sp" />
+
+    <Chronometer
+        android:id="@+id/limit_reset"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:fontFeatureSettings="tnum"
+        android:maxLines="1"
+        android:textColor="@color/widget_ink_quiet"
+        android:textSize="12sp" />
+
+    <ImageView
+        android:id="@+id/limit_flame"
+        android:layout_width="11dp"
+        android:layout_height="11dp"
+        android:layout_marginStart="6dp"
+        android:layout_marginEnd="2dp"
+        android:contentDescription="@string/widget_ahead"
+        android:src="@drawable/ic_flame"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/limit_value"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:fontFamily="sans-serif-medium"
+        android:fontFeatureSettings="tnum"
+        android:maxLines="1"
+        android:minWidth="34dp"
+        android:gravity="end"
+        android:textColor="@color/widget_ink"
+        android:textSize="13sp" />
+</LinearLayout>

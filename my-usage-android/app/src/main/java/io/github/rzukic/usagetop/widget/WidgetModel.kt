@@ -32,7 +32,9 @@ object WidgetModel {
     /**
      * One account. [window] is the one its ring and figure stand for: the lowest
      * it has, counted in the combined figure or not, because that is the one that
-     * stops you first. [ahead] is about that window only.
+     * stops you first. [ahead] is about that window only. [mentions] are the other
+     * windows worth a word beside it, for the 4x2; [limits] are every window shown,
+     * the ring's too, in the account's own order, one line each in the 4x4.
      */
     data class Line(
         val usage: ProviderUsage,
@@ -40,6 +42,7 @@ object WidgetModel {
         val percent: Float,
         val ahead: Boolean,
         val mentions: List<Mention>,
+        val limits: List<Mention> = emptyList(),
     )
 
     /** An account that needs a sign-in rather than a ring. */
@@ -101,7 +104,10 @@ object WidgetModel {
                 if (worth) Mention(window, level, ahead) else null
             }
 
-        return Line(usage, lowest, percent, pace(lowest, now) == Pace.AHEAD, mentions)
+        // What the widget shows was chosen in its settings, so every window counts here.
+        val limits = rated.map { Mention(it, it.remainingPercent!!, pace(it, now) == Pace.AHEAD) }
+
+        return Line(usage, lowest, percent, pace(lowest, now) == Pace.AHEAD, mentions, limits)
     }
 
     /** The next reset that lifts the combined figure, and whose it is. */

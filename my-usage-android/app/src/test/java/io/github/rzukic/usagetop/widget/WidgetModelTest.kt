@@ -67,6 +67,21 @@ class WidgetModelTest {
     }
 
     @Test
+    fun `the 4x4 gets every shown window, in the account's order, each with its own flame`() {
+        val limits = WidgetModel.line(claude, now)!!.limits
+        // Fable too, though healthy: what the widget shows was picked in its settings.
+        assertEquals(listOf("5h", "7d", "Fable 7d"), limits.map { it.window.label })
+        assertEquals(listOf(38f, 31f, 57f), limits.map { it.percent })
+        assertEquals(listOf(true, false, false), limits.map { it.ahead })
+    }
+
+    @Test
+    fun `a hidden window gets no line of its own`() {
+        val limits = WidgetModel.line(claude, now, setOf("claude|Fable 7d"))!!.limits
+        assertEquals(listOf("5h", "7d"), limits.map { it.window.label })
+    }
+
+    @Test
     fun `accounts run from closest to empty, sign-in problems last, unset ones not at all`() {
         val accounts = WidgetModel.accounts(snapshot(chatgpt, signedOut, claude, notSetUp, kimi), now)
         assertEquals(listOf(ProviderId.KIMI, ProviderId.CLAUDE, ProviderId.CHATGPT), accounts.lines.map { it.usage.id })

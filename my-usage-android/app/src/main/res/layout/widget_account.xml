@@ -1,13 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- One account: its lowest window as a ring around its mark, its name and plan,
-     that window and when it resets with any other window worth a mention, then the
-     figure. A flame marks a window that is ahead of pace, and only that window. -->
+     then, in the 4x2, that window and when it resets with any other window worth a
+     mention, and the figure; in the 4x4, a line of its own for every window shown.
+     A flame marks a window that is ahead of pace, and only that window. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/row_root"
     android:layout_width="match_parent"
-    android:layout_height="50dp"
+    android:layout_height="wrap_content"
     android:gravity="center_vertical"
-    android:orientation="horizontal">
+    android:minHeight="50dp"
+    android:orientation="horizontal"
+    android:paddingVertical="4dp">
 
     <FrameLayout
         android:layout_width="34dp"
@@ -68,6 +71,7 @@
         </LinearLayout>
 
         <LinearLayout
+            android:id="@+id/row_detail"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="1dp"
@@ -150,6 +154,14 @@
                 android:textSize="12sp"
                 android:visibility="gone" />
         </LinearLayout>
+
+        <!-- The 4x4: one widget_limit per window, filled in by the renderer. -->
+        <LinearLayout
+            android:id="@+id/row_limits"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:visibility="gone" />
     </LinearLayout>
 
     <ImageView
@@ -173,6 +185,7 @@
         android:textSize="17sp" />
 
     <TextView
+        android:id="@+id/row_left"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:maxLines="1"

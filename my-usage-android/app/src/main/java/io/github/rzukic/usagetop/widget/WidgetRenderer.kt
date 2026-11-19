@@ -208,7 +208,13 @@ object WidgetRenderer {
         return WidgetArt.spark(context, 96f, 40f, points, forecast, SPARK_SPAN, now)
     }
 
-    /** One account's row; [compact] leaves out the plan and any mention without a flame. */
+    /**
+     * One account's row. In the 4x2 ([compact]) it is one line under the name: the
+     * ring's window and its reset, any window ahead of pace, and the figure on the
+     * right. In the 4x4 every window shown gets a line of its own under the name,
+     * with its own reset and figure, so none are squeezed together; the ring still
+     * stands for the lowest.
+     */
     fun rowViews(context: Context, line: WidgetModel.Line, compact: Boolean): RemoteViews {
         val views = RemoteViews(context.packageName, R.layout.widget_account)
         val usage = line.usage
@@ -221,22 +227,35 @@ object WidgetRenderer {
         views.setTextViewText(R.id.row_plan, plan.orEmpty())
         views.setViewVisibility(R.id.row_plan, if (plan == null) View.GONE else View.VISIBLE)
 
-        val reset = line.window.resetAt
-        val name = WidgetModel.name(line.window)
-        views.setTextViewText(R.id.row_window, if (reset == null) name else "$name · ")
-        setReset(views, R.id.row_reset, reset)
+        val oneLine = if (compact) View.VISIBLE else View.GONE
+        views.setViewVisibility(R.id.row_detail, oneLine)
+        views.setViewVisibility(R.id.row_value, oneLine)
+        views.setViewVisibility(R.id.row_left, oneLine)
+        views.setViewVisibility(R.id.row_limits, if (compact) View.GONE else View.VISIBLE)
+        // A recycled list row starts from its own lines, never the last account's.
+        views.removeAllViews(R.id.row_limits)
 
-        val mentions = line.mentions
-            .filter { !compact || it.ahead }
-            .sortedWith(compareBy({ !it.ahead }, { it.percent }))
-            .take(2)
-        views.setViewVisibility(R.id.row_m1, if (mentions.isEmpty()) View.GONE else View.VISIBLE)
-        bindMention(context, views, mentions.getOrNull(0), R.id.row_m1_label, R.id.row_m1_value, R.id.row_m1_flame)
-        bindMention(context, views, mentions.getOrNull(1), R.id.row_m2_label, R.id.row_m2_value, null)
+        if (compact) {
+            val reset = line.window.resetAt
+            val name = WidgetModel.name(line.window)
+            views.setTextViewText(R.id.row_window, if (reset == null) name else "$name · ")
+            setReset(views, R.id.row_reset, reset)
 
-        views.setViewVisibility(R.id.row_flame, if (line.ahead) View.VISIBLE else View.GONE)
-        views.setTextViewText(R.id.row_value, "${line.percent.roundToInt()}%")
-        WidgetArt.textColor(context, views, R.id.row_value, WidgetArt.figureColor(line.percent))
+            val mentions = line.mentions
+                .filter { it.ahead }
+                .sortedBy { it.percent }
+                .take(2)
+            views.setViewVisibility(R.id.row_m1, if (mentions.isEmpty()) View.GONE else View.VISIBLE)
+            bindMention(context, views, mentions.getOrNull(0), R.id.row_m1_label, R.id.row_m1_value, R.id.row_m1_flame)
+            bindMention(context, views, mentions.getOrNull(1), R.id.row_m2_label, R.id.row_m2_value, null)
+
+            views.setViewVisibility(R.id.row_flame, if (line.ahead) View.VISIBLE else View.GONE)
+            views.setTextViewText(R.id.row_value, "${line.percent.roundToInt()}%")
+            WidgetArt.textColor(context, views, R.id.row_value, WidgetArt.figureColor(line.percent))
+        } else {
+            views.setViewVisibility(R.id.row_flame, View.GONE)
+            line.limits.forEach { views.addView(R.id.row_limits, limitViews(context, it)) }
+        }
 
         // Only a list row can open its own account; in the 4x2 a tap opens the app.
         if (!compact) {
@@ -245,6 +264,19 @@ object WidgetRenderer {
                 Intent().putExtra(ProviderDetailActivity.EXTRA_PROVIDER, usage.accountKey),
             )
         }
+        return views
+    }
+
+    /** One window's line in a 4x4 row: "5h · 2:13:04", then its figure on the right. */
+    private fun limitViews(context: Context, limit: WidgetModel.Mention): RemoteViews {
+        val views = RemoteViews(context.packageName, R.layout.widget_limit)
+        val reset = limit.window.resetAt
+        val name = WidgetModel.name(limit.window)
+        views.setTextViewText(R.id.limit_name, if (reset == null) name else "$name · ")
+        setReset(views, R.id.limit_reset, reset)
+        views.setViewVisibility(R.id.limit_flame, if (limit.ahead) View.VISIBLE else View.GONE)
+        views.setTextViewText(R.id.limit_value, "${limit.percent.roundToInt()}%")
+        WidgetArt.textColor(context, views, R.id.limit_value, WidgetArt.figureColor(limit.percent))
         return views
     }
 
