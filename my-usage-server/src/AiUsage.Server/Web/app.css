@@ -199,12 +199,16 @@ h1, h2, h3, p { margin: 0; }
 
 .window > p.hint { margin-top: 4px; }
 .window.hidden-limit { opacity: 0.55; }
-.window-head .eye {
-  border: 0; background: none; padding: 2px; margin: 0; cursor: pointer;
-  color: var(--text-2); line-height: 0; align-self: center; border-radius: 6px;
+.limit-menu {
+  position: fixed; z-index: 10; padding: 4px; border-radius: 10px;
+  background: #2a2a2a; border: 1px solid rgba(255, 255, 255, 0.12);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
-.window-head .eye:hover { color: inherit; background: rgba(255, 255, 255, 0.08); }
-.window-head .eye svg { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.limit-menu button {
+  display: block; width: 100%; text-align: left; border: 0; border-radius: 6px;
+  background: none; color: inherit; font: inherit; font-size: 13px; padding: 7px 10px; cursor: pointer;
+}
+.limit-menu button:hover, .limit-menu button:focus { background: rgba(255, 255, 255, 0.1); outline: none; }
 .hidden-toggle { margin-top: 12px; font-size: 12px; }
 
 .sev-normal { color: var(--text); }

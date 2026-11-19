@@ -134,6 +134,7 @@ private struct AccountCard: View {
                     VStack(alignment: .leading, spacing: 9) {
                         ForEach(shown) { window in
                             WindowRow(window: window, now: model.now)
+                                .contextMenu { HideMenu(usage: usage, window: window) }
                         }
                         if hidden > 0 {
                             Label(shown.isEmpty ? "All limits hidden" : "\(hidden) hidden", systemImage: "eye.slash")

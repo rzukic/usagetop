@@ -78,8 +78,12 @@ struct SettingsPane: View {
                 OrderSection()
             }
 
-            if !model.hiddenList.isEmpty {
+            if !model.isDemo || !model.hiddenList.isEmpty {
                 section("Hidden limits", symbol: "eye.slash") {
+                    if model.hiddenList.isEmpty {
+                        Text("None hidden.")
+                            .font(.system(size: 12))
+                    }
                     ForEach(model.hiddenList, id: \.self) { key in
                         HStack {
                             Text(model.hiddenName(key))
@@ -92,8 +96,8 @@ struct SettingsPane: View {
                         }
                     }
                     Text(model.usesServer
-                         ? "Kept by the server, for every app that reads from it. Left out of the overview, the menu bar and the sidebar's rings; each still shows on its account's page, where the eye button hides or shows it."
-                         : "Left out of the overview, the menu bar and the sidebar's rings; each still shows on its account's page, where the eye button hides or shows it.")
+                         ? "Kept by the server, for every app that reads from it. Left out of the overview, the menu bar and the sidebar's rings; each still shows on its account's page. Right-click a limit to hide or show it."
+                         : "Left out of the overview, the menu bar and the sidebar's rings; each still shows on its account's page. Right-click a limit to hide or show it.")
                         .font(.system(size: 10.5))
                         .foregroundStyle(.secondary)
                         .fixedSize(horizontal: false, vertical: true)

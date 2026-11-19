@@ -225,30 +225,62 @@ let recent = {};
 const hiddenLimits = () => new Set((state && state.hiddenLimits) || []);
 const showingHidden = new Set();
 
-/** An eye, struck through when the limit is hidden; clicking it flips that. */
-function eyeButton(key, label, hidden) {
-  const button = el('button', 'eye');
-  button.type = 'button';
-  button.title = hidden ? 'Hidden from the overview in every app. Click to show it again.'
-    : 'Shown in every app. Click to hide it from their overviews.';
-  button.setAttribute('aria-label', (hidden ? 'Show ' : 'Hide ') + label);
-  const icon = svg('svg', { viewBox: '0 0 24 24', width: '14', height: '14', 'aria-hidden': 'true' });
-  icon.append(svg('path', { d: 'M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z' }));
-  icon.append(svg('circle', { cx: '12', cy: '12', r: '2.8' }));
-  if (hidden) icon.append(svg('path', { d: 'M4 4l16 16' }));
-  button.append(icon);
-  button.addEventListener('click', async () => {
-    button.disabled = true;
-    try {
-      state.hiddenLimits = await api(hidden ? 'DELETE' : 'PUT', '/hidden?limit=' + encodeURIComponent(key));
-      renderUsage();
-    } catch (problem) {
-      button.disabled = false;
-      $('status').textContent = problem.message;
-    }
+/**
+ * A limit's own menu, on a right-click or a long press: hide it from the apps'
+ * overviews, or show it there again. Kept out of sight otherwise, so the cards
+ * are not lined with buttons hardly anyone needs.
+ */
+function hideMenu(block, key, label, hidden) {
+  const open = (x, y) => {
+    closeMenu();
+    const menu = el('div', 'limit-menu');
+    menu.setAttribute('role', 'menu');
+    const item = el('button', null, hidden ? `Show ${label} in the overview` : `Hide ${label} from the overview`);
+    item.type = 'button';
+    item.setAttribute('role', 'menuitem');
+    item.addEventListener('click', async () => {
+      closeMenu();
+      try {
+        state.hiddenLimits = await api(hidden ? 'DELETE' : 'PUT', '/hidden?limit=' + encodeURIComponent(key));
+        renderUsage();
+      } catch (problem) {
+        $('status').textContent = problem.message;
+      }
+    });
+    menu.append(item);
+    document.body.append(menu);
+    const room = menu.getBoundingClientRect();
+    menu.style.left = Math.min(x, window.innerWidth - room.width - 8) + 'px';
+    menu.style.top = Math.min(y, window.innerHeight - room.height - 8) + 'px';
+    item.focus();
+  };
+
+  block.addEventListener('contextmenu', event => {
+    event.preventDefault();
+    open(event.clientX, event.clientY);
   });
-  return button;
+
+  // A long press on a touch screen, which has no right-click.
+  let timer = null;
+  block.addEventListener('pointerdown', event => {
+    if (event.pointerType !== 'touch') return;
+    const { clientX: x, clientY: y } = event;
+    timer = setTimeout(() => { timer = null; open(x, y); }, 550);
+  });
+  for (const type of ['pointerup', 'pointercancel', 'pointermove']) {
+    block.addEventListener(type, () => { if (timer) clearTimeout(timer); timer = null; });
+  }
 }
+
+function closeMenu() {
+  for (const menu of document.querySelectorAll('.limit-menu')) menu.remove();
+}
+
+document.addEventListener('pointerdown', event => {
+  if (!event.target.closest('.limit-menu')) closeMenu();
+});
+document.addEventListener('keydown', event => { if (event.key === 'Escape') closeMenu(); });
+window.addEventListener('scroll', closeMenu, { passive: true });
 
 /** How far back the usual rate looks: long enough to take in the nights. */
 const USUAL_HOURS = 7 * 24;
@@ -812,6 +844,7 @@ function renderUsage() {
       const row = el('div', 'window-head');
       row.append(el('span', 'label', window.label));
       if (isHidden) row.append(el('span', 'hint', 'Hidden'));
+      hideMenu(block, key, `${name} ${window.label}`, isHidden);
 
       const reset = window.resetAt ? Date.parse(window.resetAt) - Date.now() : null;
       row.append(el('span', 'hint reset', reset == null ? '' : reset <= 0 ? 'resets now' : `resets in ${span(reset)}`));
@@ -819,7 +852,6 @@ function renderUsage() {
       const percent = window.remainingPercent;
       if (percent == null) {
         row.append(el('span', 'hint', window.detail || '—'));
-        row.append(eyeButton(key, `${name} ${window.label}`, isHidden));
         block.append(row);
         continue;
       }
@@ -832,7 +864,6 @@ function renderUsage() {
           badge.title = PACE[pace].title;
           row.append(badge);
         }
-        row.append(eyeButton(key, `${name} ${window.label}`, isHidden));
         row.append(el('span', 'value sev-' + tone, percentText(percent)));
         block.append(row);
 

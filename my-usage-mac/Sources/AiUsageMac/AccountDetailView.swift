@@ -92,18 +92,6 @@ private struct WindowDetailCard: View {
                         .monospacedDigit()
                 }
                 Spacer()
-                Button {
-                    model.setHidden(!hidden, usage, window)
-                } label: {
-                    Image(systemName: hidden ? "eye.slash" : "eye")
-                        .font(.system(size: 10, weight: .semibold))
-                        .frame(width: 22, height: 22)
-                }
-                .buttonStyle(.softCircle)
-                .help(hidden ? "Hidden from the overview and the menu bar. Click to show it again."
-                             : "Shown in the overview and the menu bar. Click to hide it.")
-                .accessibilityLabel(hidden ? "Show \(window.displayLabel)" : "Hide \(window.displayLabel)")
-                .alignmentGuide(.firstTextBaseline) { $0[VerticalAlignment.center] + 4 }
                 // At 0% the Empty badge below says it; the figure would only repeat it.
                 if Forecast.pace(window, now: model.now) == .empty {
                     PaceBadge(pace: .empty)
@@ -149,11 +137,36 @@ private struct WindowDetailCard: View {
         .padding(14)
         .opacity(hidden ? 0.55 : 1)
         .card()
+        .contextMenu { HideMenu(usage: usage, window: window) }
+        .accessibilityAction(named: hidden ? "Show in the overview" : "Hide from the overview") {
+            model.setHidden(!hidden, usage, window)
+        }
     }
 
     private var resetText: String {
         guard let reset = window.resetDate else { return "No reset reported" }
         guard reset > model.now else { return "Resetting now" }
         return "Resets in \(Format.span(reset.timeIntervalSince(model.now))) · \(Format.when(reset))"
+    }
+}
+
+
+/// What a right-click on a limit offers: hiding it from the overview, the menu
+/// bar and the sidebar's ring, or showing it there again.
+struct HideMenu: View {
+    @Environment(AppModel.self) private var model
+    let usage: ProviderUsage
+    let window: UsageWindow
+
+    var body: some View {
+        if model.isHidden(usage, window) {
+            Button("Show \(window.displayLabel) in the overview", systemImage: "eye") {
+                model.setHidden(false, usage, window)
+            }
+        } else {
+            Button("Hide \(window.displayLabel) from the overview", systemImage: "eye.slash") {
+                model.setHidden(true, usage, window)
+            }
+        }
     }
 }
