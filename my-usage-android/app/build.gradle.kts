@@ -10,6 +10,11 @@ plugins {
 // Without it this is a development build.
 val releaseVersion = (findProperty("releaseVersion") as String?)?.trim().orEmpty()
 
+// Where the app looks for newer releases of itself. -PupdateSource=http://host:port
+// names a stand-in that answers like this address, to try an update end to end.
+val updateSource = (findProperty("updateSource") as String?)?.trim()
+    ?: "https://api.github.com/repos/rzukic/usagetop"
+
 // Android orders installs by a single number that must rise with every release.
 // 1.2.1 becomes 1020199 and 1.2.1-beta.3 becomes 1020103, so a release sits
 // above all of its own betas and below the next version's first one.
@@ -42,6 +47,7 @@ android {
         targetSdk = 34
         versionCode = if (releaseVersion.isEmpty()) 1 else versionCodeOf(releaseVersion)
         versionName = releaseVersion.ifEmpty { "dev" }
+        buildConfigField("String", "UPDATE_SOURCE", "\"$updateSource\"")
     }
 
     signingConfigs {
@@ -77,6 +83,7 @@ android {
 
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 }
 

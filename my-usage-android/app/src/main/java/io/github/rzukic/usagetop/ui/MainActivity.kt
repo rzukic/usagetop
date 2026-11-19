@@ -24,7 +24,9 @@ import io.github.rzukic.usagetop.data.Credentials
 import io.github.rzukic.usagetop.data.CombinedUsage
 import io.github.rzukic.usagetop.data.ProviderId
 import io.github.rzukic.usagetop.data.ProviderUsage
+import io.github.rzukic.usagetop.BuildConfig
 import io.github.rzukic.usagetop.data.ServerClient
+import io.github.rzukic.usagetop.update.Updater
 import io.github.rzukic.usagetop.data.Snapshot
 import io.github.rzukic.usagetop.data.UsageRepository
 import io.github.rzukic.usagetop.data.UsageState
@@ -98,6 +100,8 @@ class MainActivity : AppCompatActivity() {
         binding.mistralGetKey.setOnClickListener { openUrl(MISTRAL_KEYS) }
         binding.kimiGetKey.setOnClickListener { openUrl(KIMI_KEYS) }
 
+        setupUpdates()
+
         lifecycleScope.launch {
             OAuthSession.results.collect { result ->
                 setBusy(false)
@@ -129,12 +133,63 @@ class MainActivity : AppCompatActivity() {
             if (!refreshing) applySnapshot(repository.cached())
         }
         if (!repository.isFresh()) refresh()
+        // Back from Android's own screens, what Install will do may have changed.
+        showUpdate(Updater.state.value)
+        if (Updater.isDue(this)) lifecycleScope.launch { Updater.check(this@MainActivity) }
     }
 
     override fun onPause() {
         super.onPause()
         cacheWatcher?.let(repository::unwatch)
         cacheWatcher = null
+    }
+
+    // ---- Updates ----------------------------------------------------------
+
+    private fun setupUpdates() {
+        binding.updateVersion.text = getString(R.string.updates_version, BuildConfig.VERSION_NAME)
+        binding.updateBeta.isChecked = Updater.beta(this)
+        // Turning beta versions on or off is a different question, so it is asked again.
+        binding.updateBeta.setOnCheckedChangeListener { _, wanted ->
+            Updater.setBeta(this, wanted)
+            lifecycleScope.launch { Updater.check(this@MainActivity) }
+        }
+        binding.updateCheck.setOnClickListener {
+            lifecycleScope.launch { Updater.check(this@MainActivity) }
+        }
+        binding.updateInstall.setOnClickListener { Updater.install(this) }
+        lifecycleScope.launch { Updater.state.collect(::showUpdate) }
+    }
+
+    private fun showUpdate(state: Updater.State) {
+        val phase = state.phase
+        binding.updateStatus.text = when (phase) {
+            Updater.Phase.OFF -> getString(R.string.updates_off)
+            Updater.Phase.WAITING -> getString(R.string.updates_waiting)
+            Updater.Phase.CHECKING -> getString(R.string.updates_checking)
+            Updater.Phase.UP_TO_DATE -> state.checkedAt
+                ?.let { getString(R.string.updates_up_to_date_checked, Format.ago(java.time.Instant.ofEpochMilli(it))) }
+                ?: getString(R.string.updates_up_to_date)
+            Updater.Phase.DOWNLOADING -> getString(R.string.updates_downloading, state.target.orEmpty())
+            Updater.Phase.READY -> getString(R.string.updates_ready, state.target.orEmpty())
+            Updater.Phase.INSTALLING -> getString(R.string.updates_installing, state.target.orEmpty())
+            Updater.Phase.FAILED -> state.failure ?: getString(R.string.updates_failed)
+        }
+        val ready = phase == Updater.Phase.READY
+        val off = phase == Updater.Phase.OFF
+        val busy = phase == Updater.Phase.CHECKING || phase == Updater.Phase.DOWNLOADING || phase == Updater.Phase.INSTALLING
+        binding.updateActions.visibility = if (off) View.GONE else View.VISIBLE
+        binding.updateBeta.visibility = if (off) View.GONE else View.VISIBLE
+        binding.updateInstall.visibility = if (ready) View.VISIBLE else View.GONE
+        binding.updateCheck.isEnabled = !busy
+        binding.updateHint.visibility = if (ready) View.VISIBLE else View.GONE
+        binding.updateHint.text = when {
+            !packageManager.canRequestPackageInstalls() -> getString(R.string.updates_hint_first)
+            Updater.installsUnattended(this) -> getString(R.string.updates_hint_unattended)
+            else -> getString(R.string.updates_hint_confirm)
+        }
+        // A dot on the tab, so a waiting update is seen without opening Settings.
+        binding.tabSettings.text = getString(if (ready) R.string.tab_settings_update else R.string.tab_settings)
     }
 
     // ---- Tabs -------------------------------------------------------------

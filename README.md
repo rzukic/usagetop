@@ -31,7 +31,11 @@ These links always give the latest release; earlier ones and betas are on the
 - **Android:** download
   [`usagetop-android.apk`](https://github.com/rzukic/usagetop/releases/latest/download/usagetop-android.apk)
   on the phone and open it; Android asks once to allow installing from your
-  browser. A newer release installs over it the same way.
+  browser. From then on the app updates itself: it downloads a new release in
+  the background, and Settings → Updates has **Install**. The first time,
+  Android asks whether usagetop may install apps and to confirm; after that,
+  on Android 12 and newer, updates go in by themselves while the app is not
+  on screen.
 - **Server:** unpack
   [`usagetop-server-linux-x64.tar.gz`](https://github.com/rzukic/usagetop/releases/latest/download/usagetop-server-linux-x64.tar.gz)
   (or
