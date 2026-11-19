@@ -5,6 +5,8 @@
 #                                    in a disk image to drag it to Applications
 #                                    from, attached to the release; the app
 #                                    updates itself from it too
+#   usagetop-mac.zip                 the same app, stapled, zipped: what a copy
+#                                    of 1.2.x looks for when it updates itself
 #   ghcr.io/rzukic/usagetop-server   the server's image for linux/amd64 and
 #                                    linux/arm64, tagged <version> and latest
 #
@@ -127,8 +129,14 @@ if [[ "$WHAT" != "image" ]]; then
 		spctl --assess --type open --context context:primary-signature "$DMG" || fail "Gatekeeper refuses the disk image."
 	fi
 
+	# The updaters of 1.2.1 and 1.2.2 look for this name. Without it they would
+	# never see a newer version, and everyone on them would have to reinstall.
+	ZIP="$OUT/usagetop-mac.zip"
+	rm -f "$ZIP"
+	ditto -c -k --keepParent "$APP" "$ZIP"
+
 	step "Mac: upload"
-	gh release upload "$TAG" -R "$REPO" "$DMG" --clobber
+	gh release upload "$TAG" -R "$REPO" "$DMG" "$ZIP" --clobber
 fi
 
 if [[ "$WHAT" != "mac" ]]; then
