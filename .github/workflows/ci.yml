@@ -1,0 +1,300 @@
+# Continuous integration for the four apps and the shared core.
+#
+# Every job except the secret scan runs only when something it builds changed;
+# the `changes` job decides that with `git diff`. Jobs that are not needed are
+# skipped through `if:` rather than through `on: paths`, because a skipped job
+# reports a finished, passing check, whereas a workflow that never starts leaves
+# its checks "Expected" (pending) on a pull request forever. The `ci-result` job
+# always runs and is the one check to mark as required in branch protection.
+#
+# A manual run (Actions tab, "Run workflow") builds everything.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "1"
+
+jobs:
+  secrets:
+    name: Secret scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      # A pinned release binary checked against its published SHA-256, rather
+      # than gitleaks-action: no token or licence needed, and it scans the whole
+      # history (the action scans only the commits of the push or pull request).
+      - name: Scan the full history with gitleaks
+        env:
+          GITLEAKS_VERSION: "8.30.1"
+          GITLEAKS_SHA256: "551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+        run: |
+          set -euo pipefail
+          dir="$RUNNER_TEMP/gitleaks"
+          mkdir -p "$dir"
+          curl -sSfL --retry 3 -o "$dir/gitleaks.tar.gz" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  $dir/gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf "$dir/gitleaks.tar.gz" -C "$dir" gitleaks
+          "$dir/gitleaks" version
+          # `gitleaks git` reads `git log --all`: every commit of every fetched ref.
+          # --redact keeps any finding's value out of the (public) log.
+          "$dir/gitleaks" git --redact --verbose --no-banner .
+
+  changes:
+    name: Detect changes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      win: ${{ steps.diff.outputs.win }}
+      server: ${{ steps.diff.outputs.server }}
+      android: ${{ steps.diff.outputs.android }}
+      mac: ${{ steps.diff.outputs.mac }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Decide which jobs to run
+        id: diff
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.event.after }}
+        run: |
+          set -euo pipefail
+          areas="win server android mac"
+          everything() {
+            echo "$1: running every job." | tee -a "$GITHUB_STEP_SUMMARY"
+            for a in $areas; do echo "$a=true" >> "$GITHUB_OUTPUT"; done
+            exit 0
+          }
+
+          case "$EVENT" in
+            pull_request) base="$PR_BASE"; head="$PR_HEAD"; range="$PR_BASE...$PR_HEAD" ;;
+            push)         base="$PUSH_BEFORE"; head="$PUSH_AFTER"; range="$PUSH_BEFORE..$PUSH_AFTER" ;;
+            *)            everything "Triggered by $EVENT" ;;
+          esac
+          # A new branch has no "before"; a force push may leave it unreachable.
+          if [[ -z "$base" || "$base" =~ ^0+$ ]] || ! git cat-file -e "$base^{commit}" 2>/dev/null \
+             || ! git cat-file -e "$head^{commit}" 2>/dev/null; then
+            everything "No usable base for $range"
+          fi
+
+          # Documentation alone never needs a build.
+          files="$(git diff --name-only "$range" | grep -v '\.md$' || true)"
+
+          ci='^\.github/workflows/ci[^/]*\.ya?ml$'
+          dotnet_root='^(global\.json|nuget\.config|Directory\.(Build|Packages)\.(props|targets))$'
+          win_root='^my-usage-win/(global\.json|nuget\.config|Directory\.(Build|Packages)\.(props|targets))$'
+          declare -A pattern=(
+            [win]="$ci|$dotnet_root|$win_root|^my-usage-win/(src|tests)/"
+            [server]="$ci|$dotnet_root|$win_root|^my-usage-win/src/AiUsage\.Core/|^my-usage-server/(src|tests)/|^my-usage-server/(global\.json|nuget\.config|Directory\.(Build|Packages)\.(props|targets))$"
+            [android]="$ci|^my-usage-android/"
+            [mac]="$ci|^my-usage-mac/"
+          )
+
+          {
+            echo "Changed files in \`$range\` (Markdown excluded):"
+            echo '```'
+            echo "${files:-(none)}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          for a in $areas; do
+            if [[ -n "$files" ]] && grep -qiE "${pattern[$a]}" <<< "$files"; then run=true; else run=false; fi
+            echo "$a=$run" >> "$GITHUB_OUTPUT"
+            echo "- $a: $run" | tee -a "$GITHUB_STEP_SUMMARY"
+          done
+
+  windows:
+    name: Windows app and core tests
+    needs: changes
+    if: needs.changes.outputs.win == 'true'
+    runs-on: windows-2025
+    timeout-minutes: 20
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@v6
+        id: dotnet
+        with:
+          dotnet-version: 9.0.x
+
+      # The image also carries newer SDKs, which dotnet would otherwise prefer.
+      - name: Pin the .NET 9 SDK
+        env:
+          SDK: ${{ steps.dotnet.outputs.dotnet-version }}
+        run: |
+          set -euo pipefail
+          : "${SDK:?setup-dotnet reported no SDK version}"
+          printf '{ "sdk": { "version": "%s", "rollForward": "disable" } }\n' "$SDK" > global.json
+          dotnet --version
+
+      - uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('my-usage-win/**/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Build the app (Release)
+        run: dotnet build my-usage-win/src/AiUsage -c Release
+
+      - name: Test the core
+        run: dotnet test my-usage-win/tests/AiUsage.Core.Tests -c Release
+
+  server:
+    name: Server tests
+    needs: changes
+    if: needs.changes.outputs.server == 'true'
+    # Linux, where the server is deployed; nothing on its test path is Windows-only.
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@v6
+        id: dotnet
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Pin the .NET 9 SDK
+        env:
+          SDK: ${{ steps.dotnet.outputs.dotnet-version }}
+        run: |
+          set -euo pipefail
+          : "${SDK:?setup-dotnet reported no SDK version}"
+          printf '{ "sdk": { "version": "%s", "rollForward": "disable" } }\n' "$SDK" > global.json
+          dotnet --version
+
+      - uses: actions/cache@v6
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('my-usage-server/**/*.csproj', 'my-usage-win/src/AiUsage.Core/*.csproj') }}
+          restore-keys: nuget-${{ runner.os }}-
+
+      - name: Test the server
+        run: dotnet test my-usage-server/tests/AiUsage.Server.Tests -c Release
+
+  android:
+    name: Android unit tests and debug build
+    needs: changes
+    if: needs.changes.outputs.android == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: my-usage-android
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # A pull request could swap in a doctored gradle-wrapper.jar; check it
+      # against Gradle's published checksums before running it.
+      - uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c # v6.4.1
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Unit tests and debug build
+        run: ./gradlew --no-daemon --stacktrace testDebugUnitTest assembleDebug
+
+  mac:
+    name: macOS app build
+    needs: changes
+    if: needs.changes.outputs.mac == 'true'
+    # macOS 26 on Apple silicon; its default Xcode is a 26.x release.
+    runs-on: macos-26
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: my-usage-mac
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      # The image's /Applications/Xcode.app is its default Xcode. To pin another
+      # one, set DEVELOPER_DIR=/Applications/Xcode_26.x.app/Contents/Developer.
+      - name: Check for Xcode 26
+        run: |
+          set -euo pipefail
+          xcode-select -p
+          xcodebuild -version
+          swift --version
+          major="$(xcodebuild -version | awk 'NR == 1 { split($2, v, "."); print v[1] }')"
+          if [[ "$major" != "26" ]]; then
+            echo "::error::Expected Xcode 26, found $(xcodebuild -version | head -n 1)"
+            exit 1
+          fi
+
+      - name: Build usagetop.app
+        run: ./build.sh release
+
+      # build.sh signs ad hoc (no identity needed) and tolerates a failure there;
+      # here a missing executable, a broken plist or an unsigned bundle fails.
+      - name: Check the bundle
+        run: |
+          set -euo pipefail
+          test -x usagetop.app/Contents/MacOS/AiUsageMac
+          test -s usagetop.app/Contents/Resources/AppIcon.icns
+          plutil -lint usagetop.app/Contents/Info.plist
+          file usagetop.app/Contents/MacOS/AiUsageMac
+          codesign --verify --verbose usagetop.app
+
+  ci-result:
+    name: CI result
+    needs: [secrets, changes, windows, server, android, mac]
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: All needed jobs passed
+        env:
+          NEEDS: ${{ toJSON(needs) }}
+        run: |
+          set -euo pipefail
+          echo "$NEEDS" | jq -r 'to_entries[] | "\(.key): \(.value.result)"'
+          # The scan and the change detection must succeed; a build job may be
+          # skipped (nothing it covers changed) but must not fail or be cancelled.
+          bad="$(echo "$NEEDS" | jq -r '
+            to_entries[]
+            | select(.value.result != "success"
+                     and (.key == "secrets" or .key == "changes" or .value.result != "skipped"))
+            | .key' | paste -sd ' ' -)"
+          if [[ -n "$bad" ]]; then
+            echo "::error::Failed or cancelled: $bad"
+            exit 1
+          fi

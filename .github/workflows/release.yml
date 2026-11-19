@@ -1,0 +1,251 @@
+# Builds and publishes a release when a version tag is pushed:
+#   git tag v1.2.0 && git push origin v1.2.0         (a release)
+#   git tag v1.2.1-beta.1 && git push origin v1.2.1-beta.1   (a pre-release)
+#
+# The tag is the version. One GitHub Release per version carries every app's
+# files; today that is the Windows installer and its Velopack update packages.
+#
+# Jobs:
+#   version  checks the tag is SemVer and works out whether it is a pre-release
+#   windows  tests, fetches the previous release for the delta, packs
+#   release  creates the release as a draft, attaches the files, writes the
+#            notes and publishes it in one step
+#
+# To add another app (an Android APK, a server image): add a job beside
+# `windows` that needs `version`, builds with ${{ needs.version.outputs.version }}
+# and uploads its files as an artifact; add it to the release job's `needs`;
+# and attach its files where the release job marks the spot. The release
+# stays a draft, invisible to the apps' updaters and to /releases/latest, until
+# every file is on it.
+
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+# Nothing by default; each job asks for what it needs.
+permissions: {}
+
+# A second run for the same tag waits for the first rather than racing it
+# (and then stops at "release already exists" if the first one published).
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+  DOTNET_NOLOGO: '1'
+  VPK_VERSION: '1.2.161'
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    outputs:
+      version: ${{ steps.parse.outputs.version }}
+      prerelease: ${{ steps.parse.outputs.prerelease }}
+    steps:
+      - name: Parse the tag
+        id: parse
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          # SemVer 2.0 with a "v" in front and no build metadata ("+..."),
+          # which Velopack ignores when it orders versions.
+          semver='^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-((0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*)(\.(0|[1-9][0-9]*|[0-9]*[a-zA-Z-][0-9a-zA-Z-]*))*))?$'
+          if [[ ! "$TAG" =~ $semver ]]; then
+            echo "::error::Tag '$TAG' is not a version tag like v1.2.0 or v1.2.1-beta.1."
+            exit 1
+          fi
+          version="${TAG#v}"
+          if [[ -n "${BASH_REMATCH[4]}" ]]; then prerelease=true; else prerelease=false; fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          echo "Version $version, pre-release: $prerelease" >> "$GITHUB_STEP_SUMMARY"
+
+  windows:
+    needs: version
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      PRERELEASE: ${{ needs.version.outputs.prerelease }}
+      RELEASES: my-usage-win/build/releases
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        id: dotnet
+        with:
+          dotnet-version: '9.0.x'
+
+      # The image also carries newer SDKs, which dotnet would otherwise prefer;
+      # a release is built with the SDK the CI tests with.
+      - name: Pin the .NET 9 SDK
+        shell: bash
+        env:
+          SDK: ${{ steps.dotnet.outputs.dotnet-version }}
+        run: |
+          set -euo pipefail
+          : "${SDK:?setup-dotnet reported no SDK version}"
+          printf '{ "sdk": { "version": "%s", "rollForward": "disable" } }\n' "$SDK" > global.json
+          dotnet --version
+
+      - name: Check the csproj version
+        shell: bash
+        run: |
+          # The tag wins; this only flags a forgotten bump.
+          csproj=$(sed -n 's:.*<Version>\(.*\)</Version>.*:\1:p' my-usage-win/src/AiUsage/AiUsage.csproj | head -n 1)
+          if [[ "$csproj" != "${VERSION%%-*}" ]]; then
+            echo "::warning::AiUsage.csproj says $csproj but the tag is $VERSION; building $VERSION."
+          fi
+
+      - name: Test
+        run: dotnet test my-usage-win/tests/AiUsage.Core.Tests -c Release
+
+      - name: Install vpk
+        shell: bash
+        run: |
+          dotnet tool install vpk --version "$VPK_VERSION" --tool-path "$RUNNER_TEMP/vpk"
+          echo "$RUNNER_TEMP/vpk" >> "$GITHUB_PATH"
+
+      # vpk pack builds a delta against the newest full package it finds in the
+      # output folder, so put the previous release's there first. A stable
+      # release builds on the latest stable one, which is what most installs run;
+      # a beta builds on the latest release of either kind (--pre), so betas form
+      # a chain. Anyone whose installed version is not the delta's base gets the
+      # full package instead. With no earlier release (the first run) vpk warns
+      # "No full / applicable release was found" and exits 0, and pack makes no
+      # delta. Drafts are not seen: this token cannot push.
+      - name: Fetch the previous release
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          pre=()
+          if [[ "$PRERELEASE" == true ]]; then pre=(--pre); fi
+          vpk download github --skip-updates \
+            --repoUrl "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY" \
+            --channel win \
+            --outputDir "$RELEASES" \
+            --token "$GITHUB_TOKEN" \
+            "${pre[@]}"
+
+      - name: Pack
+        run: ./my-usage-win/pack.ps1 -Version $env:VERSION
+
+      - name: Check the output
+        run: |
+          $dir = $env:RELEASES
+          $full = "usagetop-$env:VERSION-full.nupkg"
+          foreach ($f in 'usagetop-win-Setup.exe', $full, 'assets.win.json', 'releases.win.json') {
+            if (-not (Test-Path (Join-Path $dir $f))) { throw "pack.ps1 did not produce $f" }
+          }
+          $previous = Get-ChildItem $dir -Filter '*-full.nupkg' | Where-Object Name -ne $full
+          if ($previous -and -not (Test-Path (Join-Path $dir "usagetop-$env:VERSION-delta.nupkg"))) {
+            throw "Found $($previous.Name) but no delta package was built."
+          }
+          $product = (Get-Item my-usage-win/build/publish/AiUsage.exe).VersionInfo.ProductVersion
+          if ($product -ne $env:VERSION) { throw "AiUsage.exe says $product, expected $env:VERSION." }
+          Get-ChildItem $dir | Format-Table Name, Length -AutoSize | Out-String | Write-Host
+
+      # The whole folder, as vpk left it: vpk upload reads assets.win.json to
+      # know which files this build made.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows
+          path: ${{ env.RELEASES }}
+          if-no-files-found: error
+          retention-days: 7
+
+  # Add `android:` and `server:` jobs here, shaped like `windows`.
+
+  release:
+    needs: [version, windows]
+    runs-on: windows-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ github.ref_name }}
+      VERSION: ${{ needs.version.outputs.version }}
+      PRERELEASE: ${{ needs.version.outputs.prerelease }}
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: windows
+          path: dist/windows
+
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Install vpk
+        run: |
+          dotnet tool install vpk --version "$VPK_VERSION" --tool-path "$RUNNER_TEMP/vpk"
+          echo "$RUNNER_TEMP/vpk" >> "$GITHUB_PATH"
+
+      # A draft left by an earlier failed run of this tag would make vpk refuse
+      # ("already an existing release tagged"). Drafts were never visible to
+      # anyone, so drop them. A published release is left alone and stops the run.
+      - name: Remove a draft from an earlier attempt
+        run: |
+          for id in $(gh api "repos/$GH_REPO/releases" --paginate --jq '.[] | select(.draft and .tag_name == $ENV.TAG) | .id'); do
+            echo "Deleting draft release $id for $TAG"
+            gh api -X DELETE "repos/$GH_REPO/releases/$id"
+          done
+
+      # vpk creates the release as a draft on the existing tag and uploads the
+      # files this build made (Setup.exe, Portable.zip, the full and delta
+      # .nupkg), then a releases.win.json listing only this release's packages
+      # and the legacy RELEASES file. That per-release feed is what GithubSource
+      # reads; the releases.win.json pack wrote locally also lists the previous
+      # release's package and must not be uploaded as is.
+      - name: Upload the Windows files
+        run: |
+          pre=()
+          if [[ "$PRERELEASE" == true ]]; then pre=(--pre); fi
+          vpk upload github --skip-updates \
+            --repoUrl "$GITHUB_SERVER_URL/$GH_REPO" \
+            --channel win \
+            --outputDir dist/windows \
+            --token "$GH_TOKEN" \
+            --tag "$TAG" \
+            --releaseName "usagetop $VERSION" \
+            "${pre[@]}"
+
+      # Other apps' files go on here, from their own artifacts, e.g.
+      #   - uses: actions/download-artifact@<sha> # with name: android, path: dist/android
+      #   - run: gh release upload "$TAG" dist/android/usagetop-android.apk
+
+      # Notes run from the release the delta was built on: the last stable
+      # release for a stable tag, the last release of any kind for a beta.
+      - name: Write the notes and publish
+        run: |
+          if [[ "$PRERELEASE" == true ]]; then
+            previous=$(gh release list --exclude-drafts --limit 1 --json tagName --jq '.[0].tagName // empty')
+            latest=false
+          else
+            previous=$(gh release list --exclude-drafts --exclude-pre-releases --limit 1 --json tagName --jq '.[0].tagName // empty')
+            latest=true
+          fi
+          args=(-f "tag_name=$TAG")
+          if [[ -n "$previous" ]]; then args+=(-f "previous_tag_name=$previous"); fi
+          gh api -X POST "repos/$GH_REPO/releases/generate-notes" "${args[@]}" --jq .body > "$RUNNER_TEMP/notes.md"
+          gh release edit "$TAG" \
+            --notes-file "$RUNNER_TEMP/notes.md" \
+            --prerelease="$PRERELEASE" \
+            --latest="$latest" \
+            --draft=false
+          echo "Published https://github.com/$GH_REPO/releases/tag/$TAG" >> "$GITHUB_STEP_SUMMARY"

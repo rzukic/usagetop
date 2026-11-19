@@ -20,7 +20,10 @@ own: open its address in a browser. See `my-usage-server/README.md`.
 
 ## Installing
 
-Windows: download `usagetop-win-Setup.exe` from the Releases page and run it. It
+Windows: download
+[`usagetop-win-Setup.exe`](https://github.com/rzukic/usagetop/releases/latest/download/usagetop-win-Setup.exe)
+(always the latest release; earlier ones and betas are on the
+[Releases page](https://github.com/rzukic/usagetop/releases)) and run it. It
 installs for your user only (no admin prompt), adds a Start menu entry, and
 fetches the .NET 9 desktop runtime first if it is missing. The other apps are
 built from source for now (below).
@@ -48,6 +51,25 @@ cd my-usage-mac
 # (needs: dotnet tool install -g vpk --version 1.2.161)
 ./my-usage-win/pack.ps1
 ```
+
+## Releasing
+
+One version number covers the whole project, and each version is one GitHub
+Release. Pushing a tag builds and publishes it (`.github/workflows/release.yml`):
+
+```
+# 1. Bump <Version> in my-usage-win/src/AiUsage/AiUsage.csproj and commit
+# 2. Tag that commit and push the tag
+git tag v1.2.0
+git push origin v1.2.0
+```
+
+The tag is the version: the workflow refuses a tag that is not SemVer, runs the
+tests, packs the Windows app with the tag's version, builds a delta package
+against the previous release, and publishes the release with generated notes.
+A tag with a suffix, such as `v1.2.1-beta.1`, becomes a pre-release instead: the
+apps offer it only to those who opted into betas, and the download link above
+keeps pointing at the last stable release.
 
 ## One rule that cuts across all three
 
