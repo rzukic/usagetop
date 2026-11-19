@@ -300,6 +300,9 @@ public sealed partial class PanelView : UserControl
 
     public void ShowOverview() => Go(PageKind.Overview, null);
 
+    /// <summary>An account's page ("claude", "claude-2").</summary>
+    public void ShowAccount(string account) => Go(PageKind.Account, account);
+
     /// <summary>
     /// Every page drawn to a PNG, for checking the layout without a screen
     /// (`AiUsage.exe --snapshot <folder>`). The backdrop is the window manager's,

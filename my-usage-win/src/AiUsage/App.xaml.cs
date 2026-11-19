@@ -55,30 +55,24 @@ public partial class App : Application
         {
             try
             {
-                // `--state <file>`, a server's /api/state answer, draws that in place
-                // of anything of the user's: no credentials, cache, history, saved
-                // look or Settings page. Moved up to now and in US English, it is
-                // what the README's pictures are made from.
-                var state = Array.FindIndex(e.Args, a => a.Equals("--state", StringComparison.OrdinalIgnoreCase));
-                if (state >= 0 && state + 1 < e.Args.Length)
-                {
-                    var sample = ServerState.Parse(File.ReadAllText(e.Args[state + 1]))
-                        ?? throw new FormatException("The state has no reading");
-                    _repository = new UsageRepository(
-                        sample.ShiftedBy(DateTimeOffset.UtcNow - sample.ServerTime),
-                        Credentials.InMemory(new DpapiSealer()));
-                    PanelPrefs.UseDefaults();
-                    var english = CultureInfo.GetCultureInfo("en-US");
-                    CultureInfo.CurrentCulture = CultureInfo.CurrentUICulture = english;
-                    CultureInfo.DefaultThreadCurrentCulture = CultureInfo.DefaultThreadCurrentUICulture = english;
-                }
-                PanelView.Snapshots(e.Args[snapshot + 1], settings: state < 0);
+                var sample = UseSample(e.Args);
+                PanelView.Snapshots(e.Args[snapshot + 1], settings: !sample);
             }
             catch (Exception exception)
             {
                 Log.Write(exception.ToString());
             }
             Shutdown();
+            return;
+        }
+
+        // `--live-shot <folder> --state <file>`: the real popup on screen over a
+        // wallpaper of its own, captured, then out. Only ever with sample data:
+        // it is a picture of the screen.
+        var liveShot = Array.FindIndex(e.Args, a => a.Equals("--live-shot", StringComparison.OrdinalIgnoreCase));
+        if (liveShot >= 0 && liveShot + 1 < e.Args.Length)
+        {
+            _ = LiveShotsAsync(e.Args[liveShot + 1], e.Args);
             return;
         }
 
@@ -133,6 +127,43 @@ public partial class App : Application
         // tray icon.
         if (e.Args.Contains("--open", StringComparer.OrdinalIgnoreCase)) ShowMain();
         else if (e.Args.Contains("--flyout", StringComparer.OrdinalIgnoreCase)) ToggleFlyout();
+    }
+
+    /// <summary>
+    /// `--state <file>`, a server's /api/state answer, drawn in place of anything
+    /// of the user's: no credentials, cache, history, saved look or Settings page.
+    /// Moved up to now and in US English, it is what the README's pictures are
+    /// made from. False when there is no `--state`.
+    /// </summary>
+    private static bool UseSample(string[] args)
+    {
+        var state = Array.FindIndex(args, a => a.Equals("--state", StringComparison.OrdinalIgnoreCase));
+        if (state < 0 || state + 1 >= args.Length) return false;
+
+        var sample = ServerState.Parse(File.ReadAllText(args[state + 1]))
+            ?? throw new FormatException("The state has no reading");
+        _repository = new UsageRepository(
+            sample.ShiftedBy(DateTimeOffset.UtcNow - sample.ServerTime),
+            Credentials.InMemory(new DpapiSealer()));
+        PanelPrefs.UseDefaults();
+        var english = CultureInfo.GetCultureInfo("en-US");
+        CultureInfo.CurrentCulture = CultureInfo.CurrentUICulture = english;
+        CultureInfo.DefaultThreadCurrentCulture = CultureInfo.DefaultThreadCurrentUICulture = english;
+        return true;
+    }
+
+    private async Task LiveShotsAsync(string folder, string[] args)
+    {
+        try
+        {
+            if (!UseSample(args)) throw new ArgumentException("--live-shot takes --state <file>");
+            await FlyoutWindow.LiveShots(folder);
+        }
+        catch (Exception exception)
+        {
+            Log.Write(exception.ToString());
+        }
+        Shutdown();
     }
 
     private void OnSnapshotChanged(Snapshot snapshot)

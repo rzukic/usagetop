@@ -24,7 +24,7 @@ public partial class FlyoutWindow : Window
             _panel.SetCtrl(false);
             // A sign-in sends the user to the browser and back; the panel waits
             // for them rather than closing on the step in progress.
-            if (_panel.HoldsOpen) return;
+            if (_panel.HoldsOpen || _posing) return;
             Hide();
         };
         PreviewKeyDown += (_, e) => e.Handled = _panel.HandleKey(e, down: true);
@@ -44,18 +44,19 @@ public partial class FlyoutWindow : Window
     /// <summary>
     /// Opens against the tray icon. The cursor is where the click landed, so the
     /// popup is placed above it and pulled back inside the work area -- the taskbar
-    /// can be on any edge.
+    /// can be on any edge. <paramref name="at"/>, in screen pixels, stands in for
+    /// the click.
     /// </summary>
-    public void ShowNearTray()
+    public void ShowNearTray(System.Drawing.Point? at = null)
     {
+        var cursor = at ?? System.Windows.Forms.Cursor.Position;
         // What the glass will sit over, read before the window covers it.
-        _panel.SetBackdropLuminance(LuminanceBehind());
+        _panel.SetBackdropLuminance(LuminanceBehind(cursor));
         Show();
         _panel.Opened();
         UpdateLayout();
 
         var work = SystemParameters.WorkArea;
-        var cursor = System.Windows.Forms.Cursor.Position;
         var scale = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformToDevice.M11 ?? 1.0;
 
         var width = ActualWidth > 0 ? ActualWidth : Width;
@@ -80,11 +81,10 @@ public partial class FlyoutWindow : Window
     /// The glass is tinted to match, so it is as dark over a white page as over a
     /// dark one, the job Acrylic's luminosity layer does.
     /// </summary>
-    private double LuminanceBehind()
+    private double LuminanceBehind(System.Drawing.Point cursor)
     {
         try
         {
-            var cursor = System.Windows.Forms.Cursor.Position;
             var screen = System.Windows.Forms.Screen.FromPoint(cursor).Bounds;
             var scale = PresentationSource.FromVisual(this)?.CompositionTarget?.TransformToDevice.M11
                 ?? System.Windows.Forms.Screen.FromPoint(cursor).Bounds.Width / SystemParameters.PrimaryScreenWidth;
