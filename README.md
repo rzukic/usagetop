@@ -78,6 +78,14 @@ for updates.
 
 <p align="center"><sub>The Windows tray panel: everything at once, and one account with its history and forecast.</sub></p>
 
+<p align="center">
+<img src="docs/screenshots/android-app.png" width="270" alt="The Android app: every account's limits as bars, with what is left and when each resets">
+&nbsp;&nbsp;
+<img src="docs/screenshots/android-widget.png" width="390" alt="Android widgets: four rings for the limits you choose, and a large widget with the combined figure and every account">
+</p>
+
+<p align="center"><sub>Android: the app, and two of its home-screen widgets. The rings show the limits you pick; the large one lists every account, closest to empty first.</sub></p>
+
 ### Your own server
 
 A server is worth it once you use more than one device: the phone and the PC
