@@ -16,6 +16,31 @@ final class GlassPanel: NSPanel {
     override func cancelOperation(_ sender: Any?) {
         onCancel()
     }
+
+    /// ⌘X, ⌘C, ⌘V, ⌘A, ⌘Z and ⇧⌘Z in a text field. An app that lives in the
+    /// menu bar has no Edit menu, and it is the Edit menu that normally turns
+    /// those keys into cut, copy and paste; without it they would do nothing,
+    /// and a sign-in address could only be pasted from the context menu.
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        if event.type == .keyDown, let action = Self.editing(event), NSApp.sendAction(action, to: nil, from: self) {
+            return true
+        }
+        return super.performKeyEquivalent(with: event)
+    }
+
+    private static func editing(_ event: NSEvent) -> Selector? {
+        let flags = event.modifierFlags.intersection([.command, .shift, .option, .control])
+        guard flags == .command || flags == [.command, .shift] else { return nil }
+        let shift = flags.contains(.shift)
+        switch event.charactersIgnoringModifiers?.lowercased() {
+        case "x" where !shift: return #selector(NSText.cut(_:))
+        case "c" where !shift: return #selector(NSText.copy(_:))
+        case "v" where !shift: return #selector(NSText.paste(_:))
+        case "a" where !shift: return #selector(NSText.selectAll(_:))
+        case "z": return shift ? Selector(("redo:")) : Selector(("undo:"))
+        default: return nil
+        }
+    }
 }
 
 /// Owns the status item and the panel. The panel is a sheet of Liquid Glass
