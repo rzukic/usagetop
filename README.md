@@ -36,9 +36,24 @@ These links always give the latest release; earlier ones and betas are on the
   [`usagetop-server-linux-x64.tar.gz`](https://github.com/rzukic/usagetop/releases/latest/download/usagetop-server-linux-x64.tar.gz)
   (or
   [`-arm64`](https://github.com/rzukic/usagetop/releases/latest/download/usagetop-server-linux-arm64.tar.gz))
-  and start `./usagetop-server/aiusage-server`; nothing else to install. For
-  Docker and the settings, see `my-usage-server/README.md`.
-- **macOS:** built from source for now (below).
+  and start `./usagetop-server/aiusage-server`; nothing else to install. Or
+  run the image, built for x64 and arm64:
+  `docker run -d -p 8377:8377 -v usagetop-data:/data ghcr.io/rzukic/usagetop-server`.
+  For the settings, see `my-usage-server/README.md`.
+- **macOS:** download
+  [`usagetop-mac.zip`](https://github.com/rzukic/usagetop/releases/latest/download/usagetop-mac.zip),
+  unpack it and move `usagetop.app` to Applications. It needs macOS 26 and runs
+  on Apple silicon and Intel. The app is not signed with an Apple Developer ID
+  yet, so macOS refuses to open a downloaded copy until you allow it, once:
+  1. Open `usagetop.app`. macOS says it could not verify the app; choose
+     **Done** (not "Move to Trash").
+  2. Open **System Settings → Privacy & Security**, scroll down to "usagetop
+     was blocked to protect your Mac" and choose **Open Anyway**.
+  3. Confirm with **Open Anyway** and your password or Touch ID.
+
+  Or, in Terminal: `xattr -dr com.apple.quarantine /Applications/usagetop.app`.
+  A newer release is installed the same way, over the old one; the Mac app
+  does not update itself. A copy you build yourself (below) needs none of this.
 
 ## Building and testing
 
@@ -55,7 +70,7 @@ dotnet run --project my-usage-server/src/AiUsage.Server
 cd my-usage-android
 ./gradlew testDebugUnitTest assembleDebug
 
-# macOS (needs Xcode 26)
+# macOS (needs Xcode 26), into my-usage-mac/usagetop.app
 cd my-usage-mac
 ./build.sh
 
@@ -73,6 +88,9 @@ Release. For now a release is built on the maintainer's machine:
 # 1. Bump <Version> in my-usage-win/src/AiUsage/AiUsage.csproj, commit and push
 # 2. Build and publish it (needs vpk and gh, see the script's header)
 ./release.ps1
+# 3. On a Mac, add the Mac app and the server's image to that release
+#    (needs Xcode 26, gh and Docker, see the script's header)
+./release-mac.sh
 ```
 
 `release.ps1` refuses a version that is not SemVer, runs the tests, and builds
@@ -81,8 +99,16 @@ against the previous release, the signed Android APK, and the server for Linux
 on x64 and arm64. Then it pushes the tag `v<version>` and publishes the release
 with generated notes. `./release.ps1 -Version 1.2.1-beta.1` makes a pre-release
 instead: the apps offer it only to those who opted into betas, and the download
-links above keep pointing at the last stable release. The Mac app is built on a
-Mac and added to the same release with `gh release upload`.
+links above keep pointing at the last stable release.
+
+`release-mac.sh` does what only a Mac can, for the latest release or the one
+named (`./release-mac.sh 1.2.1`): it builds the Mac app for Apple silicon and
+Intel with that version, zips it and attaches `usagetop-mac.zip` to the
+release; then it builds the server's image for `linux/amd64` and
+`linux/arm64`, starts it once on an empty volume to see that it serves its page
+and can write its data, and pushes it to `ghcr.io/rzukic/usagetop-server` as
+`<version>` and `latest` (a pre-release leaves `latest` alone). The Mac app is
+signed ad hoc only, hence the steps under Installing.
 
 The Android APK is signed with a key that is kept outside the repository (the
 script's header says where). Every release must use the same key, or phones

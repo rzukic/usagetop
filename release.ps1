@@ -15,8 +15,9 @@ creates the release. The release stays a draft until its files and notes are on
 it, so neither the apps' updaters nor the /releases/latest download links ever
 see half of one.
 
-The Mac app is built on a Mac and added afterwards:
-  gh release upload v<version> <file>
+The Mac app and the server's Docker image are built on a Mac and added
+afterwards:
+  ./release-mac.sh
 
 Needs:
   - the .NET 9 SDK, and the vpk tool: dotnet tool install -g vpk --version 1.2.161
