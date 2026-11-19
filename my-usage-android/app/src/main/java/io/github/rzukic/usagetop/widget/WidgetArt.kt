@@ -119,14 +119,12 @@ object WidgetArt {
         strokeDp: Float,
         percent: Float?,
     ) {
-        views.setImageViewBitmap(trackId, track(context, sizeDp, strokeDp))
-        tint(context, views, trackId, R.color.widget_track)
+        setShape(context, views, trackId, track(context, sizeDp, strokeDp), R.color.widget_track)
         if (percent == null) {
             views.setViewVisibility(levelId, android.view.View.INVISIBLE)
         } else {
             views.setViewVisibility(levelId, android.view.View.VISIBLE)
-            views.setImageViewBitmap(levelId, level(context, sizeDp, strokeDp, percent))
-            tint(context, views, levelId, ringColor(percent))
+            setShape(context, views, levelId, level(context, sizeDp, strokeDp, percent), ringColor(percent))
         }
     }
 
@@ -144,19 +142,31 @@ object WidgetArt {
     }
 
     /**
-     * Colours a shape from a resource. From Android 12 the launcher resolves the
-     * resource in its own light or dark setting; before, it is resolved now and the
-     * widget is redrawn when the setting changes.
+     * A shape into an ImageView in a colour from a resource. From Android 12 the
+     * shape goes as it is and the ImageView's tint colours it, with the resource
+     * resolved by the launcher in its own light or dark setting. Before, there is
+     * no tint to set from a widget, so the shape is coloured here, in the setting
+     * of the moment, and redrawn when that changes.
+     *
+     * Not a colour filter: that lays the colour over the shape's black, and a
+     * translucent track comes out nearly black.
      */
-    fun tint(context: Context, views: RemoteViews, viewId: Int, colorRes: Int) {
+    fun setShape(context: Context, views: RemoteViews, viewId: Int, shape: Bitmap, colorRes: Int) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            views.setColor(viewId, "setColorFilter", colorRes)
+            views.setImageViewBitmap(viewId, shape)
+            views.setColorStateList(viewId, "setImageTintList", colorRes)
         } else {
-            views.setInt(viewId, "setColorFilter", context.getColor(colorRes))
+            views.setImageViewBitmap(viewId, colored(shape, context.getColor(colorRes)))
         }
     }
 
-    /** A text colour from a resource, resolved the same way as [tint]. */
+    private fun colored(shape: Bitmap, color: Int): Bitmap {
+        val out = Bitmap.createBitmap(shape.width, shape.height, Bitmap.Config.ARGB_8888)
+        Canvas(out).drawBitmap(shape, 0f, 0f, Paint().apply { this.color = color })
+        return out
+    }
+
+    /** A text colour from a resource, resolved the same way as [setShape]. */
     fun textColor(context: Context, views: RemoteViews, viewId: Int, colorRes: Int) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             views.setColor(viewId, "setTextColor", colorRes)

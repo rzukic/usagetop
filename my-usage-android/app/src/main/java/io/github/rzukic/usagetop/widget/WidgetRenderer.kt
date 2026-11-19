@@ -122,8 +122,7 @@ object WidgetRenderer {
             views.setViewVisibility(R.id.spark_box, View.GONE)
         } else {
             views.setViewVisibility(R.id.spark_box, View.VISIBLE)
-            views.setImageViewBitmap(R.id.spark, spark)
-            WidgetArt.tint(context, views, R.id.spark, R.color.widget_line)
+            WidgetArt.setShape(context, views, R.id.spark, spark, R.color.widget_line)
         }
 
         val lift = WidgetModel.nextLift(snapshot, now)
@@ -200,6 +199,7 @@ object WidgetRenderer {
             .filter { !compact || it.ahead }
             .sortedWith(compareBy({ !it.ahead }, { it.percent }))
             .take(2)
+        views.setViewVisibility(R.id.row_m1, if (mentions.isEmpty()) View.GONE else View.VISIBLE)
         bindMention(context, views, mentions.getOrNull(0), R.id.row_m1_label, R.id.row_m1_value, R.id.row_m1_flame)
         bindMention(context, views, mentions.getOrNull(1), R.id.row_m2_label, R.id.row_m2_value, null)
 

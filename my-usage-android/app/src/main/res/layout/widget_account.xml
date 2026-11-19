@@ -91,38 +91,43 @@
                 android:textColor="@color/widget_ink_secondary"
                 android:textSize="12sp" />
 
-            <View
-                android:layout_width="8dp"
-                android:layout_height="1dp" />
-
-            <ImageView
-                android:id="@+id/row_m1_flame"
-                android:layout_width="11dp"
-                android:layout_height="11dp"
-                android:contentDescription="@string/widget_ahead"
-                android:src="@drawable/ic_flame"
-                android:visibility="gone" />
-
-            <TextView
-                android:id="@+id/row_m1_label"
+            <!-- The first mention, as a group, so a flame and its window come and go together. -->
+            <LinearLayout
+                android:id="@+id/row_m1"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="2dp"
-                android:maxLines="1"
-                android:textColor="@color/widget_ink_secondary"
-                android:textSize="12sp"
-                android:visibility="gone" />
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:paddingStart="8dp"
+                android:visibility="gone">
 
-            <TextView
-                android:id="@+id/row_m1_value"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="3dp"
-                android:fontFeatureSettings="tnum"
-                android:maxLines="1"
-                android:textColor="@color/widget_ink_secondary"
-                android:textSize="12sp"
-                android:visibility="gone" />
+                <ImageView
+                    android:id="@+id/row_m1_flame"
+                    android:layout_width="11dp"
+                    android:layout_height="11dp"
+                    android:layout_marginEnd="2dp"
+                    android:contentDescription="@string/widget_ahead"
+                    android:src="@drawable/ic_flame"
+                    android:visibility="gone" />
+
+                <TextView
+                    android:id="@+id/row_m1_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:maxLines="1"
+                    android:textColor="@color/widget_ink_secondary"
+                    android:textSize="12sp" />
+
+                <TextView
+                    android:id="@+id/row_m1_value"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="3dp"
+                    android:fontFeatureSettings="tnum"
+                    android:maxLines="1"
+                    android:textColor="@color/widget_ink_secondary"
+                    android:textSize="12sp" />
+            </LinearLayout>
 
             <TextView
                 android:id="@+id/row_m2_label"
