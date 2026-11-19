@@ -500,6 +500,57 @@
         <Setter Property="FontSize" Value="12" />
     </Style>
 
+    <!-- A line in a right-click menu on the panel: an icon, the words, a soft
+         fill under the one the mouse or the arrow keys are on. -->
+    <Style x:Key="PanelMenuItem" TargetType="MenuItem">
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="MenuItem">
+                    <Border x:Name="Chrome" Background="Transparent" CornerRadius="6" Padding="10,6,14,7">
+                        <StackPanel Orientation="Horizontal">
+                            <ContentPresenter x:Name="Icon" ContentSource="Icon" Margin="0,1,9,0" VerticalAlignment="Center" />
+                            <ContentPresenter ContentSource="Header" RecognizesAccessKey="False" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsHighlighted" Value="True">
+                            <Setter TargetName="Chrome" Property="Background" Value="#1FFFFFFF" />
+                        </Trigger>
+                        <Trigger Property="Icon" Value="{x:Null}">
+                            <Setter TargetName="Icon" Property="Visibility" Value="Collapsed" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- A right-click menu on the panel: a dark tile of its own rather than the
+         system's light menu, with a shadow to lift it off the glass. -->
+    <Style x:Key="PanelMenu" TargetType="ContextMenu">
+        <Setter Property="HasDropShadow" Value="False" />
+        <Setter Property="FontFamily" Value="{StaticResource PanelFont}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Foreground" Value="{StaticResource TextPrimaryBrush}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ContextMenu">
+                    <Grid Margin="0,0,12,12">
+                        <Border Background="#202024" CornerRadius="9">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="16" ShadowDepth="3" Direction="270" Opacity="0.5" />
+                            </Border.Effect>
+                        </Border>
+                        <Border Background="#F2232327" BorderBrush="#2EFFFFFF" BorderThickness="1" CornerRadius="9" Padding="4">
+                            <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Cycle" />
+                        </Border>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- A rail item: no chrome of its own; the panel draws the selection. -->
     <Style x:Key="BareButton" TargetType="Button">
         <Setter Property="Cursor" Value="Hand" />

@@ -852,7 +852,9 @@ public sealed partial class PanelView : UserControl
             var shown = Limits.Shown(usage, Hidden);
             foreach (var window in shown)
             {
-                stack.Children.Add(WindowRow(window, now));
+                var row = WindowRow(window, now);
+                row.ContextMenu = HideMenu(usage, window);
+                stack.Children.Add(row);
             }
 
             var hidden = usage.Windows.Count - shown.Count;
@@ -897,7 +899,8 @@ public sealed partial class PanelView : UserControl
     /// <summary>A window in a card: its name and when it refills, then the bar.</summary>
     private FrameworkElement WindowRow(UsageWindow window, DateTimeOffset now)
     {
-        var row = new StackPanel { Margin = new Thickness(0, 11, 0, 0) };
+        // A clear fill, so a right-click anywhere on the row is the row's, not the card's.
+        var row = new StackPanel { Margin = new Thickness(0, 11, 0, 0), Background = Brushes.Transparent };
         var line = new Grid();
         line.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         line.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
@@ -993,7 +996,6 @@ public sealed partial class PanelView : UserControl
         var top = new Grid();
         top.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-        top.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
         var names = new StackPanel();
         var title = new TextBlock { FontFamily = Display, Foreground = Primary, TextWrapping = TextWrapping.Wrap };
         title.Inlines.Add(new Run(WindowName.Display(window.Label)) { FontSize = 15, FontWeight = FontWeights.SemiBold });
@@ -1006,28 +1008,8 @@ public sealed partial class PanelView : UserControl
         names.Children.Add(Text(ResetText(window, now), Caption, FontWeights.Normal, Secondary, new Thickness(0, 1, 0, 0)));
         top.Children.Add(names);
 
-        var name = WindowName.Display(window.Label);
-        var eye = new Button
-        {
-            Style = Res("SoftCircle"),
-            Content = hidden ? "" : "", // Hide (eye with a slash), View (eye)
-            Width = 24,
-            Height = 24,
-            FontSize = 11,
-            VerticalAlignment = VerticalAlignment.Center,
-            Margin = new Thickness(6, 0, 0, 0),
-            ToolTip = hidden
-                ? "Hidden from the overview and the tray. Click to show it again."
-                : "Shown in the overview and the tray. Click to hide it.",
-        };
-        AutomationName(eye, hidden ? $"Show {name}" : $"Hide {name}");
-        var limit = Limits.Key(usage, window);
-        eye.Click += (_, _) => SetHidden(limit, !hidden);
-        Grid.SetColumn(eye, 1);
-        top.Children.Add(eye);
-
         var level = Level(window.RemainingPercent, 24);
-        Grid.SetColumn(level, 2);
+        Grid.SetColumn(level, 1);
         top.Children.Add(level);
         stack.Children.Add(top);
 
@@ -1102,7 +1084,32 @@ public sealed partial class PanelView : UserControl
             stack.Children.Add(Text(detail, Caption, FontWeights.Normal, Secondary, new Thickness(0, 6, 0, 0)));
         }
 
-        return Card(stack);
+        var card = Card(stack);
+        card.ContextMenu = HideMenu(usage, window);
+        return card;
+    }
+
+    /// <summary>
+    /// What a right-click on a limit offers: hiding it from the overview, the
+    /// tray and the rail's ring, or showing it there again.
+    /// </summary>
+    private ContextMenu HideMenu(ProviderUsage usage, UsageWindow window)
+    {
+        var hidden = IsHidden(usage, window);
+        var name = WindowName.Display(window.Label);
+        var icon = Glyph(hidden ? "" : "", Caption); // View (an eye), Hide (an eye with a slash)
+        icon.Foreground = Secondary;
+        var item = new MenuItem
+        {
+            Style = Res("PanelMenuItem"),
+            Header = hidden ? $"Show {name} in the overview" : $"Hide {name} from the overview",
+            Icon = icon,
+        };
+        var key = Limits.Key(usage, window);
+        item.Click += (_, _) => SetHidden(key, !hidden);
+        var menu = new ContextMenu { Style = Res("PanelMenu") };
+        menu.Items.Add(item);
+        return menu;
     }
 
     private static string ResetText(UsageWindow window, DateTimeOffset now)
@@ -1182,7 +1189,7 @@ public sealed partial class PanelView : UserControl
         }
         _content.Children.Add(Section("Order", "", order));
 
-        if (Hidden.Count > 0) _content.Children.Add(HiddenSection());
+        _content.Children.Add(HiddenSection());
 
         _content.Children.Add(TraySection(prefs));
 
@@ -1225,10 +1232,11 @@ public sealed partial class PanelView : UserControl
         ((TextBlock)_content.Children[^1]).HorizontalAlignment = HorizontalAlignment.Center;
     }
 
-    /// <summary>The limits hidden from the overview, each with a way back; only there when there are any.</summary>
+    /// <summary>The limits hidden from the overview, each with a way back, and how to hide one.</summary>
     private FrameworkElement HiddenSection()
     {
         var stack = new StackPanel();
+        if (Hidden.Count == 0) stack.Children.Add(Text("None hidden.", Body, FontWeights.Normal, Primary));
         foreach (var key in Hidden.ToList())
         {
             var row = new Grid { Margin = new Thickness(0, 2, 0, 2) };
@@ -1245,7 +1253,7 @@ public sealed partial class PanelView : UserControl
             row.Children.Add(show);
             stack.Children.Add(row);
         }
-        const string what = "Left out of the overview, the tray icon and the rail's rings; each still shows on its account's page, where the eye button hides or shows it.";
+        const string what = "Left out of the overview, the tray icon and the rail's rings; each still shows on its account's page. Right-click a limit to hide or show it.";
         stack.Children.Add(Text(
             App.Repository.HidesOnServer ? "Kept by the server, for every app that reads from it. " + what : what,
             Caption, FontWeights.Normal, Secondary, new Thickness(0, 6, 0, 0)));
