@@ -129,6 +129,10 @@ final class StatusController: NSObject {
             let walls = CommandLine.arguments[(index + 2)...].prefix { !$0.hasPrefix("--") }
             Task { await Showcase.render(model: model, to: folder, wallpapers: Array(walls)) }
         }
+        if let index = CommandLine.arguments.firstIndex(of: "--live-shot"), index + 3 < CommandLine.arguments.count {
+            let args = CommandLine.arguments
+            Task { await liveShots(dark: args[index + 1], light: args[index + 2], folder: URL(fileURLWithPath: args[index + 3])) }
+        }
         if let index = CommandLine.arguments.firstIndex(of: "--snapshot"), index + 1 < CommandLine.arguments.count {
             let folder = URL(fileURLWithPath: CommandLine.arguments[index + 1])
             Task { await snapshots(to: folder) }
@@ -186,7 +190,9 @@ final class StatusController: NSObject {
     }
 
     private func close() {
-        guard isOpen else { return }
+        // While posing for `--live-shot`, focus moving to the backdrop is not
+        // the user leaving the panel.
+        guard isOpen, shotScreen == nil else { return }
         isOpen = false
         generation += 1
         let closing = generation
@@ -304,7 +310,7 @@ final class StatusController: NSObject {
 
     /// Under the status item, top edge fixed, nudged inside the screen.
     private func frame(height: CGFloat, anchor: NSRect) -> NSRect {
-        let screen = statusItem.button?.window?.screen ?? NSScreen.main
+        let screen = shotScreen ?? statusItem.button?.window?.screen ?? NSScreen.main
         let visible = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
         let width = PanelView.width
         let h = min(height, Self.maxHeight, visible.height - Self.gap * 2)
@@ -329,6 +335,90 @@ final class StatusController: NSObject {
         log.notice("resize to \(height, privacy: .public): window \(NSStringFromRect(self.panel.frame), privacy: .public) content \(NSStringFromRect(self.hosting.frame), privacy: .public)")
         contentFrameChanged()
         panel.invalidateShadow()
+    }
+
+    // MARK: Pictures of the real panel
+
+    /// The screen the panel is pictured on, in `--live-shot`; nil otherwise.
+    private var shotScreen: NSScreen?
+
+    /// The real panel, real Liquid Glass and all, over a wallpaper of our own,
+    /// for pictures (`--demo --live-shot <dark wallpaper> <light wallpaper> <folder>`).
+    /// The window server draws glass only on screen, so a picture of it has to
+    /// be a screen capture, and this app may not take one. So it sets each pose
+    /// up on the sharpest screen, writes `<pose>.rect` (the area to capture, in
+    /// `screencapture -R` coordinates) into the folder, and waits for
+    /// `<pose>.done` from whoever takes the picture.
+    private func liveShots(dark: String, light: String, folder: URL) async {
+        guard let screen = NSScreen.screens.max(by: { $0.backingScaleFactor < $1.backingScaleFactor }),
+              let main = NSScreen.screens.first else { return }
+        try? FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        try? await Task.sleep(for: .seconds(1))
+        shotScreen = screen
+
+        // Above the real menu bar, so none of its items get into the picture,
+        // and below the panel: the panel's glass is drawn over it for real.
+        let backdrop = NSWindow(contentRect: screen.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+        backdrop.level = NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + 1)
+        backdrop.hasShadow = false
+        backdrop.ignoresMouseEvents = true
+        let bar = screen.frame.maxY - screen.visibleFrame.maxY
+        let wall = ShotBackdrop(frame: NSRect(origin: .zero, size: screen.frame.size), barHeight: bar)
+        backdrop.contentView = wall
+        backdrop.setFrame(screen.frame, display: true)
+        let level = panel.level
+        panel.level = NSWindow.Level(rawValue: backdrop.level.rawValue + 1)
+
+        let account = model.ordered.first(where: \.isOK)?.account ?? "claude"
+        let poses: [(name: String, look: NSAppearance.Name, wall: String, pane: Pane)] = [
+            ("dark-overview", .darkAqua, dark, .overview), ("dark-account", .darkAqua, dark, .account(account)),
+            ("light-overview", .aqua, light, .overview), ("light-account", .aqua, light, .account(account)),
+        ]
+        for pose in poses {
+            NSApp.appearance = NSAppearance(named: pose.look)
+            wall.wallpaper = NSImage(contentsOfFile: pose.wall)
+            wall.dark = pose.look == .darkAqua
+            wall.item = statusItem.button?.image
+            model.pane = pose.pane
+            try? await Task.sleep(for: .milliseconds(400))
+            wall.item = statusItem.button?.image
+            backdrop.orderFrontRegardless()
+            // Drawn now, not later: the panel is placed by where the item lands.
+            wall.display()
+
+            let visible = screen.visibleFrame
+            // Under the drawn item, as the panel hangs under the real one.
+            let item = backdrop.convertToScreen(wall.convert(wall.itemRect, to: nil))
+            anchor = NSRect(x: item.minX, y: visible.maxY, width: item.width, height: item.height)
+            isOpen = true
+            panel.alphaValue = 1
+            panel.setFrame(frame(height: desiredHeight, anchor: anchor!), display: true)
+            panel.orderFrontRegardless()
+            try? await Task.sleep(for: .seconds(1.5))
+            panel.setFrame(frame(height: max(desiredHeight, 300), anchor: anchor!), display: true)
+            panel.invalidateShadow()
+            try? await Task.sleep(for: .seconds(1.5))
+
+            // The drawn menu bar from the item rightwards, and the panel with
+            // its shadow under it.
+            let left = min(panel.frame.minX, item.minX) - 60
+            // Short of the top-right corner, where the system's own privacy
+            // indicators sit above every window.
+            let area = NSRect(x: left, y: panel.frame.minY - 70, width: screen.frame.maxX - 30 - left,
+                              height: screen.frame.maxY - (panel.frame.minY - 70)).intersection(screen.frame)
+            let top = main.frame.maxY - area.maxY
+            let rect = "\(Int(area.minX)),\(Int(top)),\(Int(area.width)),\(Int(area.height))"
+            try? rect.write(to: folder.appendingPathComponent("\(pose.name).rect"), atomically: true, encoding: .utf8)
+            let done = folder.appendingPathComponent("\(pose.name).done")
+            for _ in 0..<120 where !FileManager.default.fileExists(atPath: done.path) {
+                try? await Task.sleep(for: .milliseconds(250))
+            }
+            panel.orderOut(nil)
+            isOpen = false
+        }
+        backdrop.orderOut(nil)
+        panel.level = level
+        NSApplication.shared.terminate(nil)
     }
 
     // MARK: The menu bar item
@@ -571,5 +661,63 @@ enum MenuBarLimits {
     /// "Fable weekly" stays; a longer name is cut so one entry cannot crowd the bar.
     private static func short(_ label: String) -> String {
         label.count <= 12 ? label : String(label.prefix(11)) + "…"
+    }
+}
+
+
+/// What `--live-shot` puts behind the panel: a wallpaper, and over its top a
+/// menu bar of its own, with the app's real item in it and a few of the
+/// system's, so the picture shows the item without anyone's own menu bar.
+final class ShotBackdrop: NSView {
+    var wallpaper: NSImage?
+    var item: NSImage?
+    var dark = true
+    private let barHeight: CGFloat
+    /// Where the item is drawn, in this view's coordinates.
+    private(set) var itemRect = NSRect.zero
+
+    init(frame: NSRect, barHeight: CGFloat) {
+        self.barHeight = barHeight
+        super.init(frame: frame)
+    }
+
+    required init?(coder: NSCoder) { fatalError() }
+
+    override func draw(_ dirtyRect: NSRect) {
+        wallpaper?.draw(in: bounds)
+        let ink: NSColor = dark ? .white : .black
+        let midY = bounds.maxY - barHeight / 2
+        var x = bounds.maxX - 46
+
+        let clock = NSAttributedString(string: "Tue Nov 17  4:42 PM", attributes: [
+            .font: NSFont.systemFont(ofSize: 13, weight: .medium), .foregroundColor: ink,
+        ])
+        x -= clock.size().width
+        clock.draw(at: NSPoint(x: x, y: midY - clock.size().height / 2))
+
+        for symbol in ["switch.2", "wifi", "battery.75percent"] {
+            guard let image = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)?
+                .withSymbolConfiguration(.init(pointSize: 14, weight: .regular)) else { continue }
+            x -= 22 + image.size.width
+            Self.tinted(image, ink).draw(in: NSRect(x: x, y: midY - image.size.height / 2, width: image.size.width, height: image.size.height))
+        }
+
+        guard let item else { return }
+        x -= 22 + item.size.width
+        itemRect = NSRect(x: x - 7, y: bounds.maxY - barHeight + 4, width: item.size.width + 14, height: barHeight - 8)
+        // Highlighted, as the item is while its panel is open.
+        ink.withAlphaComponent(0.16).setFill()
+        NSBezierPath(roundedRect: itemRect, xRadius: itemRect.height / 2, yRadius: itemRect.height / 2).fill()
+        Self.tinted(item, ink).draw(in: NSRect(x: x, y: midY - item.size.height / 2, width: item.size.width, height: item.size.height))
+    }
+
+    /// A template image in the bar's colour, as the menu bar draws one.
+    private static func tinted(_ image: NSImage, _ color: NSColor) -> NSImage {
+        NSImage(size: image.size, flipped: false) { rect in
+            image.draw(in: rect)
+            color.set()
+            rect.fill(using: .sourceAtop)
+            return true
+        }
     }
 }

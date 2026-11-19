@@ -21,7 +21,7 @@ Claude · ChatGPT · Mistral · Kimi · Muse · Google AI (Antigravity)
 </picture>
 </p>
 
-<p align="center"><sub>The macOS app, with sample data. Every picture here is made-up usage.</sub></p>
+<p align="center"><sub>The macOS app, with sample data: the menu bar shows the four limits closest to running out, the panel everything. Every picture here is made-up usage.</sub></p>
 
 ## What it tells you
 
