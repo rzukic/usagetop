@@ -424,9 +424,10 @@ class MainActivity : AppCompatActivity() {
         }
 
         val card = section.findViewById<LinearLayout>(R.id.section_card)
-        card.setOnClickListener {
+        val open = View.OnClickListener {
             startActivity(ProviderDetailActivity.intent(this, usage?.accountKey ?: id.key))
         }
+        card.setOnClickListener(open)
 
         val windows = usage?.windows.orEmpty()
         if (usage == null || windows.isEmpty()) {
@@ -439,7 +440,15 @@ class MainActivity : AppCompatActivity() {
         when {
             visible.isEmpty() -> card.addView(quiet(getString(R.string.all_limits_hidden)))
             else -> {
-                visible.forEach { card.addView(metricRow(it)) }
+                visible.forEach { window ->
+                    // A long press hides the row; a tap still opens the account.
+                    card.addView(metricRow(window).apply {
+                        setOnClickListener(open)
+                        HideMenu.attach(this, window.label, hidden = false) {
+                            changeHidden(HiddenLimits.key(usage, window), hidden = true)
+                        }
+                    })
+                }
                 if (count > 0) card.addView(quiet(resources.getQuantityString(R.plurals.limits_hidden, count, count)))
             }
         }
@@ -454,8 +463,8 @@ class MainActivity : AppCompatActivity() {
     }
 
     /**
-     * Shows a hidden limit again: at once on screen, then, with a server keeping
-     * the list, on the server, whose answer is drawn when it comes.
+     * Hides a limit or shows it again: at once on screen, then, with a server
+     * keeping the list, on the server, whose answer is drawn when it comes.
      */
     private fun changeHidden(key: String, hidden: Boolean) {
         lifecycleScope.launch {
@@ -471,14 +480,21 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    /** Settings › Hidden limits: each with Show, the card itself only while there are any. */
+    /** Settings › Hidden limits: each with Show, or "None hidden.", and how to hide one. */
     private fun renderHiddenLimits(snapshot: Snapshot?) {
         val keys = hiddenLimits.all().sortedBy { it.lowercase() }
-        binding.hiddenLimitsCard.visibility = if (keys.isEmpty()) View.GONE else View.VISIBLE
         binding.hiddenLimitsCaption.setText(
             if (hiddenLimits.serverKeeps()) R.string.hidden_limits_caption_server else R.string.hidden_limits_caption,
         )
         binding.hiddenLimitsList.removeAllViews()
+        if (keys.isEmpty()) {
+            binding.hiddenLimitsList.addView(TextView(this).apply {
+                text = getString(R.string.hidden_limits_none)
+                setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
+                textSize = 13f
+                setPadding(0, dp(8), 0, dp(4))
+            })
+        }
         keys.forEach { key ->
             val (account, label) = HiddenLimits.split(key) ?: return@forEach
             val name = snapshot?.usages?.firstOrNull { it.accountKey == account }?.displayName

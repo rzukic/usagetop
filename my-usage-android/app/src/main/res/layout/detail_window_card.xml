@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- One window on the detail screen: its level, when it resets, and the drawdown.
-     A limit hidden on this device stays here, dimmed and marked, with the way back. -->
+     A hidden limit stays here, dimmed and marked; a long press shows it again. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
@@ -86,16 +86,4 @@
         android:textSize="11sp"
         android:visibility="gone" />
 
-    <TextView
-        android:id="@+id/window_toggle"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="end"
-        android:layout_marginTop="6dp"
-        android:fontFamily="sans-serif-medium"
-        android:paddingStart="8dp"
-        android:paddingTop="8dp"
-        android:paddingBottom="2dp"
-        android:textColor="@color/meter_normal"
-        android:textSize="12sp" />
 </LinearLayout>

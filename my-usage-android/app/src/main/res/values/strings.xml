@@ -47,8 +47,8 @@
     <string name="oauth_waiting_text">Finish signing in to %1$s in your browser.</string>
     <string name="tab_usage">Usage</string>
     <string name="hidden_limits_title">Hidden limits</string>
-    <string name="hidden_limits_caption">Not shown in the list or the widgets on this device. The combined figure still counts them.</string>
-    <string name="hidden_limits_caption_server">Kept by your server, so every usagetop app leaves them out. The combined figure still counts them.</string>
+    <string name="hidden_limits_caption">Not shown in the list or the widgets on this device; the combined figure still counts them. Long-press a limit to hide or show it.</string>
+    <string name="hidden_limits_caption_server">Kept by your server, so every usagetop app leaves them out; the combined figure still counts them. Long-press a limit to hide or show it.</string>
     <string name="hidden_limit_show">Show</string>
     <string name="all_limits_hidden">All limits hidden</string>
     <plurals name="limits_hidden">
@@ -56,8 +56,11 @@
         <item quantity="other">%d hidden</item>
     </plurals>
     <string name="limit_hidden_badge">Hidden</string>
-    <string name="limit_hide">Hide this limit</string>
-    <string name="limit_show">Show this limit</string>
+    <string name="limit_hide_from_overview">Hide %1$s from the overview</string>
+    <string name="limit_show_in_overview">Show %1$s in the overview</string>
+    <string name="limit_hide_action">Hide from the overview</string>
+    <string name="limit_show_action">Show in the overview</string>
+    <string name="hidden_limits_none">None hidden.</string>
     <string name="tab_settings">Settings</string>
     <string name="percent_left">%1$d%% left</string>
     <string name="updated_ago">Updated %1$s</string>

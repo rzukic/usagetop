@@ -142,25 +142,22 @@ class ProviderDetailActivity : AppCompatActivity() {
         card.findViewById<TextView>(R.id.window_label).text =
             window.label.ifBlank { getString(R.string.usage) }
 
-        // Hidden on this device: still here, dimmed and marked, with the way back.
+        // Hidden: still here, dimmed and marked; a long press on the card brings it back.
         val key = HiddenLimits.key(account, window.label)
         val hidden = key in hiddenLimits.all()
         card.findViewById<TextView>(R.id.window_hidden).visibility = if (hidden) View.VISIBLE else View.GONE
         listOf(R.id.window_label, R.id.window_percent, R.id.window_reset, R.id.window_burn, R.id.window_chart, R.id.window_detail)
             .forEach { card.findViewById<View>(it).alpha = if (hidden) 0.45f else 1f }
-        card.findViewById<TextView>(R.id.window_toggle).apply {
-            text = getString(if (hidden) R.string.limit_show else R.string.limit_hide)
-            setOnClickListener {
-                // At once on screen; with a server keeping the list, then there too.
-                lifecycleScope.launch {
-                    val redraw = {
-                        render()
-                        UsageWidgetProvider.render(this@ProviderDetailActivity)
-                    }
-                    val problem = hiddenLimits.set(key, !hidden, redraw)
-                    if (problem != null) repository.reportServerProblem(problem)
-                    redraw()
+        HideMenu.attach(card, window.label.ifBlank { getString(R.string.usage) }, hidden) {
+            // At once on screen; with a server keeping the list, then there too.
+            lifecycleScope.launch {
+                val redraw = {
+                    render()
+                    UsageWidgetProvider.render(this@ProviderDetailActivity)
                 }
+                val problem = hiddenLimits.set(key, !hidden, redraw)
+                if (problem != null) repository.reportServerProblem(problem)
+                redraw()
             }
         }
 
