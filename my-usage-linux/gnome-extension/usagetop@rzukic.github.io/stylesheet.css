@@ -7,3 +7,4 @@
 .usagetop-warning { color: #f4cb7a; }
 .usagetop-critical { color: #f59088; }
 .usagetop-quiet { opacity: 0.6; }
+.usagetop-account { font-size: 0.85em; font-weight: 600; opacity: 0.7; }

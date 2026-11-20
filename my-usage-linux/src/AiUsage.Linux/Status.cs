@@ -34,6 +34,16 @@ public static class Status
     public static float? Headline(AppModel model) =>
         model.Combined?.Percent ?? Closest(model).FirstOrDefault()?.Window.RemainingPercent;
 
+    /// <summary>
+    /// The account's own part of its name, for places that already show the
+    /// provider's mark: "Work", or "#2" for a second account without a name;
+    /// null for a provider's only, unnamed one. The Mac's accountLabel.
+    /// </summary>
+    public static string? AccountLabel(ProviderUsage usage) =>
+        !string.IsNullOrWhiteSpace(usage.AccountName) ? usage.AccountName.Trim()
+        : usage.Slot.Length > 0 ? $"#{usage.Slot}"
+        : null;
+
     public static string Class(float? percent) => percent switch
     {
         null => "unknown",
@@ -110,6 +120,8 @@ public static class Status
                     json.WriteStartObject();
                     json.WriteString("kind", "limit");
                     json.WriteString("provider", ProviderCatalog.Of(limit.Usage.Id).Key);
+                    // Two accounts of one provider would look the same in a bar without it.
+                    if (AccountLabel(limit.Usage) is { } account) json.WriteString("account", account);
                     json.WriteString("title", limit.Name);
                     json.WriteNumber("percent", Math.Round(limit.Window.RemainingPercent!.Value, 1));
                     json.WriteString("text", Format.Percent(limit.Window.RemainingPercent!.Value));

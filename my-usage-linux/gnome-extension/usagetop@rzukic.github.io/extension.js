@@ -258,6 +258,14 @@ class Indicator extends PanelMenu.Button {
                     style_class: 'usagetop-mark',
                     y_align: Clutter.ActorAlign.CENTER,
                 }));
+                // Which account, when the provider has more than one: "RZ 73%".
+                if (item.account) {
+                    group.add_child(new St.Label({
+                        text: item.account.length > 6 ? `${item.account.slice(0, 5)}…` : item.account,
+                        style_class: 'usagetop-account',
+                        y_align: Clutter.ActorAlign.CENTER,
+                    }));
+                }
                 spoken.push(`${item.title} ${item.text}`);
             }
             // The ring alone when Settings asks for no figure beside it.
