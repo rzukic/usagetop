@@ -268,7 +268,7 @@ final class StatusController: NSObject {
         for (name, appearance, bar) in [("dark", NSAppearance.Name.darkAqua, NSColor(white: 0.12, alpha: 1)),
                                         ("light", .aqua, NSColor(white: 0.93, alpha: 1))] {
             let images = (1...Settings.maxMenuBarLimits).map { count in
-                MenuBarLimits.image(model.mostAtRisk(count).map { ($0.usage.providerKey, $0.window) }, stale: false)
+                MenuBarLimits.image(model.mostAtRisk(count).map { ($0.usage.providerKey, $0.usage.accountLabel, $0.window) }, stale: false)
             }
             let width = (images.map(\.size.width).max() ?? 100) + 24
             let height = CGFloat(images.count) * 30 + 8
@@ -453,7 +453,7 @@ final class StatusController: NSObject {
 
         let limits = model.mostAtRisk(model.settings.menuBarLimits)
         if !limits.isEmpty {
-            button.image = MenuBarLimits.image(limits.map { ($0.usage.providerKey, $0.window) }, stale: model.problem != nil)
+            button.image = MenuBarLimits.image(limits.map { ($0.usage.providerKey, $0.usage.accountLabel, $0.window) }, stale: model.problem != nil)
             button.title = ""
             button.imagePosition = .imageOnly
             button.toolTip = "usagetop, closest to running out:\n" + limits.map { entry in
@@ -624,9 +624,11 @@ enum Showcase {
 
 /// The limits closest to running out, for the menu bar: each one a provider's
 /// mark the height of the bar, and beside it the limit's name over what is
-/// left. One template image, without a hue: the menu bar can be any colour,
-/// and as a template the system draws it in the bar's own, as it draws its own
-/// icons. The name is drawn a little fainter than the figure.
+/// left. An account with a name of its own (a second Claude, "Work") says so
+/// before the limit's name, or two of one provider could not be told apart.
+/// One template image, without a hue: the menu bar can be any colour, and as a
+/// template the system draws it in the bar's own, as it draws its own icons.
+/// The name is drawn a little fainter than the figure.
 @MainActor
 enum MenuBarLimits {
     private static let height: CGFloat = 22
@@ -637,16 +639,18 @@ enum MenuBarLimits {
     private static let labelFont = NSFont.systemFont(ofSize: 9, weight: .semibold)
     private static let figureFont = NSFont.monospacedDigitSystemFont(ofSize: 11, weight: .semibold)
 
-    static func image(_ entries: [(provider: String, window: UsageWindow)], stale: Bool) -> NSImage {
-        // "Fable" rather than "Fable weekly"; but two windows of one model
-        // both showing keep their full names, so they can be told apart.
+    static func image(_ entries: [(provider: String, account: String?, window: UsageWindow)], stale: Bool) -> NSImage {
+        // "Fable" rather than "Fable weekly"; but two windows of one model of
+        // one account both showing keep their full names, so they can be told apart.
         let compact = entries.map { WindowName.compact($0.window.label) }
         let laidOut = entries.enumerated().map { index, entry -> (NSImage?, String, String, Double, CGFloat) in
             let level = entry.window.remainingPercent ?? 0
             let clashes = entries.indices.contains { other in
-                other != index && entries[other].provider == entry.provider && compact[other] == compact[index]
+                other != index && entries[other].provider == entry.provider
+                    && entries[other].account == entry.account && compact[other] == compact[index]
             }
-            let label = short(clashes ? entry.window.displayLabel : compact[index])
+            let name = clashes ? entry.window.displayLabel : compact[index]
+            let label = entry.account.map { short("\(short($0, to: 6)) · \(name)", to: 15) } ?? short(name)
             let figure = Format.percent(level)
             let width = max(
                 (label as NSString).size(withAttributes: [.font: labelFont]).width,
@@ -678,14 +682,17 @@ enum MenuBarLimits {
             return true
         }
         image.isTemplate = true
-        image.accessibilityDescription = entries.map { "\(Provider(key: $0.provider).displayName) \($0.window.displayLabel) \(Format.percent($0.window.remainingPercent ?? 0)) left" }
+        image.accessibilityDescription = entries.map { entry in
+            let whose = Provider(key: entry.provider).displayName + (entry.account.map { " \($0)" } ?? "")
+            return "\(whose) \(entry.window.displayLabel) \(Format.percent(entry.window.remainingPercent ?? 0)) left"
+        }
             .joined(separator: ", ")
         return image
     }
 
     /// "Fable weekly" stays; a longer name is cut so one entry cannot crowd the bar.
-    private static func short(_ label: String) -> String {
-        label.count <= 12 ? label : String(label.prefix(11)) + "…"
+    private static func short(_ label: String, to length: Int = 12) -> String {
+        label.count <= length ? label : String(label.prefix(length - 1)) + "…"
     }
 }
 
