@@ -6,9 +6,17 @@
 #
 #   ./install.sh              from an unpacked release folder, installs that copy;
 #                             otherwise downloads the latest release from GitHub
+#   curl -fsSL https://github.com/rzukic/usagetop/releases/latest/download/install-linux.sh | bash
+#                             the same with nothing downloaded first: each release
+#                             carries this script as install-linux.sh
 #   ./install.sh --uninstall  removes the installed copy, link, launcher, extension
 #                             and widget (keeps ~/.config/usagetop)
 set -euo pipefail
+
+# All of it in one block, which bash reads to the end before running any of it:
+# piped from curl, a command that read its input would otherwise eat the rest of
+# the script. Nothing in it asks for input.
+{
 
 REPO="rzukic/usagetop"
 DATA_HOME="${XDG_DATA_HOME:-$HOME/.local/share}"
@@ -89,14 +97,21 @@ if [[ "${1:-}" == "--uninstall" ]]; then
 	exit 0
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# Run from a file, the folder it is in; piped into bash there is none, and
+# whatever happens to be in the current folder is not a release to install.
+SCRIPT_DIR=""
+if [[ -n "${BASH_SOURCE[0]:-}" && -f "${BASH_SOURCE[0]}" ]]; then
+	SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+fi
+# Where the releases' archives are; a test points it at a server of its own.
+DOWNLOADS="${USAGETOP_DOWNLOADS:-https://github.com/$REPO/releases/latest/download}"
 TMP=""
 cleanup() {
 	if [[ -n "$TMP" ]]; then rm -rf "$TMP"; fi
 }
 trap cleanup EXIT
 
-if [[ -x "$SCRIPT_DIR/usagetop" ]]; then
+if [[ -n "$SCRIPT_DIR" && -x "$SCRIPT_DIR/usagetop" ]]; then
 	SOURCE_DIR="$SCRIPT_DIR"
 else
 	case "$(uname -m)" in
@@ -105,7 +120,7 @@ else
 	*) fail "unsupported architecture: $(uname -m)" ;;
 	esac
 	ASSET="usagetop-linux-$ARCH.tar.gz"
-	URL="https://github.com/$REPO/releases/latest/download/$ASSET"
+	URL="$DOWNLOADS/$ASSET"
 	TMP="$(mktemp -d)"
 	echo "Downloading $URL..."
 	curl -fsSL "$URL" -o "$TMP/$ASSET" || fail "could not download $ASSET"
@@ -232,3 +247,5 @@ case ":${PATH:-}:" in
 esac
 if [[ -n "$GNOME_NOTE" ]]; then echo "$GNOME_NOTE"; fi
 if [[ -n "$KDE_NOTE" ]]; then echo "$KDE_NOTE"; fi
+} </dev/null
+exit

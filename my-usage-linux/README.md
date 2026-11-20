@@ -10,7 +10,9 @@ command line.
 
 ## Installing and updates
 
-Run `./install.sh` from an unpacked `usagetop-linux-<arch>.tar.gz` release
+`curl -fsSL https://github.com/rzukic/usagetop/releases/latest/download/install-linux.sh | bash`
+downloads the latest release for this machine and installs it. Or run
+`./install.sh` from an unpacked `usagetop-linux-<arch>.tar.gz` release
 archive (or `./package.sh` to build the archives locally). It installs the app
 into `~/.local/share/usagetop/app`, links `~/.local/bin/usagetop`, writes a
 desktop entry, and on GNOME installs and enables the top bar extension (unless

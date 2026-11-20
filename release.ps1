@@ -9,6 +9,8 @@ One version, one GitHub Release, carrying:
   usagetop-android.apk                               the Android app, signed
   usagetop-linux-x64.tar.gz, -arm64.tar.gz           the Linux app, with its runtime;
                                                      the app updates itself from them
+  install-linux.sh                                   the Linux installer on its own, for
+                                                     curl ... | bash
   usagetop-server-linux-x64.tar.gz, -arm64.tar.gz    the server, with its runtime
 
 It runs the tests, fetches the previous release so the Windows update can be a
@@ -188,6 +190,8 @@ try {
                 New-Item -ItemType Directory -Force (Join-Path $out 'fonts') | Out-Null
                 Copy-Item (Join-Path $linux 'fonts\usagetop-marks.otf') (Join-Path $out 'fonts')
                 Write-TarGz $out (Join-Path $extra "usagetop-linux-$rid.tar.gz") 'usagetop' @('usagetop', 'install.sh')
+                # Also on its own, for: curl -fsSL .../latest/download/install-linux.sh | bash
+                Copy-Item (Join-Path $linux 'install.sh') (Join-Path $extra 'install-linux.sh')
             }
         }
     }

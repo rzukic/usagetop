@@ -142,11 +142,18 @@ These links always give the latest release; earlier ones and betas are on the
   Android asks whether usagetop may install apps and to confirm; after that,
   on Android 12 and newer, updates go in by themselves while the app is not
   on screen.
-- **Linux:** download
+- **Linux:** in a terminal,
+
+  ```
+  curl -fsSL https://github.com/rzukic/usagetop/releases/latest/download/install-linux.sh | bash
+  ```
+
+  It picks the download for your machine (x64 or arm64) from the latest
+  release; or download
   [`usagetop-linux-x64.tar.gz`](https://github.com/rzukic/usagetop/releases/latest/download/usagetop-linux-x64.tar.gz)
   (or
-  [`-arm64`](https://github.com/rzukic/usagetop/releases/latest/download/usagetop-linux-arm64.tar.gz)),
-  unpack it and run `./usagetop/install.sh`. It installs for your user only
+  [`-arm64`](https://github.com/rzukic/usagetop/releases/latest/download/usagetop-linux-arm64.tar.gz))
+  yourself, unpack it and run `./usagetop/install.sh`. It installs for your user only
   into `~/.local/share/usagetop/app`, links `~/.local/bin/usagetop`, adds a
   launcher, on GNOME puts in the top bar extension (log out and back in once
   to see it), on KDE Plasma adds its widget to the panel by the system tray,
@@ -267,12 +274,14 @@ should change too.
 One app for every desktop: the panel is the same everywhere, and it opens from
 wherever that desktop shows the limits. Settings › Top bar picks what that is:
 the combined level in a ring, or the one to four limits closest to running out.
-Download
-[`usagetop-linux-x64.tar.gz`](https://github.com/rzukic/usagetop/releases/latest/download/usagetop-linux-x64.tar.gz)
-(or
-[`-arm64`](https://github.com/rzukic/usagetop/releases/latest/download/usagetop-linux-arm64.tar.gz)),
-unpack it and run `./usagetop/install.sh` (see [Installing](#installing)); it
-sets up the GNOME and KDE parts by itself. For Xfce and Waybar, see
+To install, run this in a terminal (more under [Installing](#installing)):
+
+```
+curl -fsSL https://github.com/rzukic/usagetop/releases/latest/download/install-linux.sh | bash
+```
+
+It installs for your user only, sets up the GNOME and KDE parts by itself, and
+from then on the app updates itself. For Xfce and Waybar, see
 `my-usage-linux/README.md`.
 
 ### GNOME

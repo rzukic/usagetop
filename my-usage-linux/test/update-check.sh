@@ -131,6 +131,17 @@ check "9.9.9 is up to date" "$again_out" "9\.9\.9 is up to date"
 check "uninstall removes link" "$(test -e "$BIN" && echo exists || echo gone)" "^gone$"
 check "uninstall removes the GNOME extension" "$(test -e "$EXT" && echo exists || echo gone)" "^gone$"
 
+# 5. Piped into bash from an empty folder, as the one-line install does: it
+# fetches the newest release itself (here from the mock server) and installs it.
+command -v curl >/dev/null || { apt-get update -qq >/dev/null && apt-get install -y -qq curl >/dev/null 2>&1; }
+mkdir -p /tmp/empty && cd /tmp/empty
+piped_out="$(cat /src-v1/install.sh | USAGETOP_DOWNLOADS=http://127.0.0.1:18377/dl bash 2>&1)"
+check "piped install fetches the release" "$piped_out" "Installed usagetop 9\.9\.9"
+check "piped install runs" "$("$BIN" --version 2>&1)" "^9\.9\.9$"
+check "piped install has updates on" "$("$BIN" doctor | grep updates)" "^updates[[:space:]]+on"
+/src-v1/install.sh --uninstall >/dev/null
+cd /
+
 echo "== $failed failed"
 exit $failed
 '
