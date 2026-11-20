@@ -35,6 +35,13 @@ public sealed class App : Application
     private bool _railShowsUpdate;
     private IDisposable? _listener;
     private DispatcherTimer? _clock;
+    private DateTimeOffset _barSeenAt = DateTimeOffset.MinValue;
+
+    /// <summary>
+    /// The tray icon stands aside while a desktop's bar shows the limits, which
+    /// asks for them twice a minute; it comes back when that has stopped.
+    /// </summary>
+    private bool TrayWanted => DateTimeOffset.UtcNow - _barSeenAt > TimeSpan.FromSeconds(90);
     private DispatcherTimer? _refresher;
 
     public override void Initialize()
@@ -186,6 +193,7 @@ public sealed class App : Application
             _tray.Clicked += (_, _) => Panel().Toggle(null);
             TrayIcon.SetIcons(this, [_tray]);
         }
+        if (_tray.IsVisible != TrayWanted) _tray.IsVisible = TrayWanted;
 
         if (_trayUpdate != null)
         {
@@ -229,6 +237,15 @@ public sealed class App : Application
 
     private string Answer(string command)
     {
+        // A desktop's own bar showing the limits (the GNOME extension, the
+        // Plasma widget) says so with --bar: the tray icon would show them twice.
+        if (command.StartsWith("status", StringComparison.Ordinal) && command.Contains(" --bar", StringComparison.Ordinal))
+        {
+            command = command.Replace(" --bar", "", StringComparison.Ordinal);
+            _barSeenAt = DateTimeOffset.UtcNow;
+            if (_tray is { IsVisible: true }) _tray.IsVisible = false;
+        }
+
         // "toggle --anchor 1800,0,120,29": whatever owns a bar's item says where
         // it is, and the panel opens under it.
         PixelRect? anchor = null;
@@ -293,6 +310,8 @@ public sealed class App : Application
                 return Status.AsJson(_model) + "\n";
             case "status --waybar":
                 return Status.Waybar(_model) + "\n";
+            case "status --genmon":
+                return Status.Genmon(_model) + "\n";
             default:
                 return $"usagetop: unknown command '{command}'\n";
         }

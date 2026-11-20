@@ -95,6 +95,23 @@ public sealed class StatusTests
     }
 
     [Fact]
+    public void BarMarkup_ColoursEachFigureByItsOwnLevel()
+    {
+        var markup = Status.BarMarkup(
+        [
+            new Status.BarPart("Kimi", "Weekly", 11),
+            new Status.BarPart("Claude RZ", "5h", 38),
+            new Status.BarPart("Antigravity", "Claude & GP…", 64),
+        ], darkBar: true);
+
+        Assert.Equal(
+            "Kimi <span alpha=\"70%\">Weekly</span> <span color=\"#F59088\">11%</span>  "
+            + "Claude RZ <span alpha=\"70%\">5h</span> <span color=\"#F4CB7A\">38%</span>  "
+            + "Antigravity <span alpha=\"70%\">Claude &amp; GP…</span> 64%",
+            markup);
+    }
+
+    [Fact]
     public void Compact_NamesAWindowByItsModel()
     {
         Assert.Equal("Fable", WindowName.Compact("Fable 7d"));

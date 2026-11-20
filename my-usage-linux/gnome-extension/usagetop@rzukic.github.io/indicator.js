@@ -252,7 +252,7 @@ class Indicator extends PanelMenu.Button {
     }
 
     _refresh() {
-        ask('status --json', this._cancellable).then(answer => {
+        ask('status --json --bar', this._cancellable).then(answer => {
             if (this._cancellable.is_cancelled()) return;
             if (answer === null) {
                 this._draw(null);

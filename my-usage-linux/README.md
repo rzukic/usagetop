@@ -68,7 +68,13 @@ the app looks at where it is and takes what is on offer:
   }
   ```
 
-  The module's class is `normal`, `warning` or `critical`, to style it by.
+  With Settings › Top bar on 1–4 limits it lists them as the GNOME bar does
+  (`Kimi Weekly 11%  Claude 5h 38%`), each figure in its own level's colour;
+  on the combined ring it is the combined figure. The module's class is
+  `normal`, `warning` or `critical` (the tightest limit's), to style it by.
+- **Xfce:** add the panel's Generic Monitor plugin (`xfce4-genmon-plugin`) and
+  set its command to `usagetop status --genmon`, period 30 s, no label. It
+  shows the same as Waybar, and a click opens the panel.
 - **Tiling window managers** (i3, Sway, Hyprland, bspwm and the like): the panel
   is a utility window, which they float, and its class is `usagetop` for rules
   of your own, such as `for_window [class="usagetop"] move position 1400 40`.

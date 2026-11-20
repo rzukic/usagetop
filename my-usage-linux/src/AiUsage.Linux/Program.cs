@@ -17,6 +17,7 @@ public static class Program
           usagetop status          the reading as text
           usagetop status --json   everything, for a script
           usagetop status --waybar a Waybar custom module's JSON
+          usagetop status --genmon Xfce's Generic Monitor plugin's text
           usagetop quit
           usagetop update          check for a newer release and install it
           usagetop doctor          what this desktop offers, as the app sees it
@@ -97,8 +98,11 @@ public static class Program
                 return SetServer(words.ElementAtOrDefault(1), flags.Contains("--off"));
 
             case "status":
-                var form = flags.Contains("--waybar") ? " --waybar" : flags.Contains("--json") ? " --json" : "";
-                return Ask("status" + form);
+                var form = flags.Contains("--waybar") ? " --waybar"
+                    : flags.Contains("--genmon") ? " --genmon"
+                    : flags.Contains("--json") ? " --json" : "";
+                // --bar: asked by a desktop's bar that shows the limits itself.
+                return Ask("status" + form + (flags.Contains("--bar") ? " --bar" : ""));
 
             case "hide" or "refresh" or "quit":
                 return Ask(command);

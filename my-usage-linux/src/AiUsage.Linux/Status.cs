@@ -99,6 +99,62 @@ public static class Status
         return string.Join("\n", lines);
     }
 
+    /// <summary>One limit in a bar's text: whose, which, and what is left of it.</summary>
+    public sealed record BarPart(string Whose, string Label, float Percent)
+    {
+        public string Figure => Format.Percent(Percent);
+    }
+
+    /// <summary>
+    /// The limits Settings › Top bar asks for, as a bar of text shows them:
+    /// "Kimi" "Weekly" "11%", an account with a name of its own by its initials
+    /// ("Claude RZ"). Empty with the top bar on the combined ring.
+    /// </summary>
+    public static List<BarPart> BarParts(AppModel model)
+    {
+        var count = PanelPrefs.Current.BarLimits;
+        if (count == 0) return [];
+        var limits = ForBar(model, count);
+        var labels = BarLabels(limits);
+        return limits.Select((limit, i) =>
+        {
+            var whose = ProviderCatalog.Of(limit.Usage.Id).DisplayName;
+            if (AccountLabel(limit.Usage) is { } account) whose += " " + Account.Initials(account);
+            return new BarPart(whose, labels[i], limit.Window.RemainingPercent!.Value);
+        }).ToList();
+    }
+
+    /// <summary>
+    /// Pango markup for a bar of text (Waybar, Xfce's Generic Monitor), as the
+    /// GNOME bar draws it: the limit's name a little fainter, and a figure that
+    /// warns in the level's colour, each its own rather than the bar's.
+    /// </summary>
+    public static string BarMarkup(IEnumerable<BarPart> parts, bool darkBar) =>
+        string.Join("  ", parts.Select(part =>
+        {
+            var figure = part.Percent <= 40
+                ? $"<span color=\"{Hex(darkBar ? Look.LightOf(part.Percent) : Look.ColorOf(part.Percent))}\">{part.Figure}</span>"
+                : part.Figure;
+            return $"{Escape(part.Whose)} <span alpha=\"70%\">{Escape(part.Label)}</span> {figure}";
+        }));
+
+    private static string Escape(string text) => System.Security.SecurityElement.Escape(text) ?? "";
+
+    private static string Hex(Avalonia.Media.Color colour) => $"#{colour.R:X2}{colour.G:X2}{colour.B:X2}";
+
+    /// <summary>
+    /// Xfce's Generic Monitor plugin: it runs `usagetop status --genmon` and
+    /// shows the text in the panel, the tooltip over it, and runs the click.
+    /// </summary>
+    public static string Genmon(AppModel model)
+    {
+        var parts = BarParts(model);
+        var text = parts.Count > 0
+            ? BarMarkup(parts, Look.Dark)
+            : Headline(model) is { } percent ? Format.Percent(percent) : "–";
+        return $"<txt>{text}</txt><tool>{Escape(Text(model, limits: 12))}</tool><txtclick>usagetop toggle</txtclick>";
+    }
+
     /// <summary>Waybar's custom-module format: text, tooltip, a class to style by, and the level.</summary>
     public static string Waybar(AppModel model)
     {
@@ -106,23 +162,10 @@ public static class Status
         // to running out, each as "Kimi Weekly 11%", an account with a name of its
         // own told apart by its initials ("Claude RZ 5h 73%"). The class and level
         // are then the tightest one's.
-        var limits = PanelPrefs.Current.BarLimits > 0 ? ForBar(model, PanelPrefs.Current.BarLimits) : [];
-        var percent = limits.Count > 0 ? limits[0].Window.RemainingPercent : Headline(model);
-        string text;
-        if (limits.Count > 0)
-        {
-            var labels = BarLabels(limits);
-            text = string.Join("  ", limits.Select((limit, i) =>
-            {
-                var whose = ProviderCatalog.Of(limit.Usage.Id).DisplayName;
-                if (AccountLabel(limit.Usage) is { } account) whose += " " + Account.Initials(account);
-                return $"{whose} {labels[i]} {Format.Percent(limit.Window.RemainingPercent!.Value)}";
-            }));
-        }
-        else
-        {
-            text = percent is { } p ? Format.Percent(p) : "–";
-        }
+        // Waybar's bar is dark nearly always, whatever the desktop's setting.
+        var parts = BarParts(model);
+        var percent = parts.Count > 0 ? parts[0].Percent : Headline(model);
+        var text = parts.Count > 0 ? BarMarkup(parts, darkBar: true) : percent is { } p ? Format.Percent(p) : "–";
         using var buffer = new MemoryStream();
         using (var json = new Utf8JsonWriter(buffer, Json))
         {
