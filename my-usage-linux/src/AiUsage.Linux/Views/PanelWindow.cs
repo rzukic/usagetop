@@ -73,6 +73,10 @@ public sealed class PanelWindow : Window
                 ? [WindowTransparencyLevel.Blur, WindowTransparencyLevel.Transparent]
                 : [WindowTransparencyLevel.Transparent];
             Background = Brushes.Transparent;
+            // Subpixel text gives each glyph a coverage per colour but one alpha,
+            // and on a see-through window the compositor blends by that alpha:
+            // the text comes out smeared. Plain antialiasing keeps the two alike.
+            TextOptions.SetTextRenderingMode(this, TextRenderingMode.Antialias);
             Width = PanelView.PanelWidth + ShadowRoom * 2;
             Content = new Border
             {
