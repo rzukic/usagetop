@@ -228,8 +228,10 @@ public sealed class PanelWindow : Window
         var area = screen.WorkingArea;
         if (Anchor is { } anchor)
         {
-            // Hung under a bar's item: from there down to the screen's edge.
-            return (area.Bottom - anchor.Bottom) / screen.Scaling - AnchorGap - EdgeGap;
+            // Hung from a bar's item: from there to the screen's far edge, down
+            // from a bar at the top, up from one at the bottom.
+            var room = OpensAbove(anchor, area) ? anchor.Y - area.Y : area.Bottom - anchor.Bottom;
+            return room / screen.Scaling - AnchorGap - EdgeGap;
         }
         var height = area.Height / screen.Scaling;
         return Desktop.IsTiling ? height - TilingRoom : height - EdgeGap * 2;
@@ -268,8 +270,14 @@ public sealed class PanelWindow : Window
     }
 
     /// <summary>
-    /// Under the bar's item and centred on it, as a menu would be, but never
-    /// off the side of the screen the item is on.
+    /// An item in the lower half of its screen is in a bar at the bottom (as
+    /// Plasma's panel is at first): the panel opens above it, not off the screen.
+    /// </summary>
+    private static bool OpensAbove(PixelRect anchor, PixelRect area) => anchor.Center.Y > area.Center.Y;
+
+    /// <summary>
+    /// Under the bar's item and centred on it, as a menu would be (over it, for
+    /// a bar at the bottom), but never off the side of the screen the item is on.
     /// </summary>
     private void PlaceUnder(PixelRect anchor)
     {
@@ -286,7 +294,11 @@ public sealed class PanelWindow : Window
         var left = anchor.Center.X - panelWidth / 2;
         left = Math.Min(left, area.Right - Pixels(EdgeGap) - panelWidth);
         left = Math.Max(left, area.X + Pixels(EdgeGap));
-        Position = new PixelPoint(left - Pixels(side), anchor.Bottom + Pixels(AnchorGap - above));
+        var below = _shaped ? ShadowBelow : 0;
+        var top = OpensAbove(anchor, area)
+            ? anchor.Y - Pixels(AnchorGap) - Pixels(Bounds.Height) + Pixels(below)
+            : anchor.Bottom + Pixels(AnchorGap - above);
+        Position = new PixelPoint(left - Pixels(side), top);
     }
 
     private void OnKey(object? sender, KeyEventArgs e)
