@@ -1,0 +1,24 @@
+/* The item in the top bar: a ring, then a mark and a figure for each limit. */
+.usagetop-box { spacing: 9px; }
+.usagetop-item { spacing: 4px; }
+.usagetop-ring { width: 16px; height: 16px; }
+.usagetop-mark { icon-size: 13px; }
+/* Room on the mark's corner for an account's badge to hang into. */
+.usagetop-mark-box { min-width: 19px; min-height: 18px; }
+/* The account's initials on the mark's corner: the bar's ink, cut round by
+   the bar's own colour so it stands apart from the mark. */
+.usagetop-badge {
+    font-size: 7px;
+    font-weight: 900;
+    color: #000;
+    background-color: #f2f2f2;
+    border: 1px solid #000;
+    border-radius: 5px;
+    padding: 0 2px;
+    min-width: 6px;
+    text-align: center;
+}
+.usagetop-figure { font-feature-settings: "tnum"; font-weight: 600; }
+.usagetop-warning { color: #f4cb7a; }
+.usagetop-critical { color: #f59088; }
+.usagetop-quiet { opacity: 0.6; }

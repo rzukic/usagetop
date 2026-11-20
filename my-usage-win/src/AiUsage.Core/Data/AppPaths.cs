@@ -1,11 +1,14 @@
 namespace AiUsage.Data;
 
-/// <summary>Where the app keeps its state: one folder under %APPDATA%.</summary>
+/// <summary>
+/// Where the app keeps its state: one folder under %APPDATA% on Windows, and
+/// under the XDG config folder (~/.config) on Linux, named as the app is there.
+/// </summary>
 public static class AppPaths
 {
     public static string Root { get; } = Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "AiUsage");
+        OperatingSystem.IsLinux() ? "usagetop" : "AiUsage");
 
     public static string Credentials => Path.Combine(Root, "credentials.json");
 

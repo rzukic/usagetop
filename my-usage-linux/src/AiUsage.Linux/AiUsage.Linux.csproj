@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- The Linux app: a tray icon and the Mac app's panel, drawn with Avalonia on
+       the core the Windows app and the server share. The binary is `usagetop`,
+       which is also its command line (`usagetop toggle`, `usagetop status`). -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net9.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AssemblyName>usagetop</AssemblyName>
+    <RootNamespace>AiUsage</RootNamespace>
+    <Product>usagetop</Product>
+    <!-- One version number covers the whole project: it is the one in the
+         Windows app's project file, unless a release passes its own. -->
+    <WinProject>$(MSBuildThisFileDirectory)..\..\..\my-usage-win\src\AiUsage\AiUsage.csproj</WinProject>
+    <Version Condition="'$(Version)' == ''">$([System.Text.RegularExpressions.Regex]::Match($([System.IO.File]::ReadAllText('$(WinProject)')), '&lt;Version&gt;(.*?)&lt;/Version&gt;').Groups[1].Value)</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <!-- Runs on whatever .NET is there when started from its build folder; a
+         release is published with its own runtime. -->
+    <RollForward>LatestMajor</RollForward>
+    <!-- The app speaks English (Format.cs), so it needs no ICU: one library
+         fewer to find on somebody's distribution. Dates and numbers come out
+         the same as with en-GB. -->
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <PredefinedCulturesOnly>false</PredefinedCulturesOnly>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Desktop" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.6" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.6" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="AiUsage.Linux.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\my-usage-win\src\AiUsage.Core\AiUsage.Core.csproj" />
+    <!-- What the Windows app has that is not tied to WPF, shared as it is. -->
+    <Compile Include="..\..\..\my-usage-win\src\AiUsage\Ui\Format.cs" Link="Shared\Format.cs" />
+    <Compile Include="..\..\..\my-usage-win\src\AiUsage\Ui\Pace.cs" Link="Shared\Pace.cs" />
+    <Compile Include="..\..\..\my-usage-win\src\AiUsage\Ui\PanelPrefs.cs" Link="Shared\PanelPrefs.cs" />
+    <!-- The README's made-up usage, for "Try with sample data" and for pictures. -->
+    <EmbeddedResource Include="..\..\..\docs\sample-state.json" LogicalName="sample-state.json" Link="Shared\sample-state.json" />
+  </ItemGroup>
+
+</Project>

@@ -7,6 +7,8 @@ One version, one GitHub Release, carrying:
 
   usagetop-win-Setup.exe and the Velopack packages   the Windows app and its updates
   usagetop-android.apk                               the Android app, signed
+  usagetop-linux-x64.tar.gz, -arm64.tar.gz           the Linux app, with its runtime;
+                                                     the app updates itself from them
   usagetop-server-linux-x64.tar.gz, -arm64.tar.gz    the server, with its runtime
 
 It runs the tests, fetches the previous release so the Windows update can be a
@@ -48,6 +50,7 @@ $url = "https://github.com/$repo"
 $win = Join-Path $PSScriptRoot 'my-usage-win'
 $android = Join-Path $PSScriptRoot 'my-usage-android'
 $server = Join-Path $PSScriptRoot 'my-usage-server'
+$linux = Join-Path $PSScriptRoot 'my-usage-linux'
 $project = Join-Path $win 'src\AiUsage\AiUsage.csproj'
 $releases = Join-Path $win 'build\releases'
 # The files that are not Velopack's: vpk uploads its own folder, these go on after.
@@ -169,6 +172,23 @@ try {
         }
     }
 
+    # The same for the Linux app, under the names its updater looks for. The
+    # folder is what install.sh installs from: ./usagetop/install.sh puts it in
+    # ~/.local/share/usagetop/app, and from there it updates itself.
+    foreach ($rid in 'linux-x64', 'linux-arm64') {
+        Invoke-Step "Linux: $rid" {
+            $out = Join-Path $linux "build\publish-$rid"
+            if (Test-Path $out) { Remove-Item $out -Recurse -Force }
+            dotnet publish (Join-Path $linux 'src\AiUsage.Linux') -c Release -r $rid --self-contained true --nologo -v q `
+                -p:Version=$Version -p:IncludeSourceRevisionInInformationalVersion=false -p:DebugType=none -o $out
+            if ($LASTEXITCODE -eq 0) {
+                Copy-Item (Join-Path $linux 'install.sh') $out
+                Copy-Item (Join-Path $linux 'gnome-extension') $out -Recurse
+                Write-TarGz $out (Join-Path $extra "usagetop-linux-$rid.tar.gz") 'usagetop' @('usagetop', 'install.sh')
+            }
+        }
+    }
+
     Invoke-Step 'Tag' {
         if (-not (git tag --list $tag)) { git tag $tag $sha }
         elseif ((git rev-parse "$tag^{commit}") -ne $sha) { throw "Tag $tag exists and points at another commit." }
@@ -184,7 +204,7 @@ try {
             --tag $tag --releaseName "usagetop $Version" @pre
     }
 
-    Invoke-Step 'Upload: Android and server' {
+    Invoke-Step 'Upload: Android, Linux and server' {
         gh release upload $tag -R $repo @(Get-ChildItem $extra -File | ForEach-Object FullName)
     }
 
