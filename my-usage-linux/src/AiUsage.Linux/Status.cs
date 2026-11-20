@@ -100,9 +100,49 @@ public static class Status
     }
 
     /// <summary>One limit in a bar's text: whose, which, and what is left of it.</summary>
-    public sealed record BarPart(string Whose, string Label, float Percent)
+    public sealed record BarPart(string Whose, string Label, float Percent, ProviderId? Provider = null, string? Initials = null)
     {
         public string Figure => Format.Percent(Percent);
+    }
+
+    /// <summary>
+    /// Each provider's mark as a character of the font usagetop installs
+    /// (fonts/usagetop-marks.otf, made by fonts/build-font.py, whose numbers
+    /// these are), for bars that show text.
+    /// </summary>
+    public static readonly IReadOnlyDictionary<ProviderId, char> Marks = new Dictionary<ProviderId, char>
+    {
+        [ProviderId.Claude] = '\uE000',
+        [ProviderId.ChatGpt] = '\uE001',
+        [ProviderId.Mistral] = '\uE002',
+        [ProviderId.Kimi] = '\uE003',
+        [ProviderId.Muse] = '\uE004',
+        [ProviderId.Antigravity] = '\uE005',
+    };
+
+    public const string MarksFont = "usagetop marks";
+
+    /// <summary>
+    /// Whether the marks' font is where fontconfig finds it. Without it the
+    /// characters would show as boxes, so the bar names the provider instead.
+    /// </summary>
+    public static bool MarksInstalled()
+    {
+        var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        var data = Environment.GetEnvironmentVariable("XDG_DATA_HOME") is { Length: > 0 } xdg ? xdg : Path.Combine(home, ".local", "share");
+        return new[] { Path.Combine(data, "fonts"), Path.Combine(home, ".fonts"), "/usr/share/fonts", "/usr/local/share/fonts" }
+            .Any(folder =>
+            {
+                try
+                {
+                    return Directory.Exists(folder)
+                        && Directory.EnumerateFiles(folder, "usagetop-marks.otf", SearchOption.AllDirectories).Any();
+                }
+                catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+                {
+                    return false;
+                }
+            });
     }
 
     /// <summary>
@@ -119,8 +159,9 @@ public static class Status
         return limits.Select((limit, i) =>
         {
             var whose = ProviderCatalog.Of(limit.Usage.Id).DisplayName;
-            if (AccountLabel(limit.Usage) is { } account) whose += " " + Account.Initials(account);
-            return new BarPart(whose, labels[i], limit.Window.RemainingPercent!.Value);
+            var initials = AccountLabel(limit.Usage) is { } account ? Account.Initials(account) : null;
+            if (initials != null) whose += " " + initials;
+            return new BarPart(whose, labels[i], limit.Window.RemainingPercent!.Value, limit.Usage.Id, initials);
         }).ToList();
     }
 
@@ -129,7 +170,7 @@ public static class Status
     /// GNOME bar draws it: the limit's name a little fainter, and a figure that
     /// warns in the level's colour, each its own rather than the bar's.
     /// </summary>
-    public static string BarMarkup(IEnumerable<BarPart> parts, bool darkBar) =>
+    public static string BarMarkup(IEnumerable<BarPart> parts, bool darkBar, bool marks = false) =>
         // An em space between limits: the word spaces inside one would leave
         // them hard to tell apart.
         string.Join("\u2003", parts.Select(part =>
@@ -137,7 +178,14 @@ public static class Status
             var figure = part.Percent <= 40
                 ? $"<span color=\"{Hex(darkBar ? Look.LightOf(part.Percent) : Look.ColorOf(part.Percent))}\">{part.Figure}</span>"
                 : part.Figure;
-            return $"{Escape(part.Whose)} <span alpha=\"70%\">{Escape(part.Label)}</span> {figure}";
+            // With the marks' font, the provider's mark stands where its name
+            // would, and an account with a name of its own adds its initials,
+            // small and heavy, as the badge on a mark elsewhere.
+            var whose = marks && part.Provider is { } id && Marks.TryGetValue(id, out var mark)
+                ? $"<span font_family=\"{MarksFont}\">{mark}</span>"
+                  + (part.Initials is { } initials ? $"<span size=\"smaller\" weight=\"heavy\">{Escape(initials)}</span>" : "")
+                : Escape(part.Whose);
+            return $"{whose} <span alpha=\"70%\">{Escape(part.Label)}</span> {figure}";
         }));
 
     private static string Escape(string text) => System.Security.SecurityElement.Escape(text) ?? "";
@@ -152,7 +200,7 @@ public static class Status
     {
         var parts = BarParts(model);
         var text = parts.Count > 0
-            ? BarMarkup(parts, Look.Dark)
+            ? BarMarkup(parts, Look.Dark, MarksInstalled())
             : Headline(model) is { } percent ? Format.Percent(percent) : "–";
         return $"<txt>{text}</txt><tool>{Escape(Text(model, limits: 12))}</tool><txtclick>usagetop toggle</txtclick>";
     }
@@ -167,7 +215,7 @@ public static class Status
         // Waybar's bar is dark nearly always, whatever the desktop's setting.
         var parts = BarParts(model);
         var percent = parts.Count > 0 ? parts[0].Percent : Headline(model);
-        var text = parts.Count > 0 ? BarMarkup(parts, darkBar: true) : percent is { } p ? Format.Percent(p) : "–";
+        var text = parts.Count > 0 ? BarMarkup(parts, darkBar: true, MarksInstalled()) : percent is { } p ? Format.Percent(p) : "–";
         using var buffer = new MemoryStream();
         using (var json = new Utf8JsonWriter(buffer, Json))
         {

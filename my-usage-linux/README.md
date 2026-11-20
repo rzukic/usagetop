@@ -84,6 +84,10 @@ the app looks at where it is and takes what is on offer:
   with limits it is also `limits`, since each figure has its colour already:
   `#custom-usagetop.critical:not(.limits) { color: #bf616a; }`.
   `--bar` tells the app a bar shows the figures, so its tray icon stands aside.
+  `install.sh` also installs a small font with the providers' marks
+  (`~/.local/share/fonts/usagetop-marks.otf`); once it is there each limit
+  starts with its provider's mark rather than its name, in the bar's own
+  colour and size. The same text works in swaybar, i3bar and polybar.
 - **Xfce:** add the panel's Generic Monitor plugin (`xfce4-genmon-plugin`) and
   set its command to `usagetop status --genmon --bar`, period 30 s, no label.
   It shows the same as Waybar, and a click opens the panel.

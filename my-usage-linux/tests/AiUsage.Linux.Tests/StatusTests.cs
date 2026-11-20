@@ -112,6 +112,21 @@ public sealed class StatusTests
     }
 
     [Fact]
+    public void BarMarkup_PutsEachProvidersMarkWhereItsNameWouldBe()
+    {
+        var markup = Status.BarMarkup(
+        [
+            new Status.BarPart("Kimi", "Weekly", 11, ProviderId.Kimi),
+            new Status.BarPart("Claude RZ", "5h", 73, ProviderId.Claude, "RZ"),
+        ], darkBar: true, marks: true);
+
+        Assert.Equal(
+            "<span font_family=\"usagetop marks\">\uE003</span> <span alpha=\"70%\">Weekly</span> <span color=\"#F59088\">11%</span>\u2003"
+            + "<span font_family=\"usagetop marks\">\uE000</span><span size=\"smaller\" weight=\"heavy\">RZ</span> <span alpha=\"70%\">5h</span> 73%",
+            markup);
+    }
+
+    [Fact]
     public void Compact_NamesAWindowByItsModel()
     {
         Assert.Equal("Fable", WindowName.Compact("Fable 7d"));

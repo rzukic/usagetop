@@ -185,6 +185,8 @@ try {
                 Copy-Item (Join-Path $linux 'install.sh') $out
                 Copy-Item (Join-Path $linux 'gnome-extension') $out -Recurse
                 Copy-Item (Join-Path $linux 'plasma-widget') $out -Recurse
+                New-Item -ItemType Directory -Force (Join-Path $out 'fonts') | Out-Null
+                Copy-Item (Join-Path $linux 'fonts\usagetop-marks.otf') (Join-Path $out 'fonts')
                 Write-TarGz $out (Join-Path $extra "usagetop-linux-$rid.tar.gz") 'usagetop' @('usagetop', 'install.sh')
             }
         }

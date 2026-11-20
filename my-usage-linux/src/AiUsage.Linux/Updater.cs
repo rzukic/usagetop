@@ -108,7 +108,7 @@ public sealed class Updater
             onBetaChanged: handler => PanelPrefs.Current.Changed += handler,
             verify: VerifyBinaryAsync,
             launchReplacement: SpawnRelaunch,
-            syncGnomeExtension: appDir => { SyncGnomeExtension(appDir); SyncPlasmaWidget(appDir); })
+            syncGnomeExtension: appDir => { SyncGnomeExtension(appDir); SyncPlasmaWidget(appDir); SyncMarksFont(appDir); })
     {
     }
 
@@ -773,6 +773,28 @@ public sealed class Updater
             var target = Path.Combine(dest, Path.GetRelativePath(source, file));
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             File.Copy(file, target, overwrite: true);
+        }
+    }
+
+    /// <summary>
+    /// The marks' font that install.sh put in ~/.local/share/fonts, brought up
+    /// to date when a release changes it, and fontconfig told.
+    /// </summary>
+    private static void SyncMarksFont(string appDir)
+    {
+        var source = Path.Combine(appDir, "fonts", "usagetop-marks.otf");
+        var dest = Path.Combine(XdgDataHome(), "fonts", "usagetop-marks.otf");
+        if (!File.Exists(source) || !File.Exists(dest)) return;
+        if (File.ReadAllBytes(source).AsSpan().SequenceEqual(File.ReadAllBytes(dest))) return;
+        File.Copy(source, dest, overwrite: true);
+        try
+        {
+            using var cache = Process.Start(new ProcessStartInfo("fc-cache", ["-f", Path.GetDirectoryName(dest)!]) { UseShellExecute = false });
+            cache?.WaitForExit(10_000);
+        }
+        catch (System.ComponentModel.Win32Exception)
+        {
+            // No fc-cache: fontconfig finds the new file on its own soon enough.
         }
     }
 

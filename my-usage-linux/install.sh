@@ -18,6 +18,7 @@ BIN_DIR="$HOME/.local/bin"
 BIN_LINK="$BIN_DIR/usagetop"
 DESKTOP_DIR="$DATA_HOME/applications"
 DESKTOP_FILE="$DESKTOP_DIR/usagetop.desktop"
+FONT_FILE="$DATA_HOME/fonts/usagetop-marks.otf"
 EXT_UUID="usagetop@rzukic.github.io"
 EXT_DIR="$DATA_HOME/gnome-shell/extensions/$EXT_UUID"
 PLASMOID_ID="io.github.rzukic.usagetop"
@@ -82,6 +83,8 @@ if [[ "${1:-}" == "--uninstall" ]]; then
 		command -v gnome-extensions >/dev/null 2>&1 && gnome-extensions disable "$EXT_UUID" >/dev/null 2>&1 || true
 		rm -rf "$EXT_DIR"
 	fi
+	rm -f "$FONT_FILE"
+	command -v fc-cache >/dev/null 2>&1 && fc-cache -f "$DATA_HOME/fonts" >/dev/null 2>&1 || true
 	echo "Removed usagetop. Your settings in ${XDG_CONFIG_HOME:-$HOME/.config}/usagetop were left alone."
 	exit 0
 fi
@@ -207,6 +210,17 @@ if [[ -d "$WIDGET_SOURCE" && ! -L "$PLASMOID_DIR" ]] && is_kde; then
 		fi
 		;;
 	esac
+fi
+
+# The providers' marks as a font, for bars that show text (Waybar, swaybar,
+# polybar, Xfce's Generic Monitor): the app puts them in front of each limit
+# once fontconfig knows the font.
+if [[ -f "$APP_DIR/fonts/usagetop-marks.otf" ]]; then
+	mkdir -p "$(dirname "$FONT_FILE")"
+	if ! cmp -s "$APP_DIR/fonts/usagetop-marks.otf" "$FONT_FILE"; then
+		cp "$APP_DIR/fonts/usagetop-marks.otf" "$FONT_FILE"
+		command -v fc-cache >/dev/null 2>&1 && fc-cache -f "$(dirname "$FONT_FILE")" >/dev/null 2>&1 || true
+	fi
 fi
 
 VERSION="$("$BIN_LINK" --version 2>/dev/null || echo "")"
