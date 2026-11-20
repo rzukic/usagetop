@@ -41,6 +41,7 @@ public sealed class App : Application
     {
         Name = "usagetop";
         Styles.Add(new FluentTheme());
+        Styles.Add(ScrollBars.Style());
     }
 
     public override void OnFrameworkInitializationCompleted()

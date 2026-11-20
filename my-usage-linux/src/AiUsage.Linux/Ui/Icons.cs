@@ -73,14 +73,23 @@ public static class Icons
     public static Geometry Gear { get; } = BuildGear();
 
     /// <summary>A glyph at a size, in one colour. The box is the glyph's own, 24 units unless said.</summary>
-    public static Path Glyph(Geometry data, double size, IBrush brush) => new()
+    /// <summary>
+    /// The glyph scaled to fit a square of <paramref name="size"/> and centred in
+    /// it. Stretch would scale it the same but pin it to the square's top left,
+    /// so a wide one such as the three dots sat high.
+    /// </summary>
+    public static Path Glyph(Geometry data, double size, IBrush brush)
     {
-        Data = data,
-        Fill = brush,
-        Stretch = Stretch.Uniform,
-        Width = size,
-        Height = size,
-    };
+        var bounds = data.Bounds;
+        var side = Math.Max(bounds.Width, bounds.Height);
+        var scale = side > 0 ? size / side : 1;
+        var shape = data.Clone();
+        shape.Transform = new MatrixTransform(
+            Matrix.CreateTranslation(-bounds.X, -bounds.Y)
+            * Matrix.CreateScale(scale, scale)
+            * Matrix.CreateTranslation((size - bounds.Width * scale) / 2, (size - bounds.Height * scale) / 2));
+        return new Path { Data = shape, Fill = brush, Width = size, Height = size };
+    }
 
     private static Geometry BuildGrid()
     {
