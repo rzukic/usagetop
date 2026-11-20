@@ -83,11 +83,10 @@ public static class AccountPage
                 rates, sentence, alarming: empties));
         }
 
+        // Right-click to hide or show it. No tooltip saying so: over the chart it
+        // would cover the chart's own readout, and Settings › Hidden limits says it.
         var card = Bits.Card(stack, padding: 13);
         card.ContextMenu = Menus.Hide(model, usage, window);
-        ToolTip.SetTip(card, model.IsHidden(usage, window)
-            ? "Hidden from the overview. Right-click to show it there again."
-            : "Right-click to hide it from the overview");
         return card;
     }
 }
