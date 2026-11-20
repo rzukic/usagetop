@@ -61,6 +61,30 @@ public sealed record Account(ProviderId Provider, string Slot = "", string? Name
             ? ProviderCatalog.Of(provider).DisplayName
             : $"{ProviderCatalog.Of(provider).DisplayName} · {name.Trim()}";
 
+    /// <summary>
+    /// The account's own part of its name, for places that already show the
+    /// provider's mark: "Work", or "#2" for a second account without a name;
+    /// null for a provider's only, unnamed account. The Mac's accountLabel.
+    /// </summary>
+    public static string? LabelOf(string? name, string slot) =>
+        !string.IsNullOrWhiteSpace(name) ? name.Trim() : slot.Length > 0 ? $"#{slot}" : null;
+
+    /// <summary>
+    /// What an account's badge shows: up to two letters, in the case they were
+    /// written in. The first of each of the first two words ("Claude Pro" is
+    /// "CP"), a short name as it is ("RZ"), a number as it is ("#2"), and of
+    /// one longer word its first letter ("Work" is "W"). Every app follows
+    /// this rule (the Mac's AccountBadge.initials).
+    /// </summary>
+    public static string Initials(string label)
+    {
+        var words = label.Split([' ', '-', '_', '·', '\t'], StringSplitOptions.RemoveEmptyEntries);
+        if (words.Length >= 2) return $"{words[0][0]}{words[1][0]}";
+        var word = words.FirstOrDefault() ?? "";
+        if (word.Length <= 2) return word;
+        return char.IsDigit(word[0]) || word[0] == '#' ? word[..3] : word[..1];
+    }
+
     /// <summary>"claude" or "claude-2" back into its provider and slot; null for anything else.</summary>
     public static (ProviderId Provider, string Slot)? Parse(string? key)
     {

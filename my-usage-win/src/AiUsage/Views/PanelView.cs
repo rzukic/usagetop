@@ -626,7 +626,7 @@ public sealed partial class PanelView : UserControl
             var usage = order[i];
             var key = usage.AccountKey;
             var level = usage.State == UsageState.Ok ? Tightest(usage)?.RemainingPercent : null;
-            var ring = Ring(usage.Id, level, 32, usage.State != UsageState.Ok, usage.AccountName);
+            var ring = Ring(usage.Id, level, 32, usage.State != UsageState.Ok, Account.LabelOf(usage.AccountName, usage.Slot));
             _rail.Children.Add(RailButton(ring, _page == PageKind.Account && _account == key,
                 i < 9 ? $"Ctrl+{i + 1}" : null, usage.DisplayName, () => Go(PageKind.Account, key)));
         }
@@ -1461,33 +1461,32 @@ public sealed partial class PanelView : UserControl
             Height = size,
         });
         if (broken) grid.Children.Add(RingBadge("!", Severity.Critical, Colors.White));
-        else if (Initial(name) is { } letter) grid.Children.Add(RingBadge(letter, Color.FromRgb(0x2E, 0x2E, 0x33), Color.FromRgb(0xF2, 0xF2, 0xF2)));
+        else if (!string.IsNullOrWhiteSpace(name)) grid.Children.Add(RingBadge(Account.Initials(name), Color.FromRgb(0x2E, 0x2E, 0x33), Color.FromRgb(0xF2, 0xF2, 0xF2)));
         return grid;
     }
 
-    /// <summary>The first letter or digit of a name, as the name writes it; null for no name.</summary>
-    private static string? Initial(string? name) =>
-        name?.FirstOrDefault(char.IsLetterOrDigit) is { } c and not '\0' ? c.ToString() : null;
-
-    /// <summary>A small disc overhanging a ring's lower right, with one character on it.</summary>
+    /// <summary>
+    /// A small pill overhanging a ring's lower right: an account's initials
+    /// ("RZ", "W" for "Work"), as on the Mac's rail and menu bar, or "!" for
+    /// one that needs attention. One character keeps it round.
+    /// </summary>
     private static FrameworkElement RingBadge(string text, Color fill, Color ink)
     {
-        var badge = new Grid
+        var badge = new Border
         {
-            Width = 13,
+            MinWidth = 13,
             Height = 13,
+            Padding = new Thickness(text.Length > 1 ? 3 : 0, 0, text.Length > 1 ? 3 : 0, 0),
+            CornerRadius = new CornerRadius(6.5),
+            Background = new SolidColorBrush(fill),
+            BorderBrush = new SolidColorBrush(Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF)),
+            BorderThickness = new Thickness(0.75),
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Bottom,
-            Margin = new Thickness(0, 0, -3, -3),
+            Margin = new Thickness(0, 0, -4, -3),
             IsHitTestVisible = false,
         };
-        badge.Children.Add(new Ellipse
-        {
-            Fill = new SolidColorBrush(fill),
-            Stroke = new SolidColorBrush(Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF)),
-            StrokeThickness = 0.75,
-        });
-        badge.Children.Add(new TextBlock
+        badge.Child = new TextBlock
         {
             Text = text,
             FontFamily = Ui,
@@ -1497,7 +1496,7 @@ public sealed partial class PanelView : UserControl
             HorizontalAlignment = HorizontalAlignment.Center,
             VerticalAlignment = VerticalAlignment.Center,
             Margin = new Thickness(0, 0, 0, 0.5),
-        });
+        };
         return badge;
     }
 

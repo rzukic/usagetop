@@ -267,3 +267,25 @@ public class AccountFetchTests
         Assert.Equal("Claude · Work", state.Snapshot.Usages[1].DisplayName);
     }
 }
+
+public class AccountBadgeTests
+{
+    [Theory]
+    [InlineData("RZ", "RZ")]
+    [InlineData("Work", "W")]
+    [InlineData("Claude Pro", "CP")]
+    [InlineData("work-laptop", "wl")]
+    [InlineData("#2", "#2")]
+    [InlineData("12", "12")]
+    [InlineData("x", "x")]
+    public void A_badge_shows_up_to_two_letters_as_written(string label, string badge) =>
+        Assert.Equal(badge, Account.Initials(label));
+
+    [Fact]
+    public void A_label_is_the_name_or_the_slot_and_none_for_a_providers_only_account()
+    {
+        Assert.Equal("Work", Account.LabelOf(" Work ", "2"));
+        Assert.Equal("#2", Account.LabelOf(null, "2"));
+        Assert.Null(Account.LabelOf(null, ""));
+    }
+}
