@@ -80,14 +80,6 @@ for updates.
 <p align="center"><sub>The Windows tray panel: everything at once, and one account with its history and forecast.</sub></p>
 
 <p align="center">
-<img src="docs/screenshots/linux-overview.png" width="330" alt="The Linux panel on GNOME, opened from the top bar, which shows the four limits closest to empty with their names; the panel shows the combined figure and every account's limits">
-&nbsp;&nbsp;
-<img src="docs/screenshots/linux-account.png" width="330" alt="The Linux panel opened from the GNOME top bar, which shows the four limits closest to empty: Claude's 5-hour, weekly and Fable limits, each with its history and pace">
-</p>
-
-<p align="center"><sub>Linux on GNOME: the limits closest to empty in the top bar, and the panel that opens under it; one account with its history and forecast.</sub></p>
-
-<p align="center">
 <img src="docs/screenshots/android-app.png" width="270" alt="The Android app: every account's limits as bars, with what is left and when each resets">
 &nbsp;&nbsp;
 <img src="docs/screenshots/android-widget.png" width="390" alt="Android widgets: four rings for the limits you choose, and a large widget with the combined figure and every account">
@@ -260,12 +252,50 @@ they share (combined figure, trendline, projection, history thinning, provider
 parsing) is covered by the same tests on each side; change one and its twins
 should change too.
 
+## Linux
+
+One app for every desktop: the panel is the same everywhere, and it opens from
+wherever that desktop shows the limits. Settings › Top bar picks what that is:
+the combined level in a ring, or the one to four limits closest to running out.
+`install.sh` sets up the GNOME and KDE parts by itself; for Xfce and Waybar see
+`my-usage-linux/README.md`.
+
+### GNOME
+
+A top bar extension, as the Mac's menu bar: each limit's provider, its name over
+what is left, and a click that opens the panel under it.
+
+<p align="center">
+<img src="docs/screenshots/linux-overview.png" width="330" alt="The Linux panel on GNOME, opened from the top bar, which shows the four limits closest to empty with their names; the panel shows the combined figure and every account's limits">
+&nbsp;&nbsp;
+<img src="docs/screenshots/linux-account.png" width="330" alt="The Linux panel opened from the GNOME top bar, which shows the four limits closest to empty: Claude's 5-hour, weekly and Fable limits, each with its history and pace">
+</p>
+
+<p align="center"><sub>The limits closest to empty in the top bar, and the panel that opens under it; one account with its history and forecast.</sub></p>
+
+### KDE Plasma, Xfce, Sway and the rest
+
+On KDE Plasma a panel widget by the system tray draws the limits as GNOME's top
+bar does. Bars that show text (Xfce's Generic Monitor, Waybar, swaybar, i3bar,
+polybar) get one line, each limit led by its provider's mark from a small font
+usagetop installs. Anywhere else there is a tray icon.
+
+<p align="center">
+<img src="docs/screenshots/desktops/kde-bar.png" width="270" alt="KDE Plasma: the usagetop widget in the panel by the system tray, four limits each with its provider's mark and its name over the figure, and the panel opened above it">
+&nbsp;
+<img src="docs/screenshots/desktops/xfce-bar.png" width="232" alt="Xfce: the four limits in the top panel as one line, each led by its provider's mark, and the panel opened under it">
+&nbsp;
+<img src="docs/screenshots/desktops/sway-bar.png" width="251" alt="Sway with Waybar: the four limits in the bar as one line, each led by its provider's mark, and the panel floating under it">
+</p>
+
+<p align="center"><sub>KDE Plasma's panel widget, Xfce's Generic Monitor and Waybar on Sway, each with the panel opened from it.</sub></p>
+
 ## License
 
 MIT, see `LICENSE`. The Windows app bundles the Inter typeface, under the SIL
 Open Font License (`my-usage-win/src/AiUsage/Assets/Fonts/OFL.txt`). The
 provider marks are from simple-icons (CC0), Antigravity's from LobeHub's icon set
-(MIT).
+(MIT); `my-usage-linux/fonts/usagetop-marks.otf` is made from the same marks.
 
 This project is not affiliated with or endorsed by Anthropic, OpenAI, Mistral AI,
 Moonshot AI, Meta or Google. Their names and logos are trademarks of their owners and are
