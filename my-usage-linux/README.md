@@ -61,7 +61,7 @@ the app looks at where it is and takes what is on offer:
 
   ```json
   "custom/usagetop": {
-    "exec": "usagetop status --waybar",
+    "exec": "usagetop status --waybar --bar",
     "return-type": "json",
     "interval": 60,
     "on-click": "usagetop toggle"
@@ -72,9 +72,10 @@ the app looks at where it is and takes what is on offer:
   (`Kimi Weekly 11%  Claude 5h 38%`), each figure in its own level's colour;
   on the combined ring it is the combined figure. The module's class is
   `normal`, `warning` or `critical` (the tightest limit's), to style it by.
+  `--bar` tells the app a bar shows the figures, so its tray icon stands aside.
 - **Xfce:** add the panel's Generic Monitor plugin (`xfce4-genmon-plugin`) and
-  set its command to `usagetop status --genmon`, period 30 s, no label. It
-  shows the same as Waybar, and a click opens the panel.
+  set its command to `usagetop status --genmon --bar`, period 30 s, no label.
+  It shows the same as Waybar, and a click opens the panel.
 - **Tiling window managers** (i3, Sway, Hyprland, bspwm and the like): the panel
   is a utility window, which they float, and its class is `usagetop` for rules
   of your own, such as `for_window [class="usagetop"] move position 1400 40`.
