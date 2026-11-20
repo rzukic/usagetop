@@ -1,0 +1,5 @@
+# Sway for desktops-check.sh: one headless output; Waybar is started by the
+# check once the app runs, so its first reading has something to read.
+output HEADLESS-1 resolution 1600x1000 bg #3b4252 solid_color
+xwayland enable
+default_border pixel 2

@@ -1,0 +1,7 @@
+* { font-family: "Noto Sans", sans-serif; font-size: 13px; }
+window#waybar { background: rgba(30, 32, 40, 0.92); color: #e5e9f0; }
+#workspaces button { padding: 0 8px; color: #e5e9f0; }
+#custom-usagetop { padding: 0 10px; }
+#custom-usagetop.warning { color: #ebcb8b; }
+#custom-usagetop.critical { color: #bf616a; }
+#tray { padding: 0 10px; }

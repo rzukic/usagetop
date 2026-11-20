@@ -84,5 +84,13 @@ the app looks at where it is and takes what is on offer:
 `./test/desktop-check.sh` needs Docker. It publishes the app and runs it in a
 container on a virtual display, under i3 with nothing compositing and under
 openbox with picom, and checks the window it opens, where it is put, and the
-command line. A tray, KWin's blur and Wayland need a real desktop and are not
-covered; none of those has been tried yet.
+command line.
+
+`./test/desktops-check.sh [<folder>] [kde|xfce|sway ...]` goes further, with
+a throwaway container per desktop: KDE Plasma 6.3 on X11 with KWin compositing
+in software, Xfce, and Sway with Waybar (headless, the app under XWayland). It
+checks the tray icon, that a click on it opens the panel by the tray, its
+menu, KWin's blur, the Waybar module and `usagetop toggle`, and leaves
+pictures of each, drawn from the sample data, in `<folder>`. The images it
+builds are kept for the next run; `--clean` removes them. Plasma's X11 session
+is gone from 6.8 on, so it runs on Debian trixie's 6.3.
