@@ -105,8 +105,8 @@ public sealed class StatusTests
         ], darkBar: true);
 
         Assert.Equal(
-            "Kimi <span alpha=\"70%\">Weekly</span> <span color=\"#F59088\">11%</span>  "
-            + "Claude RZ <span alpha=\"70%\">5h</span> <span color=\"#F4CB7A\">38%</span>  "
+            "Kimi <span alpha=\"70%\">Weekly</span> <span color=\"#F59088\">11%</span>\u2003"
+            + "Claude RZ <span alpha=\"70%\">5h</span> <span color=\"#F4CB7A\">38%</span>\u2003"
             + "Antigravity <span alpha=\"70%\">Claude &amp; GP…</span> 64%",
             markup);
     }

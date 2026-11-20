@@ -130,7 +130,9 @@ public static class Status
     /// warns in the level's colour, each its own rather than the bar's.
     /// </summary>
     public static string BarMarkup(IEnumerable<BarPart> parts, bool darkBar) =>
-        string.Join("  ", parts.Select(part =>
+        // An em space between limits: the word spaces inside one would leave
+        // them hard to tell apart.
+        string.Join("\u2003", parts.Select(part =>
         {
             var figure = part.Percent <= 40
                 ? $"<span color=\"{Hex(darkBar ? Look.LightOf(part.Percent) : Look.ColorOf(part.Percent))}\">{part.Figure}</span>"
@@ -172,7 +174,20 @@ public static class Status
             json.WriteStartObject();
             json.WriteString("text", text);
             json.WriteString("tooltip", Text(model, limits: 12));
-            json.WriteString("class", Class(percent));
+            if (parts.Count > 0)
+            {
+                // Each figure has its own level's colour already: "limits" lets a
+                // style that colours the module by its level leave these alone
+                // (#custom-usagetop.critical:not(.limits)).
+                json.WriteStartArray("class");
+                json.WriteStringValue(Class(percent));
+                json.WriteStringValue("limits");
+                json.WriteEndArray();
+            }
+            else
+            {
+                json.WriteString("class", Class(percent));
+            }
             json.WriteNumber("percentage", percent is { } level ? (int)Math.Round(level) : 0);
             json.WriteEndObject();
         }
