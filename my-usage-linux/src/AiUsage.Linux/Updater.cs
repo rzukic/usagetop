@@ -108,7 +108,7 @@ public sealed class Updater
             onBetaChanged: handler => PanelPrefs.Current.Changed += handler,
             verify: VerifyBinaryAsync,
             launchReplacement: SpawnRelaunch,
-            syncGnomeExtension: SyncGnomeExtension)
+            syncGnomeExtension: appDir => { SyncGnomeExtension(appDir); SyncPlasmaWidget(appDir); })
     {
     }
 
@@ -749,6 +749,28 @@ public sealed class Updater
         {
             var rel = Path.GetRelativePath(source, file);
             var target = Path.Combine(dest, rel);
+            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+            File.Copy(file, target, overwrite: true);
+        }
+    }
+
+    /// <summary>
+    /// The same for the KDE Plasma widget in ~/.local/share/plasma/plasmoids:
+    /// Plasma loads the new files the next time it starts.
+    /// </summary>
+    private static void SyncPlasmaWidget(string appDir)
+    {
+        const string id = "io.github.rzukic.usagetop";
+        var source = Path.Combine(appDir, "plasma-widget", id);
+        if (!Directory.Exists(source)) return;
+
+        var dest = Path.Combine(XdgDataHome(), "plasma", "plasmoids", id);
+        if (!Directory.Exists(dest)) return;
+        if ((File.GetAttributes(dest) & FileAttributes.ReparsePoint) != 0) return;
+
+        foreach (var file in Directory.EnumerateFiles(source, "*", SearchOption.AllDirectories))
+        {
+            var target = Path.Combine(dest, Path.GetRelativePath(source, file));
             Directory.CreateDirectory(Path.GetDirectoryName(target)!);
             File.Copy(file, target, overwrite: true);
         }

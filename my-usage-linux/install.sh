@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Installs usagetop for the current user into ~/.local/share/usagetop/app,
 # links ~/.local/bin/usagetop, and adds a desktop launcher so the app can
-# update itself in place from GitHub releases.
+# update itself in place from GitHub releases. On GNOME it also puts in the
+# top bar extension, on KDE Plasma the panel widget.
 #
 #   ./install.sh              from an unpacked release folder, installs that copy;
 #                             otherwise downloads the latest release from GitHub
-#   ./install.sh --uninstall  removes the installed copy, link and launcher
-#                             (keeps ~/.config/usagetop)
+#   ./install.sh --uninstall  removes the installed copy, link, launcher, extension
+#                             and widget (keeps ~/.config/usagetop)
 set -euo pipefail
 
 REPO="rzukic/usagetop"
@@ -19,11 +20,47 @@ DESKTOP_DIR="$DATA_HOME/applications"
 DESKTOP_FILE="$DESKTOP_DIR/usagetop.desktop"
 EXT_UUID="usagetop@rzukic.github.io"
 EXT_DIR="$DATA_HOME/gnome-shell/extensions/$EXT_UUID"
+PLASMOID_ID="io.github.rzukic.usagetop"
+PLASMOID_DIR="$DATA_HOME/plasma/plasmoids/$PLASMOID_ID"
 
 fail() {
 	echo "usagetop: $1" >&2
 	exit 1
 }
+
+is_kde() { [[ "${XDG_CURRENT_DESKTOP:-}" == *KDE* ]] || command -v kpackagetool6 >/dev/null 2>&1; }
+
+# A line of Plasma's desktop scripting, run in the running plasmashell.
+plasma_script() {
+	local qdbus
+	qdbus="$(command -v qdbus6 || command -v qdbus-qt6 || command -v qdbus || true)"
+	[[ -n "$qdbus" ]] || return 1
+	"$qdbus" org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "$1" 2>/dev/null
+}
+
+# The widget in the panel that holds the system tray, just before the tray,
+# unless it is in a panel already. Prints "added" when it put it there,
+# "placed" when it was in one, "none" with no tray to put it by.
+PLASMA_ADD_SCRIPT='
+const id = "'"$PLASMOID_ID"'";
+let placed = false, added = false;
+for (const p of panels()) if (p.widgets(id).length > 0) placed = true;
+for (const p of panels()) {
+	if (placed) break;
+	const tray = p.widgets("org.kde.plasma.systemtray")[0];
+	if (!tray) continue;
+	// Added where the tray is, the panel puts it just before the tray.
+	const g = tray.geometry;
+	p.addWidget(id, g.x + 1, g.y + 1, g.width, g.height);
+	placed = added = true;
+}
+print(added ? "added" : placed ? "placed" : "none");
+'
+
+# Every copy of the widget, out of every panel.
+PLASMA_REMOVE_SCRIPT='
+for (const p of panels()) for (const w of p.widgets("'"$PLASMOID_ID"'")) w.remove();
+'
 
 if [[ "${1:-}" == "--uninstall" ]]; then
 	if command -v "$BIN_LINK" >/dev/null 2>&1; then
@@ -32,6 +69,14 @@ if [[ "${1:-}" == "--uninstall" ]]; then
 	rm -rf "$APP_DIR" "$INSTALL_ROOT/updates" "$INSTALL_ROOT/.usagetop-old"
 	rmdir "$INSTALL_ROOT" 2>/dev/null || true
 	rm -f "$BIN_LINK" "$DESKTOP_FILE"
+	# The Plasma widget, out of the panel and away; a linked one is a working copy.
+	if [[ -d "$PLASMOID_DIR" && ! -L "$PLASMOID_DIR" ]]; then
+		plasma_script "$PLASMA_REMOVE_SCRIPT" >/dev/null || true
+		if command -v kpackagetool6 >/dev/null 2>&1; then
+			kpackagetool6 -t Plasma/Applet -r "$PLASMOID_ID" >/dev/null 2>&1 || true
+		fi
+		rm -rf "$PLASMOID_DIR"
+	fi
 	# A linked extension is somebody's working copy: leave it.
 	if [[ -d "$EXT_DIR" && ! -L "$EXT_DIR" ]]; then
 		command -v gnome-extensions >/dev/null 2>&1 && gnome-extensions disable "$EXT_UUID" >/dev/null 2>&1 || true
@@ -134,6 +179,36 @@ if [[ -d "$APP_DIR/gnome-extension/$EXT_UUID" && ! -L "$EXT_DIR" ]] &&
 	[[ -n "$NEW_EXT" ]] && GNOME_NOTE="GNOME: the top bar extension is installed; log out and back in once to see it."
 fi
 
+# On KDE Plasma the panel widget is how usagetop shows the limits: put it in
+# (or bring it up to date) and add it to the panel by the system tray. A linked
+# widget (a developer's checkout) is left as it is.
+KDE_NOTE=""
+WIDGET_SOURCE="$APP_DIR/plasma-widget/$PLASMOID_ID"
+if [[ -d "$WIDGET_SOURCE" && ! -L "$PLASMOID_DIR" ]] && is_kde; then
+	if command -v kpackagetool6 >/dev/null 2>&1; then
+		if [[ -d "$PLASMOID_DIR" ]]; then
+			kpackagetool6 -t Plasma/Applet -u "$WIDGET_SOURCE" >/dev/null 2>&1 || true
+		else
+			kpackagetool6 -t Plasma/Applet -i "$WIDGET_SOURCE" >/dev/null 2>&1 || true
+		fi
+	fi
+	# Without kpackagetool6, or when it would not: the files are all it takes.
+	if [[ ! -f "$PLASMOID_DIR/metadata.json" ]] || ! cmp -s "$WIDGET_SOURCE/contents/ui/main.qml" "$PLASMOID_DIR/contents/ui/main.qml"; then
+		rm -rf "$PLASMOID_DIR"
+		mkdir -p "$(dirname "$PLASMOID_DIR")"
+		cp -R "$WIDGET_SOURCE" "$PLASMOID_DIR"
+	fi
+	case "$(plasma_script "$PLASMA_ADD_SCRIPT" || true)" in
+	*added*) KDE_NOTE="KDE Plasma: the usagetop widget is in your panel, by the system tray." ;;
+	*placed*) ;;
+	*)
+		if [[ "${XDG_CURRENT_DESKTOP:-}" == *KDE* ]]; then
+			KDE_NOTE="KDE Plasma: add the usagetop widget to your panel (right-click the panel › Add Widgets…)."
+		fi
+		;;
+	esac
+fi
+
 VERSION="$("$BIN_LINK" --version 2>/dev/null || echo "")"
 echo "Installed usagetop ${VERSION} to $APP_DIR"
 echo "Command: $BIN_LINK"
@@ -142,3 +217,4 @@ case ":${PATH:-}:" in
 *) echo "Note: add $BIN_DIR to your PATH to run 'usagetop' from any shell." ;;
 esac
 if [[ -n "$GNOME_NOTE" ]]; then echo "$GNOME_NOTE"; fi
+if [[ -n "$KDE_NOTE" ]]; then echo "$KDE_NOTE"; fi

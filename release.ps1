@@ -184,6 +184,7 @@ try {
             if ($LASTEXITCODE -eq 0) {
                 Copy-Item (Join-Path $linux 'install.sh') $out
                 Copy-Item (Join-Path $linux 'gnome-extension') $out -Recurse
+                Copy-Item (Join-Path $linux 'plasma-widget') $out -Recurse
                 Write-TarGz $out (Join-Path $extra "usagetop-linux-$rid.tar.gz") 'usagetop' @('usagetop', 'install.sh')
             }
         }

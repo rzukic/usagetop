@@ -1,0 +1,19 @@
+{
+    "KPackageStructure": "Plasma/Applet",
+    "KPlugin": {
+        "Authors": [
+            {
+                "Name": "rzukic"
+            }
+        ],
+        "Category": "System Information",
+        "Description": "How much of each AI subscription is left, in the panel. A click opens usagetop's panel by it. Needs the usagetop app.",
+        "Icon": "utilities-system-monitor",
+        "Id": "io.github.rzukic.usagetop",
+        "License": "MIT",
+        "Name": "usagetop",
+        "Version": "1.0",
+        "Website": "https://github.com/rzukic/usagetop"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0"
+}

@@ -4,7 +4,7 @@
 #   usagetop-linux-arm64.tar.gz
 #
 # Each archive unpacks to a single `usagetop/` folder containing the `usagetop`
-# executable, its runtime, `install.sh`, and the GNOME Shell extension.
+# executable, its runtime, `install.sh`, the GNOME Shell extension and the KDE Plasma widget.
 #
 #   ./my-usage-linux/package.sh [version] [out-dir]
 set -euo pipefail
@@ -36,6 +36,7 @@ for rid in linux-x64 linux-arm64; do
 	chmod 755 "$stage/install.sh"
 	mkdir -p "$stage/gnome-extension"
 	cp -R gnome-extension/usagetop@rzukic.github.io "$stage/gnome-extension/"
+	cp -R plasma-widget "$stage/"
 
 	archive="$OUT_DIR/usagetop-$rid.tar.gz"
 	rm -f "$archive"

@@ -5,7 +5,8 @@ share (`my-usage-win/src/AiUsage.Core`), drawn with [Avalonia](https://avaloniau
 
 **Not released yet.** What is here shows your usagetop server's reading (or
 sample data): the overview, account pages and charts, Settings, the tray icon,
-the GNOME top bar extension, self-updates, and the command line.
+the GNOME top bar extension, the KDE Plasma panel widget, self-updates, and the
+command line.
 
 ## Installing and updates
 
@@ -14,7 +15,10 @@ archive (or `./package.sh` to build the archives locally). It installs the app
 into `~/.local/share/usagetop/app`, links `~/.local/bin/usagetop`, writes a
 desktop entry, and on GNOME installs and enables the top bar extension (unless
 `~/.local/share/gnome-shell/extensions/usagetop@rzukic.github.io` is a symlink
-to a checkout). A release's archives are built by `release.ps1`;
+to a checkout). On KDE Plasma it installs the panel widget
+(`plasma-widget/`, with `kpackagetool6` when there is one) and adds it to the
+panel with the system tray, just before the tray; `--uninstall` takes both
+away. A release's archives are built by `release.ps1`;
 `./test/update-check.sh` installs and updates a copy in Docker.
 
 An installed copy (in `~/.local/share/usagetop`, `~/Applications/usagetop`, or a
@@ -56,6 +60,11 @@ the app looks at where it is and takes what is on offer:
   bars): the level as a ring; the figures are in its tooltip. A click toggles
   the panel where the desktop passes clicks on, and the menu has "Open" where it
   does not.
+- **KDE Plasma:** the panel widget shows what the GNOME top bar does: the
+  combined ring, or with Settings › Top bar on 1–4 limits each one's mark, its
+  name over its figure in the figure's own level's colour, and an account's
+  initials on the mark. A click opens the panel by it; with no app running it
+  starts one. While it runs, the tray icon stands aside.
 - **No tray:** bind a key to `usagetop toggle`, and let the bar run
   `usagetop status`. For Waybar:
 
