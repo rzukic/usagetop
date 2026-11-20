@@ -15,8 +15,6 @@ public static class Status
 {
     private static readonly JsonWriterOptions Json = new() { Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
 
-    /// <summary>How many limits a bar shows beside the combined level.</summary>
-    private const int BarLimits = 2;
 
     /// <summary>One shown limit of one account.</summary>
     public sealed record Limit(ProviderUsage Usage, UsageWindow Window)
@@ -88,28 +86,36 @@ public static class Status
             json.WriteBoolean("sample", model.IsSample);
             if (model.Snapshot is { } snapshot) json.WriteString("readAt", snapshot.FetchedAt.ToString("O"));
             // What a desktop's bar shows, decided here so that whatever draws it
-            // (the GNOME extension) need not know the rules: the combined level,
-            // then the limits closest to running out.
+            // (the GNOME extension) need not know the rules. As the Mac's menu
+            // bar: the combined level in a ring, with its figure or without, or
+            // the limits closest to running out.
+            var prefs = PanelPrefs.Current;
             json.WriteStartArray("bar");
-            if (model.Combined?.Percent is { } level)
+            if (prefs.BarLimits == 0)
             {
+                var level = model.Combined?.Percent;
                 json.WriteStartObject();
                 json.WriteString("kind", "combined");
-                json.WriteNumber("percent", Math.Round(level, 1));
-                json.WriteString("text", Format.Percent(level));
+                if (level is { } percent) json.WriteNumber("percent", Math.Round(percent, 1));
+                else json.WriteNull("percent");
+                json.WriteString("text", level is { } shown && prefs.BarPercent ? Format.Percent(shown) : "");
+                json.WriteString("title", level is { } spoken ? $"{Format.Percent(spoken)} left in all" : "usagetop");
                 json.WriteString("class", Class(level));
                 json.WriteEndObject();
             }
-            foreach (var limit in Closest(model).Take(BarLimits))
+            else
             {
-                json.WriteStartObject();
-                json.WriteString("kind", "limit");
-                json.WriteString("provider", ProviderCatalog.Of(limit.Usage.Id).Key);
-                json.WriteString("title", limit.Name);
-                json.WriteNumber("percent", Math.Round(limit.Window.RemainingPercent!.Value, 1));
-                json.WriteString("text", Format.Percent(limit.Window.RemainingPercent!.Value));
-                json.WriteString("class", Class(limit.Window.RemainingPercent));
-                json.WriteEndObject();
+                foreach (var limit in Closest(model).Take(prefs.BarLimits))
+                {
+                    json.WriteStartObject();
+                    json.WriteString("kind", "limit");
+                    json.WriteString("provider", ProviderCatalog.Of(limit.Usage.Id).Key);
+                    json.WriteString("title", limit.Name);
+                    json.WriteNumber("percent", Math.Round(limit.Window.RemainingPercent!.Value, 1));
+                    json.WriteString("text", Format.Percent(limit.Window.RemainingPercent!.Value));
+                    json.WriteString("class", Class(limit.Window.RemainingPercent));
+                    json.WriteEndObject();
+                }
             }
             json.WriteEndArray();
             json.WriteStartArray("limits");

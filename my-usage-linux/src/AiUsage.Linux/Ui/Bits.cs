@@ -36,6 +36,8 @@ public static class Bits
     /// <summary>A surface for content on the panel: a faint fill and a hairline lit from above.</summary>
     public static Border Card(Control content, double padding = 12, double radius = 18) => new()
     {
+        // Found again by this when Settings › Look changes how solid tiles are.
+        Tag = CardTag,
         Child = content,
         Padding = new Thickness(padding),
         CornerRadius = new CornerRadius(radius),
@@ -43,6 +45,8 @@ public static class Bits
         BorderBrush = Look.TileEdge,
         BorderThickness = new Thickness(0.75),
     };
+
+    public const string CardTag = "usagetop-card";
 
     /// <summary>A capsule round a child: the shape of chips, badges and soft buttons.</summary>
     public static Border Capsule(Control child, IBrush fill, IBrush edge, Thickness padding) => new()

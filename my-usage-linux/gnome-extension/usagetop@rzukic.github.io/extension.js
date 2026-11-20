@@ -250,7 +250,7 @@ class Indicator extends PanelMenu.Button {
                 const ring = new Ring();
                 ring.setLevel(item.percent, item.class);
                 group.add_child(ring);
-                spoken.push(`${item.text} left in all`);
+                spoken.push(item.title ?? `${item.text} left in all`);
             } else {
                 const file = this._extension.dir.get_child('icons').get_child(`usagetop-${item.provider}-symbolic.svg`);
                 group.add_child(new St.Icon({
@@ -260,15 +260,18 @@ class Indicator extends PanelMenu.Button {
                 }));
                 spoken.push(`${item.title} ${item.text}`);
             }
-            const figure = new St.Label({
-                text: item.text,
-                style_class: 'usagetop-figure',
-                y_align: Clutter.ActorAlign.CENTER,
-            });
-            if (item.class === 'warning' || item.class === 'critical') {
-                figure.add_style_class_name(`usagetop-${item.class}`);
+            // The ring alone when Settings asks for no figure beside it.
+            if (item.text) {
+                const figure = new St.Label({
+                    text: item.text,
+                    style_class: 'usagetop-figure',
+                    y_align: Clutter.ActorAlign.CENTER,
+                });
+                if (item.class === 'warning' || item.class === 'critical') {
+                    figure.add_style_class_name(`usagetop-${item.class}`);
+                }
+                group.add_child(figure);
             }
-            group.add_child(figure);
             this._box.add_child(group);
         }
         this.accessible_name = `usagetop: ${spoken.join(', ')}`;

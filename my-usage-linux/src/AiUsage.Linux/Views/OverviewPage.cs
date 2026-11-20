@@ -53,7 +53,7 @@ public static class OverviewPage
         stack.Children.Add(top);
 
         var week = model.CombinedWeek(now);
-        if (week.Count > 1) stack.Children.Add(new HistoryChart(week, TimeSpan.FromDays(7), now, 64));
+        if (week.Count > 1) stack.Children.Add(new HistoryChart(week, TimeSpan.FromDays(7), now, 64, model.CombinedForecast(now)));
 
         if (model.CombinedOutlook(now) is { } outlook)
         {
@@ -128,7 +128,14 @@ public static class OverviewPage
             var shown = model.Shown(usage);
             var hidden = usage.Windows.Count - shown.Count;
             var rows = new StackPanel { Spacing = 7 };
-            foreach (var window in shown) rows.Children.Add(Rows.Window(window, now));
+            foreach (var window in shown)
+            {
+                var row = Rows.Window(window, now);
+                // Right-click a limit to hide it; a left click still opens the account.
+                row.ContextMenu = Menus.Hide(model, usage, window);
+                row.Background = Avalonia.Media.Brushes.Transparent;
+                rows.Children.Add(row);
+            }
             if (hidden > 0)
             {
                 var note = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 4 };

@@ -72,7 +72,13 @@ public static class Program
         {
             // Before the single-instance check, so it works beside a running copy.
             BuildAvaloniaApp().SetupWithoutStarting();
-            Snapshots.Write(snapshot, sample ? AppModel.Sample(state) : AppModel.Blank());
+            // USAGETOP_SNAPSHOT_OWN=1 draws the user's own data, as a running copy would
+            // read it: only ever with a HOME of its own, for tests against a throwaway server.
+            var own = Environment.GetEnvironmentVariable("USAGETOP_SNAPSHOT_OWN") == "1";
+            var model = sample ? AppModel.Sample(state) : own ? AppModel.Load() : AppModel.Blank();
+            // Off the UI thread: its dispatcher is not running yet to resume on.
+            if (own && !sample) Task.Run(() => model.RefreshAsync()).GetAwaiter().GetResult();
+            Snapshots.Write(snapshot, model);
             return 0;
         }
 

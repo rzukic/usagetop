@@ -41,6 +41,7 @@ public static class AccountPage
         var shown = model.Shown(usage);
         var hidden = usage.Windows.Where(w => !shown.Contains(w)).ToList();
         foreach (var window in shown) page.Children.Add(WindowCard(model, usage, window, now));
+        // Hidden ones after the shown ones, dimmed; a right-click shows them again.
 
         if (hidden.Count > 0)
         {
@@ -69,7 +70,7 @@ public static class AccountPage
             ? TimeSpan.FromHours(12)
             : UsageHistory.ChartSpan(window);
         var series = model.Series(usage, window, span);
-        if (series.Count > 1) stack.Children.Add(new HistoryChart(series, span, now, 78));
+        if (series.Count > 1) stack.Children.Add(new HistoryChart(series, span, now, 96, model.WindowForecast(usage, window, now), axes: true));
 
         if (model.Track(usage, window, now) is { Measured: true } track)
         {
@@ -82,6 +83,11 @@ public static class AccountPage
                 rates, sentence, alarming: empties));
         }
 
-        return Bits.Card(stack, padding: 13);
+        var card = Bits.Card(stack, padding: 13);
+        card.ContextMenu = Menus.Hide(model, usage, window);
+        ToolTip.SetTip(card, model.IsHidden(usage, window)
+            ? "Hidden from the overview. Right-click to show it there again."
+            : "Right-click to hide it from the overview");
+        return card;
     }
 }

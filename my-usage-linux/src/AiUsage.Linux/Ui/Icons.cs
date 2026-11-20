@@ -57,6 +57,15 @@ public static class Icons
         "c0,-2.19 1.01,-4.14 2.58,-5.42L6.17,5.17C4.23,6.82 3,9.26 3,12c0,4.97 4.03,9 9,9s9,-4.03 9,-9" +
         "c0,-2.74 -1.23,-5.18 -3.17,-6.83z");
 
+    /// <summary>Three dots in a row: more.</summary>
+    public static Geometry More { get; } = Geometry.Parse(
+        "M6,10a2,2 0,1 0,0 4a2,2 0,1 0,0 -4zM12,10a2,2 0,1 0,0 4a2,2 0,1 0,0 -4zM18,10a2,2 0,1 0,0 4a2,2 0,1 0,0 -4z");
+
+    /// <summary>A chevron pointing up, and one pointing down: moving a row.</summary>
+    public static Geometry Up { get; } = Geometry.Parse("M7.41,15.41L12,10.83l4.59,4.58L18,14l-6,-6 -6,6z");
+
+    public static Geometry Down { get; } = Geometry.Parse("M7.41,8.59L12,13.17l4.59,-4.58L18,10l-6,6 -6,-6z");
+
     /// <summary>Four rounded squares: the overview. In a 16-unit box.</summary>
     public static Geometry Grid { get; } = BuildGrid();
 

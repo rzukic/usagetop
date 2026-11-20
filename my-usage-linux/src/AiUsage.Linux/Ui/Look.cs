@@ -39,10 +39,25 @@ public static class Look
         ? (Color.FromRgb(0x25, 0x27, 0x2E), Color.FromRgb(0x1B, 0x1C, 0x21))
         : (Color.FromRgb(0xF4, 0xF5, 0xF8), Color.FromRgb(0xE9, 0xEA, 0xEE));
 
-    /// <summary>A tile on the panel: a lift of white, stronger in light where the panel is paler.</summary>
-    public static IBrush Tile(bool highlighted = false) => new SolidColorBrush(
-        Colors.White,
-        Dark ? (highlighted ? 0.105 : 0.07) : (highlighted ? 0.82 : 0.62));
+    /// <summary>How solid the tiles are (Settings › Look): 0 the faint lift of white, 1 opaque.</summary>
+    public static double Tiles { get; set; }
+
+    /// <summary>
+    /// A tile on the panel: a lift of white, stronger in light where the panel
+    /// is paler, over a solid tile as solid as Settings asks. The two layers
+    /// the Mac draws, in one colour.
+    /// </summary>
+    public static IBrush Tile(bool highlighted = false)
+    {
+        var lift = Dark ? (highlighted ? 0.105 : 0.07) : (highlighted ? 0.82 : 0.62);
+        var solid = Dark ? (highlighted ? 0.21 : 0.18) : (highlighted ? 0.97 : 1.0);
+        var under = Math.Clamp(Tiles, 0, 1);
+        var alpha = lift + under * (1 - lift);
+        if (alpha <= 0) return Brushes.Transparent;
+        var value = (lift * 1.0 + under * (1 - lift) * solid) / alpha;
+        var channel = (byte)Math.Round(Math.Clamp(value, 0, 1) * 255);
+        return new SolidColorBrush(Color.FromRgb(channel, channel, channel), alpha);
+    }
 
     /// <summary>The hairline round a tile: light from above.</summary>
     public static IBrush TileEdge => new LinearGradientBrush

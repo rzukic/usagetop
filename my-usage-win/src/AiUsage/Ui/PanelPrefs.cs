@@ -56,6 +56,16 @@ public sealed class PanelPrefs
     public bool TrayShowsNumber { get; set; }
 
     /// <summary>
+    /// What the Linux app puts in a desktop's top bar, as the Mac's menu bar
+    /// setting: 0 is the combined level in a ring, 1 to 4 that many limits, the
+    /// ones closest to running out.
+    /// </summary>
+    public int BarLimits { get; set; }
+
+    /// <summary>The combined figure beside the ring in the Linux top bar, or the ring alone.</summary>
+    public bool BarPercent { get; set; } = true;
+
+    /// <summary>
     /// Also take GitHub pre-releases (v1.2.1-beta.1). Releases still come too:
     /// whichever is newest wins, so a beta user is never left behind a release.
     /// </summary>
@@ -71,6 +81,7 @@ public sealed class PanelPrefs
         change(this);
         Glass = Math.Clamp(Glass, 0, 1);
         Tiles = Math.Clamp(Tiles, 0, 1);
+        BarLimits = Math.Clamp(BarLimits, 0, 4);
         Changed?.Invoke();
         try
         {

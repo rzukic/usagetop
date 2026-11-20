@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Shapes;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.VisualTree;
 using AiUsage.Data;
 using AiUsage.Ui;
 
@@ -56,8 +57,31 @@ public sealed class PanelView : Border
 
     public event Action? QuitRequested;
 
-    /// <summary>0 is opaque; above it the desktop shows through, for a compositor that blurs it.</summary>
-    public double Glass { get; set; }
+    /// <summary>
+    /// The panel's own surface and its tiles as Settings › Look has them. On
+    /// KDE, which blurs behind it, the panel may be clear; elsewhere nothing
+    /// blurs, so "glass" lets only a little through and text stays readable.
+    /// Applied in place, without a redraw, so a slider can be dragged.
+    /// </summary>
+    public void ApplyLook()
+    {
+        var prefs = PanelPrefs.Current;
+        Look.Tiles = prefs.Tiles;
+        var (top, bottom) = Look.Panel;
+        var through = Desktop.IsKde ? 0.45 : 0.18;
+        Background = new LinearGradientBrush
+        {
+            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
+            EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
+            Opacity = _flat ? 1 : 1 - Math.Clamp(prefs.Glass, 0, 1) * through,
+            GradientStops = { new GradientStop(top, 0), new GradientStop(bottom, 1) },
+        };
+        BorderBrush = Look.Ink(Look.Dark ? 0.13 : 0.1);
+        foreach (var card in this.GetVisualDescendants().OfType<Border>().Where(b => Equals(b.Tag, Bits.CardTag)))
+        {
+            card.Background = Look.Tile();
+        }
+    }
 
     public void Show(Pane pane)
     {
@@ -102,16 +126,7 @@ public sealed class PanelView : Border
         // An account that went away takes its page with it.
         if (Pane is Pane.Account { Key: var key } && Usage(key) == null) Pane = new Pane.Overview();
 
-        var (top, bottom) = Look.Panel;
-        var opacity = 1 - Math.Clamp(Glass, 0, 1) * 0.45;
-        Background = new LinearGradientBrush
-        {
-            StartPoint = new RelativePoint(0, 0, RelativeUnit.Relative),
-            EndPoint = new RelativePoint(0, 1, RelativeUnit.Relative),
-            Opacity = opacity,
-            GradientStops = { new GradientStop(top, 0), new GradientStop(bottom, 1) },
-        };
-        BorderBrush = Look.Ink(Look.Dark ? 0.13 : 0.1);
+        Look.Tiles = PanelPrefs.Current.Tiles;
 
         var now = DateTimeOffset.UtcNow;
         var right = new Grid { RowDefinitions = new RowDefinitions(_flat ? "Auto,Auto,Auto" : "Auto,*,Auto") };
@@ -161,6 +176,7 @@ public sealed class PanelView : Border
         Grid.SetColumn(right, 1);
         body.Children.Add(right);
         Child = body;
+        ApplyLook();
         Redrawn?.Invoke();
     }
 
@@ -383,7 +399,7 @@ public sealed class PanelView : Border
             case Pane.Settings:
                 if (_settings == null)
                 {
-                    _settings = new SettingsPage(_model, Rebuild);
+                    _settings = new SettingsPage(_model, Rebuild, ApplyLook, Show);
                 }
                 else if (_settings.Parent is ContentControl holder)
                 {

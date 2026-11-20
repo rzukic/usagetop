@@ -27,6 +27,9 @@ public sealed class PanelWindow : Window
     /// <summary>The gap kept to the screen's edges.</summary>
     private const double EdgeGap = 8;
 
+    /// <summary>The tallest the panel gets, as on the Mac; the page scrolls for the rest.</summary>
+    private const double MaxPanelHeight = 720;
+
     /// <summary>
     /// What a tiling window manager may put round a floating window and along
     /// the screen, a title and its bar, which it does not always report as
@@ -181,7 +184,7 @@ public sealed class PanelWindow : Window
     private void Fit()
     {
         var room = RoomOnScreen();
-        var panel = Math.Min(View.WantedHeight(), room);
+        var panel = Math.Min(View.WantedHeight(), Math.Min(room, MaxPanelHeight));
         var height = panel + (_shaped ? ShadowAbove + ShadowBelow : 0);
         if (Environment.GetEnvironmentVariable("USAGETOP_DEBUG") is { Length: > 0 })
         {

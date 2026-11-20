@@ -29,7 +29,10 @@ public static class Snapshots
             Save(Path.Combine(folder, $"overview-{suffix}.png"), model, new Pane.Overview(), dark);
             foreach (var usage in model.RailOrder().Where(u => u.State == UsageState.Ok).Take(2))
             {
+                // The account's charts with a moment read, as a pointer resting on them shows it.
+                HistoryChart.SnapshotHover = 0.82;
                 Save(Path.Combine(folder, $"account-{usage.AccountKey}-{suffix}.png"), model, new Pane.Account(usage.AccountKey), dark);
+                HistoryChart.SnapshotHover = null;
             }
             Save(Path.Combine(folder, $"settings-{suffix}.png"), model, new Pane.Settings(), dark);
         }

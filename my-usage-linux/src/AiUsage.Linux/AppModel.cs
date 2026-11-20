@@ -39,8 +39,15 @@ public sealed class AppModel
 
     public bool UsesServer => !IsSample && (Repository?.UsesServer ?? false);
 
-    /// <summary>The user's own files are in play: not a picture of the first start.</summary>
-    public bool HasOwnData => _real != null || IsSample;
+    /// <summary>
+    /// The user's own files are in play. Not for a picture, nor for an app
+    /// started on sample data: those read and write nothing of the user's
+    /// until the user saves a server.
+    /// </summary>
+    public bool HasOwnData => _real != null;
+
+    /// <summary>The server the user's own files name, whatever is on screen.</summary>
+    public string? SavedServerUrl => HasOwnData ? Credentials.ServerUrl() : null;
 
     /// <summary>The server's address while one is set, for the dashboard button.</summary>
     public string? ServerUrl => IsSample || _real == null ? null : Credentials.ServerUrl();
@@ -136,6 +143,43 @@ public sealed class AppModel
 
     public IReadOnlyList<string> Hidden => Repository?.HiddenLimits(PanelPrefs.Current.HiddenLimits) ?? [];
 
+    public bool IsHidden(ProviderUsage usage, UsageWindow window) => Limits.IsHidden(Hidden, usage, window);
+
+    /// <summary>
+    /// Hides a limit or shows it again, in whichever list is in force: the
+    /// server's, kept for every app that reads from it, or this machine's own.
+    /// </summary>
+    public async Task SetHiddenAsync(string key, bool hide)
+    {
+        if (Repository is { HidesOnServer: true } repository && !IsSample)
+        {
+            var change = repository.SetHiddenOnServerAsync(key, hide);
+            RaiseChanged();
+            await change;
+        }
+        else
+        {
+            PanelPrefs.Current.SetHidden(key, hide);
+        }
+        RaiseChanged();
+    }
+
+    /// <summary>"Antigravity · Claude &amp; GPT weekly" for "antigravity|Claude &amp; GPT 7d".</summary>
+    public string HiddenName(string key)
+    {
+        if (Limits.Split(key) is not var (account, label)) return key;
+        var name = Snapshot?.Usages.FirstOrDefault(u => u.AccountKey == account)?.DisplayName
+            ?? (Account.Parse(account) is { } parsed ? Account.DisplayNameOf(parsed.Provider, null) : account);
+        return $"{name} · {WindowName.Display(label)}";
+    }
+
+    /// <summary>A preference changed: saved, and everything drawn from it follows.</summary>
+    public void Prefer(Action<PanelPrefs> change)
+    {
+        PanelPrefs.Current.Update(change);
+        RaiseChanged();
+    }
+
     public IReadOnlyList<UsageWindow> Shown(ProviderUsage usage) => Limits.Shown(usage, Hidden);
 
     public UsageWindow? Tightest(ProviderUsage usage) => Limits.Tightest(usage, Hidden);
@@ -174,6 +218,37 @@ public sealed class AppModel
 
     public Projection.Track? Track(ProviderUsage usage, UsageWindow window, DateTimeOffset now) =>
         Projection.For(window, Series(usage, window, Projection.UsualBasis), now);
+
+    /// <summary>
+    /// Where the combined level is heading, for its chart: each subscription's
+    /// long windows forecast and averaged as the figure itself is, drawn on from
+    /// where the recorded line ends.
+    /// </summary>
+    public Ui.Forecast? CombinedForecast(DateTimeOffset now)
+    {
+        if (Snapshot is not { } snapshot) return null;
+        var tracks = snapshot.Usages
+            .Where(u => u.State == UsageState.Ok)
+            .SelectMany(u => CombinedUsage.LongWindows(u).Select(w => Track(u, w, now)))
+            .OfType<Projection.Track>()
+            .ToList();
+        if (!tracks.Any(t => t.Measured)) return null;
+        var anchor = CombinedWeek(now).LastOrDefault() is { At: var at } last && at != default ? last.Percent : (float?)null;
+        return new Ui.Forecast(
+            (from, to) => Projection.Combined(tracks, from, to, anchor),
+            tracks.Any(t => t.Draining));
+    }
+
+    /// <summary>Where one window is heading, for its chart; null without readings to go on.</summary>
+    public Ui.Forecast? WindowForecast(ProviderUsage usage, UsageWindow window, DateTimeOffset now)
+    {
+        if (Track(usage, window, now) is not { Measured: true } track) return null;
+        return new Ui.Forecast(
+            (from, to) => Projection.Path(track, from, to),
+            track.Draining,
+            Projection.EmptyAt(track, now + Projection.Horizon),
+            track.NextReset);
+    }
 
     /// <summary>How fast everything together is being spent, and when the figure next lifts.</summary>
     public sealed record Outlook(double? Recent, double? Usual, string? NextName, DateTimeOffset? NextReset)

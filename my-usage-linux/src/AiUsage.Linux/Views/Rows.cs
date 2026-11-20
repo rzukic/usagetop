@@ -15,7 +15,7 @@ public static class Rows
     /// the overview only what needs a look gets a badge, and the flame alone;
     /// an account's page spells the pace out (<paramref name="detail"/>).
     /// </summary>
-    public static Control Window(UsageWindow window, DateTimeOffset now, bool detail = false)
+    public static Panel Window(UsageWindow window, DateTimeOffset now, bool detail = false)
     {
         var head = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto") };
 
