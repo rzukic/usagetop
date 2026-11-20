@@ -30,6 +30,38 @@ public static class Status
             .OrderBy(l => l.Window.RemainingPercent)
             .ToList();
 
+    /// <summary>
+    /// The limits a bar shows, as the Mac's menu bar picks them: closest to
+    /// running out first, the sooner reset first between equals, and none that
+    /// is already empty, since there is nothing left to watch in it until it resets.
+    /// </summary>
+    public static List<Limit> ForBar(AppModel model, int count) => ForBar(Closest(model), count, DateTimeOffset.UtcNow);
+
+    internal static List<Limit> ForBar(IEnumerable<Limit> limits, int count, DateTimeOffset now) =>
+        limits
+            .Where(l => Pace.Of(l.Window, now) != Pace.Kind.Empty)
+            .OrderBy(l => l.Window.RemainingPercent)
+            .ThenBy(l => l.Window.ResetAt ?? DateTimeOffset.MaxValue)
+            .Take(count)
+            .ToList();
+
+    /// <summary>
+    /// Each limit's name in a bar, short: "Weekly", "5h", "Fable". Two limits of
+    /// one account that would read the same keep their full names; a long one is
+    /// cut so it cannot crowd the bar. As the Mac's menu bar.
+    /// </summary>
+    public static List<string> BarLabels(IReadOnlyList<Limit> limits)
+    {
+        var compact = limits.Select(l => WindowName.Compact(l.Window.Label)).ToList();
+        return limits.Select((limit, i) =>
+        {
+            var clashes = limits.Where((other, j) => j != i
+                && other.Usage.AccountKey == limit.Usage.AccountKey && compact[j] == compact[i]).Any();
+            var label = clashes ? WindowName.Display(limit.Window.Label) : compact[i];
+            return label.Length <= 12 ? label : label[..11] + "…";
+        }).ToList();
+    }
+
     /// <summary>What the icon and a bar's text stand for: the combined level, or the tightest limit when there is none.</summary>
     public static float? Headline(AppModel model) =>
         model.Combined?.Percent ?? Closest(model).FirstOrDefault()?.Window.RemainingPercent;
@@ -108,10 +140,14 @@ public static class Status
             }
             else
             {
-                foreach (var limit in Closest(model).Take(prefs.BarLimits))
+                var limits = ForBar(model, prefs.BarLimits);
+                var labels = BarLabels(limits);
+                for (var i = 0; i < limits.Count; i++)
                 {
+                    var limit = limits[i];
                     json.WriteStartObject();
                     json.WriteString("kind", "limit");
+                    json.WriteString("label", labels[i]);
                     json.WriteString("provider", ProviderCatalog.Of(limit.Usage.Id).Key);
                     // Two accounts of one provider would look the same in a bar without it.
                     if (AccountLabel(limit.Usage) is { } account) json.WriteString("account", account);

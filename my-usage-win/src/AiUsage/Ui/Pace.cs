@@ -66,4 +66,19 @@ public static class WindowName
         if (word == null) return trimmed;
         return match.Groups[1].Success ? $"{match.Groups[1].Value} {word.ToLowerInvariant()}" : word;
     }
+
+    private static readonly System.Text.RegularExpressions.Regex ModelPeriod =
+        new(@"^(.*\S)\s+(\d+)\s*[mhdMHD]$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    /// <summary>
+    /// The shortest name that still tells a window apart within its provider,
+    /// for a bar: "Fable 7d" goes by its model ("Fable"), the rest by
+    /// <see cref="Display"/>. The Mac's WindowName.compact.
+    /// </summary>
+    public static string Compact(string label)
+    {
+        var trimmed = label.Trim();
+        var match = ModelPeriod.Match(trimmed);
+        return match.Success ? match.Groups[1].Value : Display(trimmed);
+    }
 }

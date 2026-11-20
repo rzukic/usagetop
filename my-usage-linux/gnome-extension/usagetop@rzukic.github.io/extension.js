@@ -300,7 +300,25 @@ class Indicator extends PanelMenu.Button {
                 if (item.class === 'warning' || item.class === 'critical') {
                     figure.add_style_class_name(`usagetop-${item.class}`);
                 }
-                group.add_child(figure);
+                if (item.kind === 'limit' && item.label) {
+                    // Which limit it is ("Weekly", "5h", "Fable") over what is
+                    // left of it, a little fainter, as the Mac's menu bar has it.
+                    const stack = new St.BoxLayout({
+                        style_class: 'usagetop-stack',
+                        y_align: Clutter.ActorAlign.CENTER,
+                    });
+                    // `orientation` from GNOME 48 on, `vertical` before it.
+                    if ('orientation' in stack) stack.orientation = Clutter.Orientation.VERTICAL;
+                    else stack.vertical = true;
+                    const label = new St.Label({text: item.label, style_class: 'usagetop-label'});
+                    label.opacity = 200;
+                    figure.add_style_class_name('usagetop-figure-stacked');
+                    stack.add_child(label);
+                    stack.add_child(figure);
+                    group.add_child(stack);
+                } else {
+                    group.add_child(figure);
+                }
             }
             this._box.add_child(group);
         }

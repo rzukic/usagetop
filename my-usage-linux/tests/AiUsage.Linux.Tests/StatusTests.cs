@@ -1,0 +1,83 @@
+using AiUsage.Data;
+using AiUsage.Ui;
+using Xunit;
+
+namespace AiUsage.Linux.Tests;
+
+public sealed class StatusTests
+{
+    private static readonly DateTimeOffset Now = new(2026, 11, 20, 12, 0, 0, TimeSpan.Zero);
+
+    private static Status.Limit Limit(ProviderId id, string label, float left, double resetHours = 24, string slot = "", string? name = null) =>
+        new(new ProviderUsage { Id = id, Slot = slot, AccountName = name },
+            new UsageWindow(label, left, Now.AddHours(resetHours)));
+
+    [Fact]
+    public void ForBar_LeavesOutEmptyLimits()
+    {
+        var limits = new[]
+        {
+            Limit(ProviderId.Kimi, "Monthly", 0),
+            Limit(ProviderId.Claude, "7d", 31),
+            Limit(ProviderId.Mistral, "Vibe", 0.3f),
+            Limit(ProviderId.ChatGpt, "7d", 68),
+        };
+
+        var shown = Status.ForBar(limits, 4, Now);
+
+        Assert.Equal(["Claude", "ChatGpt"], shown.Select(l => l.Usage.Id.ToString()));
+    }
+
+    [Fact]
+    public void ForBar_TakesTheClosestThenTheSoonerReset()
+    {
+        var limits = new[]
+        {
+            Limit(ProviderId.Claude, "5h", 40, resetHours: 3),
+            Limit(ProviderId.ChatGpt, "7d", 40, resetHours: 1),
+            Limit(ProviderId.Kimi, "7d", 11),
+            Limit(ProviderId.Mistral, "Vibe", 90),
+        };
+
+        var shown = Status.ForBar(limits, 3, Now);
+
+        Assert.Equal(["Kimi", "ChatGpt", "Claude"], shown.Select(l => l.Usage.Id.ToString()));
+    }
+
+    [Fact]
+    public void BarLabels_AreShortAndStillTellLimitsApart()
+    {
+        var labels = Status.BarLabels(
+        [
+            Limit(ProviderId.Claude, "7d", 31),
+            Limit(ProviderId.Claude, "5h", 38),
+            Limit(ProviderId.Claude, "Fable 7d", 57),
+            Limit(ProviderId.Antigravity, "Claude & GPT weekly limit", 64),
+        ]);
+
+        Assert.Equal(["Weekly", "5h", "Fable", "Claude & GP…"], labels);
+    }
+
+    [Fact]
+    public void BarLabels_KeepFullNamesWhereShortOnesWouldClash()
+    {
+        var labels = Status.BarLabels(
+        [
+            Limit(ProviderId.Antigravity, "Gemini 5h", 50),
+            Limit(ProviderId.Antigravity, "Gemini 7d", 60),
+            // Another account's "Gemini" is told apart by its badge, not its name.
+            Limit(ProviderId.Antigravity, "Gemini 7d", 70, slot: "2", name: "Work"),
+        ]);
+
+        Assert.Equal(["Gemini 5h", "Gemini week…", "Gemini"], labels);
+    }
+
+    [Fact]
+    public void Compact_NamesAWindowByItsModel()
+    {
+        Assert.Equal("Fable", WindowName.Compact("Fable 7d"));
+        Assert.Equal("Weekly", WindowName.Compact("7d"));
+        Assert.Equal("5h", WindowName.Compact("5h"));
+        Assert.Equal("Vibe", WindowName.Compact("Vibe"));
+    }
+}
