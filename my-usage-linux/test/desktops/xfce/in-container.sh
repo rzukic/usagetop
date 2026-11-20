@@ -42,6 +42,8 @@ check "its tray icon is registered with the panel's tray" "$(items)" '^"org\.kde
 read -r _ ix iy iw ih <<< "$(tray)"
 check "the tray grew by an icon" "$(( iw - tray_w ))" '^(2[0-9]|3[0-2])$'
 ix=$(( ix + iw / 2 )) iy=$(( iy + ih / 2 ))
+# The tray's newest icon is at its right end.
+shot /tmp/after.png; closeup /tmp/after.png "$(( ${ix} + iw / 2 - 14 ))" "$iy" /out/xfce-tray-closeup.png
 
 id=$(window)
 xdotool mousemove "$ix" "$iy" click 1

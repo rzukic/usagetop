@@ -4,5 +4,5 @@
 FROM debian:trixie-slim
 RUN apt-get update -qq \
  && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
-      sway waybar grim xwayland jq x11-utils dbus fonts-noto-core procps \
+      sway waybar grim xwayland jq x11-utils xdotool dbus fonts-noto-core procps \
  && rm -rf /var/lib/apt/lists/* /usr/share/doc /usr/share/man

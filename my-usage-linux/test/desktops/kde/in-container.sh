@@ -38,6 +38,7 @@ check "the icon's tooltip has the figures" "$(busctl --user get-property "$item"
 shot /tmp/after.png
 read -r ix iy <<< "$(find_icon /tmp/before.png /tmp/after.png "$bar_y" "$H")"
 check "the icon shows in the panel's tray, at the right" "${ix:-none}" '^1[2-5][0-9][0-9]$'
+[ -n "$ix" ] && closeup /tmp/after.png "$ix" "$iy" /out/kde-tray-closeup.png
 
 id=$(window)
 xdotool mousemove "$ix" "$iy" click 1
@@ -53,7 +54,7 @@ check "KWin is asked to blur behind it" "$(xprop -id "$id" _KDE_NET_WM_BLUR_BEHI
 shot /out/kde-overview.png
 # Left of the panel, in the room for its shadow, where the shadow has faded
 # out: the desktop as it was, not blurred.
-check "the blur stays inside the panel" "$(differ /tmp/after.png /out/kde-overview.png "4x600+$((x + 2))+$((y + 60))")" '^0\.00'
+check "the blur stays inside the panel" "$(differ /tmp/after.png /out/kde-overview.png "4x600+$((x + 2))+$((y + 60))")" '^0(\.00|$)'
 
 menus() { for w in $(xwininfo -root -tree | awk '/"plasmashell"/{print $1}'); do mapped "$w" && echo "$w"; done | sort; }
 menus > /tmp/menus-before

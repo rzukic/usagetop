@@ -26,10 +26,25 @@ swaymsg seat seat0 cursor set $((W - 10)) $((H - 10)) > /dev/null
 # DISPLAY for XWayland.
 swaymsg exec 'usagetop --sample > /tmp/app.log 2>&1' > /dev/null
 wait_for 20 usagetop status
+# XWayland's display, for xdotool to pick the Top bar's limits with.
+export DISPLAY=$(ls /tmp/.X11-unix | sed -n 's/^X/:/p' | head -1)
+choose_bar_limits
 check "the app starts" "$(usagetop status | head -1)" '% left$'
 check "doctor sees Sway, Wayland, tiling" "$(usagetop doctor | tr -s ' ' | tr '\n' ';')" 'desktop sway;session Wayland;tiling yes;compositing yes'
-check "the Waybar form: the figure as text" "$(usagetop status --waybar | jq -r .text)" '^[0-9]+%$'
-check "a class to style it by" "$(usagetop status --waybar | jq -r .class)" '^(normal|warning|critical)$'
+waybar_text=$(usagetop status --waybar | jq -r .text)
+if [ "$BAR_LIMITS" -gt 0 ]; then
+  echo "      Waybar text: $waybar_text"
+  n=$(grep -oE '[0-9]+%' <<< "$waybar_text" | wc -l)
+  check "the Waybar form: the limits as text, $BAR_LIMITS or as many as there are" "$(( n >= (BAR_LIMITS < 2 ? BAR_LIMITS : 2) && n <= BAR_LIMITS )): $n" '^1:'
+  check "each with its provider's name" "$waybar_text" '^(Claude|ChatGPT|Kimi|Mistral|Muse|Antigravity) [^ ]'
+  # The class is the tightest limit's: the first figure.
+  first=$(grep -oE '[0-9]+%' <<< "$waybar_text" | head -1 | tr -d %)
+  check "a class to style it by, the tightest limit's" "$(usagetop status --waybar | jq -r .class)" \
+    "^$( [ "$first" -le 15 ] && echo critical || { [ "$first" -le 40 ] && echo warning || echo normal; })\$"
+else
+  check "the Waybar form: the figure as text" "$waybar_text" '^[0-9]+%$'
+  check "a class to style it by" "$(usagetop status --waybar | jq -r .class)" '^(normal|warning|critical)$'
+fi
 check "the figures in its tooltip" "$(usagetop status --waybar | jq -r .tooltip | head -1)" '^[0-9]+% left$'
 
 swaymsg exec waybar > /dev/null
