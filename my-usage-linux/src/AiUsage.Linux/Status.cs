@@ -62,6 +62,13 @@ public static class Status
         }).ToList();
     }
 
+    /// <summary>
+    /// The limit a tray icon rings in place of the combined level: with Settings
+    /// › Top bar on one or more limits, the closest to running out; otherwise none.
+    /// </summary>
+    public static Limit? ForTray(AppModel model) =>
+        PanelPrefs.Current.BarLimits > 0 ? ForBar(model, 1).FirstOrDefault() : null;
+
     /// <summary>What the icon and a bar's text stand for: the combined level, or the tightest limit when there is none.</summary>
     public static float? Headline(AppModel model) =>
         model.Combined?.Percent ?? Closest(model).FirstOrDefault()?.Window.RemainingPercent;
@@ -95,12 +102,32 @@ public static class Status
     /// <summary>Waybar's custom-module format: text, tooltip, a class to style by, and the level.</summary>
     public static string Waybar(AppModel model)
     {
-        var percent = Headline(model);
+        // As Settings › Top bar has it: the combined level, or the limits closest
+        // to running out, each as "Kimi Weekly 11%", an account with a name of its
+        // own told apart by its initials ("Claude RZ 5h 73%"). The class and level
+        // are then the tightest one's.
+        var limits = PanelPrefs.Current.BarLimits > 0 ? ForBar(model, PanelPrefs.Current.BarLimits) : [];
+        var percent = limits.Count > 0 ? limits[0].Window.RemainingPercent : Headline(model);
+        string text;
+        if (limits.Count > 0)
+        {
+            var labels = BarLabels(limits);
+            text = string.Join("  ", limits.Select((limit, i) =>
+            {
+                var whose = ProviderCatalog.Of(limit.Usage.Id).DisplayName;
+                if (AccountLabel(limit.Usage) is { } account) whose += " " + Account.Initials(account);
+                return $"{whose} {labels[i]} {Format.Percent(limit.Window.RemainingPercent!.Value)}";
+            }));
+        }
+        else
+        {
+            text = percent is { } p ? Format.Percent(p) : "–";
+        }
         using var buffer = new MemoryStream();
         using (var json = new Utf8JsonWriter(buffer, Json))
         {
             json.WriteStartObject();
-            json.WriteString("text", percent is { } p ? Format.Percent(p) : "–");
+            json.WriteString("text", text);
             json.WriteString("tooltip", Text(model, limits: 12));
             json.WriteString("class", Class(percent));
             json.WriteNumber("percentage", percent is { } level ? (int)Math.Round(level) : 0);

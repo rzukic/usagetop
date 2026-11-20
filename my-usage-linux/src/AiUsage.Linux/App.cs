@@ -31,7 +31,7 @@ public sealed class App : Application
     private PanelWindow? _panel;
     private TrayIcon? _tray;
     private NativeMenuItem? _trayUpdate;
-    private float? _trayPercent = -1;
+    private string? _trayDrawn;
     private bool _railShowsUpdate;
     private IDisposable? _listener;
     private DispatcherTimer? _clock;
@@ -193,15 +193,19 @@ public sealed class App : Application
             if (ready) _trayUpdate.Header = $"Restart to update ({Updater.Current.Target})";
         }
 
-        var percent = Status.Headline(_model);
-        var rounded = percent is { } p ? MathF.Round(p) : (float?)null;
-        if (rounded != _trayPercent)
+        // The combined level, or with Settings › Top bar on limits the closest
+        // to running out, with its provider's mark inside the ring.
+        var limit = Status.ForTray(_model);
+        var percent = limit?.Window.RemainingPercent ?? Status.Headline(_model);
+        var drawn = $"{(percent is { } p ? MathF.Round(p) : -1)}/{limit?.Usage.Id}";
+        if (drawn != _trayDrawn)
         {
-            // Drawn again only when the figure it shows has moved.
-            _trayPercent = rounded;
-            _tray.Icon = TrayArt.Icon(percent);
+            // Drawn again only when what it shows has moved.
+            _trayDrawn = drawn;
+            _tray.Icon = TrayArt.Icon(percent, limit is null ? null : ProviderArt.Logo(limit.Usage.Id));
         }
-        _tray.ToolTipText = "usagetop — " + Status.Text(_model);
+        var closest = limit is null ? "" : $"{limit.Name} {Format.Percent(limit.Window.RemainingPercent!.Value)} left, closest to running out\n";
+        _tray.ToolTipText = "usagetop — " + closest + Status.Text(_model);
     }
 
     // ---- The command line, from another copy ----

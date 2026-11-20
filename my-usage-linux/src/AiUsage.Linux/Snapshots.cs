@@ -67,6 +67,13 @@ public static class Snapshots
             using var icon = TrayArt.Draw(percent);
             icon.Save(Path.Combine(folder, $"tray-{(percent is { } p ? ((int)p).ToString() : "none")}.png"), PngBitmapEncoderOptions.Default);
         }
+
+        // Ringing one limit, as with Settings › Top bar on limits: its provider's mark inside.
+        foreach (var (id, percent) in new[] { (ProviderId.Kimi, 11f), (ProviderId.Claude, 38f), (ProviderId.ChatGpt, 72f) })
+        {
+            using var icon = TrayArt.Draw(percent, ProviderArt.Logo(id));
+            icon.Save(Path.Combine(folder, $"tray-{id.ToString().ToLowerInvariant()}-{(int)percent}.png"), PngBitmapEncoderOptions.Default);
+        }
     }
 
     private static void Save(string path, AppModel model, Pane pane, bool dark)

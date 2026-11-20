@@ -9,13 +9,14 @@ namespace AiUsage;
 /// <summary>
 /// The tray icon: a ring of what is left, in the level's colour. A Linux tray
 /// shows a picture and nothing beside it, so the figure itself is in the
-/// tooltip and in `usagetop status`.
+/// tooltip and in `usagetop status`. Ringing one limit rather than the combined
+/// level, it has that provider's mark inside, to say whose it is.
 /// </summary>
 public static class TrayArt
 {
     private const int Size = 64;
 
-    public static RenderTargetBitmap Draw(float? percent)
+    public static RenderTargetBitmap Draw(float? percent, Geometry? mark = null)
     {
         var bitmap = new RenderTargetBitmap(new PixelSize(Size, Size), new Vector(96, 96));
         using var context = bitmap.CreateDrawingContext();
@@ -27,6 +28,20 @@ public static class TrayArt
         var centre = new Point(Size / 2.0, Size / 2.0);
         var radius = (Size - stroke) / 2 - 3;
         context.DrawEllipse(null, new Pen(new SolidColorBrush(ink, 0.38), stroke), centre, radius, radius);
+
+        if (mark != null)
+        {
+            // Inside the ring with room to spare: about half the icon's width.
+            const double side = 30;
+            var bounds = mark.Bounds;
+            var scale = side / Math.Max(Math.Max(bounds.Width, bounds.Height), 1e-6);
+            var shape = mark.Clone();
+            shape.Transform = new MatrixTransform(
+                Matrix.CreateTranslation(-bounds.X, -bounds.Y)
+                * Matrix.CreateScale(scale, scale)
+                * Matrix.CreateTranslation(centre.X - bounds.Width * scale / 2, centre.Y - bounds.Height * scale / 2));
+            context.DrawGeometry(new SolidColorBrush(ink), null, shape);
+        }
 
         if (percent is not > 0)
         {
@@ -56,9 +71,9 @@ public static class TrayArt
         return bitmap;
     }
 
-    public static WindowIcon Icon(float? percent)
+    public static WindowIcon Icon(float? percent, Geometry? mark = null)
     {
-        using var bitmap = Draw(percent);
+        using var bitmap = Draw(percent, mark);
         var stream = new MemoryStream();
         bitmap.Save(stream, PngBitmapEncoderOptions.Default);
         stream.Position = 0;
