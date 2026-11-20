@@ -64,6 +64,19 @@ function ask(command, cancellable) {
     });
 }
 
+/**
+ * Up to two letters, in the case they were written in: the first of each of
+ * the first two words, or of a single word its first ("#2" stays as it is).
+ * The Mac's AccountBadge.initials.
+ */
+function initials(name) {
+    const words = name.split(/[\s\-_·]+/).filter(Boolean);
+    if (words.length >= 2) return words[0][0] + words[1][0];
+    const word = words[0] ?? '';
+    if (word.length <= 2) return word;
+    return /^[#0-9]/.test(word) ? word.slice(0, 3) : word[0];
+}
+
 /** Where the app's program is: on the PATH, or where a user's own copy usually lives. */
 function findApp() {
     const home = GLib.get_home_dir();
@@ -253,19 +266,28 @@ class Indicator extends PanelMenu.Button {
                 spoken.push(item.title ?? `${item.text} left in all`);
             } else {
                 const file = this._extension.dir.get_child('icons').get_child(`usagetop-${item.provider}-symbolic.svg`);
-                group.add_child(new St.Icon({
+                // The mark, and for an account with a name of its own its
+                // initials in a badge on the mark's corner, as T3 marks a project.
+                const mark = new St.Widget({
+                    layout_manager: new Clutter.BinLayout(),
+                    style_class: 'usagetop-mark-box',
+                    y_align: Clutter.ActorAlign.CENTER,
+                });
+                mark.add_child(new St.Icon({
                     gicon: new Gio.FileIcon({file}),
                     style_class: 'usagetop-mark',
-                    y_align: Clutter.ActorAlign.CENTER,
+                    x_align: Clutter.ActorAlign.START,
+                    y_align: Clutter.ActorAlign.START,
                 }));
-                // Which account, when the provider has more than one: "RZ 73%".
                 if (item.account) {
-                    group.add_child(new St.Label({
-                        text: item.account.length > 6 ? `${item.account.slice(0, 5)}…` : item.account,
-                        style_class: 'usagetop-account',
-                        y_align: Clutter.ActorAlign.CENTER,
+                    mark.add_child(new St.Label({
+                        text: initials(item.account),
+                        style_class: 'usagetop-badge',
+                        x_align: Clutter.ActorAlign.END,
+                        y_align: Clutter.ActorAlign.END,
                     }));
                 }
+                group.add_child(mark);
                 spoken.push(`${item.title} ${item.text}`);
             }
             // The ring alone when Settings asks for no figure beside it.
