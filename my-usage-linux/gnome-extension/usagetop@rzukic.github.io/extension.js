@@ -138,17 +138,26 @@ class Indicator extends PanelMenu.Button {
         this._extension = extension;
         this._cancellable = new Gio.Cancellable();
         this._startedApp = 0;
+        this._clickTime = 0;
+
+        // GNOME keeps a window that takes the focus on its own from getting it,
+        // and puts it under the window that has it: the panel opened under a
+        // maximized window, and with no focus to lose it never closed on a click
+        // elsewhere. The shell may hand the focus on for the click that asked,
+        // so the panel's window is raised and focused from here when it appears.
+        this._windowCreated = global.display.connect('window-created', (display, window) => this._bringUp(window));
 
         this._box = new St.BoxLayout({style_class: 'usagetop-box', y_align: Clutter.ActorAlign.CENTER});
         this.add_child(this._box);
         this._draw(null);
 
-        this.connect('button-press-event', () => this._toggle());
+        this.connect('button-press-event', (actor, event) => this._toggle(event.get_time()));
         this.connect('touch-event', (actor, event) =>
-            event.type() === Clutter.EventType.TOUCH_BEGIN ? this._toggle() : Clutter.EVENT_PROPAGATE);
+            event.type() === Clutter.EventType.TOUCH_BEGIN ? this._toggle(event.get_time()) : Clutter.EVENT_PROPAGATE);
         this.connect('key-press-event', (actor, event) => {
             const key = event.get_key_symbol();
-            return key === Clutter.KEY_Return || key === Clutter.KEY_space ? this._toggle() : Clutter.EVENT_PROPAGATE;
+            return key === Clutter.KEY_Return || key === Clutter.KEY_space
+                ? this._toggle(event.get_time()) : Clutter.EVENT_PROPAGATE;
         });
 
         this._refresh();
@@ -165,7 +174,23 @@ class Indicator extends PanelMenu.Button {
         return [x, y, width, height].map(Math.round).join(',');
     }
 
-    _toggle() {
+    /** The panel's window, just shown: above the others, and focused for the click that asked for it. */
+    _bringUp(window) {
+        if (window.get_wm_class() !== 'usagetop' && window.get_wm_class_instance() !== 'usagetop') return;
+        const time = this._clickTime || global.get_current_time();
+        this._clickTime = 0;
+        // Once it is in place: on window-created it is not yet fully set up.
+        GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
+            if (window.get_compositor_private()) {
+                window.make_above();
+                Main.activateWindow(window, time);
+            }
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    _toggle(time = 0) {
+        this._clickTime = time;
         ask(`toggle --anchor ${this._anchor()}`, this._cancellable).then(answer => {
             if (answer !== null) {
                 this._refreshWhileInUse();
@@ -327,6 +352,8 @@ class Indicator extends PanelMenu.Button {
 
     destroy() {
         this._cancellable.cancel();
+        if (this._windowCreated) global.display.disconnect(this._windowCreated);
+        this._windowCreated = 0;
         for (const source of [this._timer, this._openSoon, this._retry, this._soon]) {
             if (source) GLib.source_remove(source);
         }
