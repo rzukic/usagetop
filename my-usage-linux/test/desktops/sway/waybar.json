@@ -19,7 +19,7 @@
     "spacing": 8
   },
   "custom/usagetop": {
-    "exec": "usagetop status --waybar",
+    "exec": "usagetop status --waybar --bar",
     "return-type": "json",
     "interval": 60,
     "on-click": "usagetop toggle"

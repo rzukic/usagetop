@@ -75,8 +75,70 @@ sleep 1; read -r x y w h <<< "$(geometry "$id")"
 xdotool mousemove $((x + 60)) $((y + 117)) click 1; sleep 1.5
 shot /out/kde-account.png
 
-"$U" quit
+# ---- The panel widget, put in as install.sh does from a release ----
+
+"$U" overview; "$U" hide; sleep 1
+plasma() { qdbus6 org.kde.plasmashell /PlasmaShell org.kde.PlasmaShell.evaluateScript "$1" 2> /dev/null; }
+widget_js='const w = []; for (const p of panels()) for (const x of p.widgets("io.github.rzukic.usagetop")) w.push(x)'
+mkdir -p /tmp/release; cp -a /app/. /tmp/release/
+cp /src/install.sh /tmp/release/; cp -R /src/plasma-widget /tmp/release/
+bash /tmp/release/install.sh > /tmp/install.log 2>&1
+check "install.sh puts the widget in" "$(tail -1 /tmp/install.log)" 'widget is in your panel, by the system tray'
+check "with kpackagetool6" "$(kpackagetool6 -t Plasma/Applet -l 2> /dev/null | grep usagetop)" '^io\.github\.rzukic\.usagetop$'
+check "once, in the panel, just before the tray" "$(plasma "$widget_js; const p = panels()[0]; p.currentConfigGroup = [\"General\"];
+  const order = String(p.readConfig(\"AppletOrder\")).split(\";\"); const tray = p.widgets(\"org.kde.plasma.systemtray\")[0];
+  print(w.length + \" \" + (order.indexOf(String(tray.id)) - order.indexOf(String(w[0].id))))")" '^1 1$'
+# What it asks with --bar tells the app that the panel shows the limits now.
+wait_for 40 sh -c "busctl --user get-property org.kde.StatusNotifierWatcher /StatusNotifierWatcher org.kde.StatusNotifierWatcher RegisteredStatusNotifierItems | grep -q '^as 0'"
+check "the widget asks, and the app's tray icon stands aside (--bar)" "$(items)" '^as 0$'
+sleep 2
+# Where it is: the applet's place in the panel, from the panel's window.
+read -r px py _ _ <<< "$(geometry "$(panel)")"
+read -r gx gy gw gh <<< "$(plasma "$widget_js; const g = w[0].geometry; print([g.x, g.y, g.width, g.height].map(Math.round).join(\" \"))")"
+wx=$((px + gx)) wy=$((py + gy))
+shot /tmp/widget.png
+read -r n spans <<< "$(python3 /desktops/count-items.py /tmp/widget.png "$wx" "$wy" "$gw" "$gh")"
+if [ "$BAR_LIMITS" -gt 0 ]; then
+  check "it shows the $BAR_LIMITS limits: a mark, the name over the figure, each" "$n: ${gw}x$gh+$wx+$wy, $spans" "^$BAR_LIMITS:"
+else
+  check "it shows the ring" "$n: ${gw}x$gh+$wx+$wy, $spans" '^1:'
+fi
+closeup /tmp/widget.png "$((wx + 20))" "$((wy + gh / 2))" /out/kde-widget-closeup.png
+
+xdotool mousemove "$((wx + gw / 2))" "$((wy + gh / 2))" click 1
+sleep 1; wait_for 5 sh -c 'xwininfo -root -tree | grep -q "\"usagetop\""'; id=$(window)
+wait_for 5 mapped "$id"; sleep 1.5
+check "a click on it opens the panel" "$(xwininfo -id "$id" | grep 'Map State')" 'IsViewable'
+read -r x y w h <<< "$(geometry "$id")"
+# The panel at the bottom: the app's panel opens over the widget, centred on
+# it, 6 above it (the window has 38 below the panel for its shadow).
+off=$(( (x + w / 2) - (wx + gw / 2) ))
+check "over the widget, centred on it, or 8 from the screen's edge" "$(( off >= -1 && off <= 1 || W - (x + w - 30) == 8 )): $off" '^1:'
+check "and 6 above it" "$(( wy - (y + h - 38) ))" '^6$'
+xdotool mousemove 700 400; sleep 1
+shot /out/kde-widget.png
+# For the README: the panel and the widget under it, with the tray and clock
+# beside it, as a menu bar's picture would be.
+left=$(( x + 30 - 24 )) top=$(( y + 22 - 24 ))
+convert /out/kde-widget.png -crop "$((W - left))x$((H - top))+$left+$top" +repage /out/kde-bar.png
+xdotool mousemove "$((wx + gw / 2))" "$((wy + gh / 2))" click 1; sleep 1.5
+check "a click again puts it away" "$(xwininfo -id "$id" | grep 'Map State')" 'IsUnMapped'
+xdotool mousemove 700 400
+
+# Installed again, as an update would be: it quits the app, which the widget
+# then starts again itself, without a tray icon.
+bash /tmp/release/install.sh > /tmp/install-again.log 2>&1
+check "installed again, the widget is still there once" "$(plasma "$widget_js; print(w.length)")" '^1$'
+# On its next look, or a minute after its last try, which may have come
+# while install.sh had the app's folder out of place.
+wait_for 100 pgrep -x usagetop
+check "and starts the app again" "$(pgrep -a -x usagetop | grep -c -- --hidden)" '^1$'
+
+# install.sh --uninstall: the app quits, and the widget goes from the panel.
+bash /tmp/release/install.sh --uninstall > /tmp/uninstall.log 2>&1
 wait_for 5 sh -c '! pgrep -x usagetop'
-check "quit ends it" "$(pgrep -c -x usagetop)" '^0$'
-check "and takes its icon out of the tray" "$(items)" '^as 0$'
+check "uninstalling quits the app" "$(pgrep -c -x usagetop)" '^0$'
+check "and takes the widget out of the panel" "$(plasma "$widget_js; print(w.length)")" '^0$'
+check "and away" "$(kpackagetool6 -t Plasma/Applet -l 2> /dev/null | grep -c usagetop) $(ls "$HOME/.local/share/plasma/plasmoids" 2> /dev/null | wc -l)" '^0 0$'
+check "nothing left in the tray" "$(items)" '^as 0$'
 finish

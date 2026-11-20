@@ -2,6 +2,7 @@
 window#waybar { background: rgba(30, 32, 40, 0.92); color: #e5e9f0; }
 #workspaces button { padding: 0 8px; color: #e5e9f0; }
 #custom-usagetop { padding: 0 10px; }
-#custom-usagetop.warning { color: #ebcb8b; }
-#custom-usagetop.critical { color: #bf616a; }
+/* The combined figure by its level; with limits, each figure has its own. */
+#custom-usagetop.warning:not(.limits) { color: #ebcb8b; }
+#custom-usagetop.critical:not(.limits) { color: #bf616a; }
 #tray { padding: 0 10px; }

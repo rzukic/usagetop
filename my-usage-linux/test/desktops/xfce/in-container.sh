@@ -7,10 +7,13 @@ W=1600 H=1000
 
 echo "== Xfce (X11, xfwm4 compositing)"
 start_x ${W}x$H
-# The panel as Xfce sets it up on a first start, without asking.
+# The panel as Xfce sets it up on a first start, without asking, less its
+# action buttons, which show the user's name (here root) at its right end.
 conf=$HOME/.config/xfce4/xfconf/xfce-perchannel-xml
 mkdir -p "$conf"
-cp /etc/xdg/xfce4/panel/default.xml "$conf/xfce4-panel.xml"
+sed '/<value type="int" value="\(9\|10\)"\/>/d' /etc/xdg/xfce4/panel/default.xml > "$conf/xfce4-panel.xml"
+# On the PATH, as the README's Generic Monitor command expects.
+mkdir -p "$HOME/bin"; ln -s "$U" "$HOME/bin/usagetop"; export PATH="$HOME/bin:$PATH"
 xfsettingsd > /tmp/xfsettingsd.log 2>&1 &
 xfwm4 > /tmp/xfwm4.log 2>&1 &
 wait_for 10 sh -c 'xprop -root _NET_SUPPORTING_WM_CHECK | grep -q window'
@@ -69,8 +72,69 @@ check "the menu is under the icon" "$(( mx <= ix && ix <= mx + mw && my >= area_
 shot /out/xfce-menu.png
 xdotool key Escape; sleep 1
 
+# ---- The Generic Monitor plugin, as the README sets it up ----
+
+"$U" overview; "$U" hide; sleep 1
+shot /tmp/before-genmon.png
+# Just before the tray, with no label, every 30 s, in the panel's own font;
+# put in while the panel is not running, which would write its own over it.
+xfce4-panel -q; sleep 2
+mkdir -p "$HOME/.config/xfce4/panel"
+printf '%s\n' 'Command=usagetop status --genmon --bar' 'UseLabel=0' 'Text=' 'UpdatePeriod=30000' \
+  > "$HOME/.config/xfce4/panel/genmon-19.rc"
+xfconf-query -c xfce4-panel -p /plugins/plugin-19 -n -t string -s genmon
+ids=()
+for p in $(xfconf-query -c xfce4-panel -p /panels/panel-1/plugin-ids | grep -E '^[0-9]+$'); do
+  [ "$(xfconf-query -c xfce4-panel -p "/plugins/plugin-$p")" = systray ] && ids+=(-t int -s 19)
+  ids+=(-t int -s "$p")
+done
+xfconf-query -c xfce4-panel -p /panels/panel-1/plugin-ids "${ids[@]}"
+xfce4-panel > /tmp/panel-again.log 2>&1 &
+sleep 3
+wait_for 30 test -n "$(tray)"
+check "the panel has it, just before the tray" "$(xfconf-query -c xfce4-panel -p /panels/panel-1/plugin-ids | grep -E '^[0-9]+$' | tr '\n' ' ')" '19 6 '
+text=$(usagetop status --genmon | sed -n 's/.*<txt>\(.*\)<\/txt>.*/\1/p')
+echo "      its text: $text"
+if [ "$BAR_LIMITS" -gt 0 ]; then
+  check "its text: the $BAR_LIMITS limits, each with its name and figure" "$(sed 's/<[^>]*>//g' <<< "$text" | grep -oE '[0-9]+%' | wc -l): $text" "^$BAR_LIMITS: "
+  check "the names a little fainter, in Pango markup" "$text" '<span alpha="70%">[A-Za-z0-9]'
+else
+  check "its text: the combined figure" "$text" '^[0-9]+%$'
+fi
+# What it asks with --bar tells the app that the panel shows the figures now.
+wait_for 40 sh -c "! dbus-send --session --print-reply --dest=org.kde.StatusNotifierWatcher /StatusNotifierWatcher org.freedesktop.DBus.Properties.Get string:org.kde.StatusNotifierWatcher string:RegisteredStatusNotifierItems | grep -q StatusNotifierItem"
+check "the plugin asks, and the app's tray icon stands aside (--bar)" "$(items)" '^$'
+# Where the plugin's text is, from the picture: its plug window keeps its old
+# place and size for a while after the panel makes room for the text. In the
+# panel's right half nothing else is drawn but the clock, at the end (the
+# pager's boxes are flat, the tray is empty now).
+sleep 3; shot /tmp/genmon.png
+read -r _ spans <<< "$(python3 /desktops/count-items.py /tmp/genmon.png $((W / 2)) 2 $((W / 2)) 22 9)"
+case "$spans" in *" "*) spans=${spans% *} ;; *) spans="" ;; esac
+n=$(wc -w <<< "$spans")
+gx=${spans%%-*} gw=$(( ${spans##*-} - ${spans%%-*} + 1 ))
+echo "      the plugin's text: $spans"
+if [ "$BAR_LIMITS" -gt 0 ]; then
+  check "the panel shows the $BAR_LIMITS limits" "$n: $spans" "^$BAR_LIMITS:"
+else
+  check "the panel shows the figure" "$n: $spans" '^1:'
+fi
+closeup /tmp/genmon.png "$((gx + 24))" 12 /out/xfce-genmon-closeup.png
+# A click on it runs its <txtclick>: usagetop toggle.
+xdotool mousemove "$((gx + gw / 2))" 12 click 1
+sleep 1; wait_for 5 mapped "$id"; sleep 1
+check "a click on it opens the panel" "$(xwininfo -id "$id" | grep 'Map State')" 'IsViewable'
+xdotool mousemove 700 500; sleep 1.5
+shot /out/xfce-genmon.png
+# For the README: the panel's right end with the plugin, and the app's panel under it.
+read -r x y w h <<< "$(geometry "$id")"
+left=$(( (gx < x + 30 ? gx : x + 30) - 24 ))
+convert /out/xfce-genmon.png -crop "$((W - left))x$((y + h - 38 + 24))+$left+0" +repage /out/xfce-bar.png
+
 "$U" quit
 wait_for 5 sh -c '! pgrep -x usagetop'
 check "quit ends it" "$(pgrep -c -x usagetop)" '^0$'
 check "and takes its icon out of the tray" "$(items)" '^$'
+sleep 1
+check "the plugin then shows a dash" "$(usagetop status --genmon 2>&1; echo " $?")" ' 1$'
 finish

@@ -34,13 +34,13 @@ check "doctor sees Sway, Wayland, tiling" "$(usagetop doctor | tr -s ' ' | tr '\
 waybar_text=$(usagetop status --waybar | jq -r .text)
 if [ "$BAR_LIMITS" -gt 0 ]; then
   echo "      Waybar text: $waybar_text"
-  n=$(grep -oE '[0-9]+%' <<< "$waybar_text" | wc -l)
+  n=$(sed 's/<[^>]*>//g' <<< "$waybar_text" | grep -oE '[0-9]+%' | wc -l)
   check "the Waybar form: the limits as text, $BAR_LIMITS or as many as there are" "$(( n >= (BAR_LIMITS < 2 ? BAR_LIMITS : 2) && n <= BAR_LIMITS )): $n" '^1:'
   check "each with its provider's name" "$waybar_text" '^(Claude|ChatGPT|Kimi|Mistral|Muse|Antigravity) [^ ]'
   # The class is the tightest limit's: the first figure.
-  first=$(grep -oE '[0-9]+%' <<< "$waybar_text" | head -1 | tr -d %)
-  check "a class to style it by, the tightest limit's" "$(usagetop status --waybar | jq -r .class)" \
-    "^$( [ "$first" -le 15 ] && echo critical || { [ "$first" -le 40 ] && echo warning || echo normal; })\$"
+  first=$(sed 's/<[^>]*>//g' <<< "$waybar_text" | grep -oE '[0-9]+%' | head -1 | tr -d %)
+  check "a class to style it by, the tightest limit's, and limits" "$(usagetop status --waybar | jq -r '.class | join(" ")')" \
+    "^$( [ "$first" -le 15 ] && echo critical || { [ "$first" -le 40 ] && echo warning || echo normal; }) limits\$"
 else
   check "the Waybar form: the figure as text" "$waybar_text" '^[0-9]+%$'
   check "a class to style it by" "$(usagetop status --waybar | jq -r .class)" '^(normal|warning|critical)$'
@@ -51,8 +51,22 @@ swaymsg exec waybar > /dev/null
 wait_for 15 sh -c 'swaymsg -t get_tree | grep -q "\"name\": \"waybar\"" || pgrep -x waybar'
 items() { dbus-send --session --print-reply --dest=org.kde.StatusNotifierWatcher /StatusNotifierWatcher org.freedesktop.DBus.Properties.Get string:org.kde.StatusNotifierWatcher string:RegisteredStatusNotifierItems 2> /dev/null | grep -o '"[^"]*"' | tr '\n' ' '; }
 wait_for 10 sh -c "dbus-send --session --print-reply --dest=org.kde.StatusNotifierWatcher /StatusNotifierWatcher org.freedesktop.DBus.Properties.Get string:org.kde.StatusNotifierWatcher string:RegisteredStatusNotifierItems | grep -q StatusNotifierItem"
-check "Waybar's tray has its icon too" "$(items)" 'org\.kde\.StatusNotifierItem-[0-9]+-[0-9]+/StatusNotifierItem'
+# The module asks with --bar, as the README has it: the bar shows the figures,
+# so the app's tray icon stands aside.
+wait_for 20 sh -c "! dbus-send --session --print-reply --dest=org.kde.StatusNotifierWatcher /StatusNotifierWatcher org.freedesktop.DBus.Properties.Get string:org.kde.StatusNotifierWatcher string:RegisteredStatusNotifierItems | grep -q StatusNotifierItem"
+check "the module asks, and the app's tray icon stands aside (--bar)" "$(items)" '^$'
 check "Waybar keeps running" "$(pgrep -c -x waybar)" '^1$'
+sleep 1; grim /tmp/waybar.png
+# The module's text, in the middle of the bar: as many things apart as it
+# shows limits, each a name and a figure, and none as long as its markup
+# would be if it were shown as it is ("Kimi <span alpha=...").
+read -r n spans <<< "$(python3 /desktops/count-items.py /tmp/waybar.png 300 0 1000 30 9)"
+widest=0; for span in $spans; do a=${span%-*} b=${span#*-}; [ $((b - a)) -gt $widest ] && widest=$((b - a)); done
+if [ "$BAR_LIMITS" -gt 0 ]; then
+  check "Waybar draws the $BAR_LIMITS limits, the markup taken as such" "$n $((widest < 170)): $spans" "^$BAR_LIMITS 1:"
+else
+  check "Waybar draws the figure" "$n: $spans" '^1:'
+fi
 
 panel() { swaymsg -t get_tree | jq -c '.. | objects | select(.name? == "usagetop" and .shell? != null)'; }
 usagetop hide; sleep 1
@@ -75,6 +89,14 @@ swaymsg '[class="usagetop"] move position 1108 16' > /dev/null; sleep 1.5
 # Its position counts from the workspace's corner, under Waybar's 30.
 check "a rule of the user's can move it" "$(panel | jq -r '.rect | "\(.x),\(.y)"')" '^1108,46$'
 grim /out/sway-waybar.png
+# For the README: the bar's middle, with the limits, and the panel under
+# them, 6 below the bar, as a rule could put it.
+swaymsg "[class=\"usagetop\"] move position $(( W / 2 - w / 2 )) 6" > /dev/null; sleep 1.5
+grim /out/sway-bar-full.png
+read -r x y w h <<< "$(jq -r '.rect | "\(.x) \(.y) \(.width) \(.height)"' <<< "$(panel)")"
+first=${spans%%-*} last=${spans##*-}
+left=$(( (first < x ? first : x) - 24 )) right=$(( (last > x + w ? last : x + w) + 24 ))
+convert /out/sway-bar-full.png -crop "$((right - left))x$((y + h + 24))+$left+0" +repage /out/sway-bar.png
 
 usagetop settings; sleep 1.5
 grim /out/sway-settings.png

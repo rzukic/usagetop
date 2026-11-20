@@ -3,7 +3,8 @@
 # container of its own that is thrown away after: KDE Plasma (X11, KWin
 # compositing with software OpenGL), Xfce, and Sway with Waybar (headless
 # Wayland, the app under XWayland). On each it checks what the app does there
-# (its tray icon, a click on it, where the panel opens, the Waybar module) and
+# (its tray icon, a click on it, where the panel opens, the Plasma widget as
+# install.sh puts it in, Xfce's Generic Monitor, the Waybar module) and
 # takes pictures of it, with the made-up sample data.
 #
 #   ./test/desktops-check.sh                      all three; pictures in a temp folder
@@ -52,8 +53,8 @@ for d in "${desktops[@]}"; do
   # The pictures are handed to this user at the end; the app only reads its
   # own sample data, never this machine's settings.
   docker run --rm --init -e OWNER="$(id -u):$(id -g)" -e BAR_LIMITS="$bar_limits" --shm-size 256m \
-    -v "$app:/app:ro" -v "$PWD/test/desktops:/desktops:ro" -v "$out:/out" \
-    "usagetop-desktops-$d" timeout 300 bash "/desktops/$d/in-container.sh" || failed=$((failed + $?))
+    -v "$app:/app:ro" -v "$PWD/test/desktops:/desktops:ro" -v "$PWD:/src:ro" -v "$out:/out" \
+    "usagetop-desktops-$d" timeout 420 bash "/desktops/$d/in-container.sh" || failed=$((failed + $?))
 done
 
 echo "== pictures in $out:"
