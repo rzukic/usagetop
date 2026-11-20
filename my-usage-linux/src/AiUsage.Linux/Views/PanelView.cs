@@ -271,27 +271,40 @@ public sealed class PanelView : Border
         {
             box.Children.Add(Badge(Look.Solid(Look.Critical), Bits.Text("!", 9, FontWeight.Heavy, Brushes.White)));
         }
-        else if (!string.IsNullOrWhiteSpace(usage.AccountName))
+        else if (Account.LabelOf(usage.AccountName, usage.Slot) is { } label)
         {
-            // The account's own first letter, in the case it was written in.
+            // The account's initials in a pill, as on the top bar and the Mac: "RZ", "W".
             var tile = new SolidColorBrush(Look.Dark ? Color.FromRgb(0x3A, 0x3C, 0x44) : Color.FromRgb(0xFF, 0xFF, 0xFF));
-            box.Children.Add(Badge(tile, Bits.Text(usage.AccountName.Trim()[..1], 7.5, FontWeight.Heavy, Look.Primary)));
+            box.Children.Add(Badge(tile, Bits.Text(Account.Initials(label), 7.5, FontWeight.Heavy, Look.Primary)));
         }
         return box;
     }
 
-    private static Border Badge(IBrush fill, TextBlock mark)
+    /// <summary>A small pill on a ring's lower right; one character keeps it round.</summary>
+    internal static Border Badge(IBrush fill, TextBlock mark)
     {
-        mark.HorizontalAlignment = HorizontalAlignment.Center;
+        // Centred on the letters' ink, not on the line they sit on: a line
+        // makes room for descenders that capitals do not have, which put them
+        // 1.5 high. Measured at 8x (USAGETOP_SNAPSHOT_BADGES).
+        mark.HorizontalAlignment = HorizontalAlignment.Stretch;
+        mark.TextAlignment = TextAlignment.Center;
         mark.VerticalAlignment = VerticalAlignment.Center;
+        mark.Margin = new Thickness(0, 1.5, 0, 0);
+        // Whole-unit rounding would leave them half a unit off either way.
+        mark.UseLayoutRounding = false;
+        var wide = (mark.Text ?? "").Length > 1;
         return new Border
         {
-            Width = 13,
+            MinWidth = 13,
             Height = 13,
+            Padding = new Thickness(wide ? 3 : 0, 0),
             CornerRadius = new CornerRadius(6.5),
             Background = fill,
+            BorderBrush = Look.Ink(0.14),
+            BorderThickness = new Thickness(0.5),
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Bottom,
+            Margin = new Thickness(0, 0, wide ? -4 : 0, 0),
             Child = mark,
         };
     }

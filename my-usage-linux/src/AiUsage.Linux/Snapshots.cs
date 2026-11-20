@@ -37,6 +37,29 @@ public static class Snapshots
             Save(Path.Combine(folder, $"settings-{suffix}.png"), model, new Pane.Settings(), dark);
         }
 
+        // The rail's badges alone and large, to judge where their letters sit.
+        if (Environment.GetEnvironmentVariable("USAGETOP_SNAPSHOT_BADGES") == "1")
+        {
+            Look.Dark = true;
+            var row = new StackPanel { Orientation = Avalonia.Layout.Orientation.Horizontal, Spacing = 10, Margin = new Thickness(6) };
+            foreach (var text in new[] { "W", "RZ", "SG", "#2" })
+            {
+                var badge = PanelView.Badge(new SolidColorBrush(Color.FromRgb(0x3A, 0x3C, 0x44)),
+                    Bits.Text(text, 7.5, FontWeight.Heavy, Look.Primary));
+                badge.HorizontalAlignment = Avalonia.Layout.HorizontalAlignment.Left;
+                badge.VerticalAlignment = Avalonia.Layout.VerticalAlignment.Top;
+                badge.Margin = default;
+                row.Children.Add(badge);
+            }
+            var stage = new Border { Background = new SolidColorBrush(Color.FromRgb(0x20, 0x21, 0x26)), Child = row };
+            var big = new LayoutTransformControl { LayoutTransform = new ScaleTransform(8, 8), Child = stage };
+            big.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+            big.Arrange(new Rect(big.DesiredSize));
+            using var bitmap = new RenderTargetBitmap(new PixelSize((int)big.DesiredSize.Width, (int)big.DesiredSize.Height), new Vector(96, 96));
+            bitmap.Render(big);
+            bitmap.Save(Path.Combine(folder, "badges.png"), PngBitmapEncoderOptions.Default);
+        }
+
         foreach (var percent in new float?[] { null, 8, 31, 51, 100 })
         {
             using var icon = TrayArt.Draw(percent);

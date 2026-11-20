@@ -34,15 +34,8 @@ public static class Status
     public static float? Headline(AppModel model) =>
         model.Combined?.Percent ?? Closest(model).FirstOrDefault()?.Window.RemainingPercent;
 
-    /// <summary>
-    /// The account's own part of its name, for places that already show the
-    /// provider's mark: "Work", or "#2" for a second account without a name;
-    /// null for a provider's only, unnamed one. The Mac's accountLabel.
-    /// </summary>
-    public static string? AccountLabel(ProviderUsage usage) =>
-        !string.IsNullOrWhiteSpace(usage.AccountName) ? usage.AccountName.Trim()
-        : usage.Slot.Length > 0 ? $"#{usage.Slot}"
-        : null;
+    /// <summary>The account's own part of its name, for a bar that already shows the provider's mark.</summary>
+    public static string? AccountLabel(ProviderUsage usage) => Account.LabelOf(usage.AccountName, usage.Slot);
 
     public static string Class(float? percent) => percent switch
     {
