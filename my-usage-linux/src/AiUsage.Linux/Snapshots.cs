@@ -52,7 +52,9 @@ public static class Snapshots
                 row.Children.Add(badge);
             }
             var stage = new Border { Background = new SolidColorBrush(Color.FromRgb(0x20, 0x21, 0x26)), Child = row };
-            var big = new LayoutTransformControl { LayoutTransform = new ScaleTransform(8, 8), Child = stage };
+            // At the screen's own scale (USAGETOP_SNAPSHOT_SCALE, 1 by default), as rounding and pixels fall there.
+            var scale = double.TryParse(Environment.GetEnvironmentVariable("USAGETOP_SNAPSHOT_SCALE"), out var s) ? s : 1;
+            var big = new LayoutTransformControl { LayoutTransform = new ScaleTransform(scale, scale), Child = stage };
             big.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
             big.Arrange(new Rect(big.DesiredSize));
             using var bitmap = new RenderTargetBitmap(new PixelSize((int)big.DesiredSize.Width, (int)big.DesiredSize.Height), new Vector(96, 96));

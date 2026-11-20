@@ -283,31 +283,38 @@ public sealed class PanelView : Border
     /// <summary>A small pill on a ring's lower right; one character keeps it round.</summary>
     internal static Border Badge(IBrush fill, TextBlock mark)
     {
-        // Centred on the letters' ink, not on the line they sit on: a line
-        // makes room for descenders that capitals do not have, which put them
-        // 1.5 high. Measured at 8x (USAGETOP_SNAPSHOT_BADGES).
-        mark.HorizontalAlignment = HorizontalAlignment.Stretch;
-        mark.TextAlignment = TextAlignment.Center;
+        // Big enough to read on a screen at its own scale, not only on a sharp
+        // one; centred on the letters' ink, not on the line they sit on, which
+        // keeps room below for descenders capitals do not have. Measured at the
+        // screen's scale (USAGETOP_SNAPSHOT_BADGES=1): within a fifth of a unit.
+        mark.FontSize = BadgeFont;
+        mark.HorizontalAlignment = HorizontalAlignment.Center;
         mark.VerticalAlignment = VerticalAlignment.Center;
-        mark.Margin = new Thickness(0, 1.5, 0, 0);
-        // Whole-unit rounding would leave them half a unit off either way.
-        mark.UseLayoutRounding = false;
+        mark.Margin = new Thickness(0, BadgeLift, 0, 0);
         var wide = (mark.Text ?? "").Length > 1;
         return new Border
         {
-            MinWidth = 13,
-            Height = 13,
-            Padding = new Thickness(wide ? 3 : 0, 0),
-            CornerRadius = new CornerRadius(6.5),
+            MinWidth = BadgeHeight,
+            Height = BadgeHeight,
+            Padding = new Thickness(wide ? 3.5 : 0, 0),
+            CornerRadius = new CornerRadius(BadgeHeight / 2),
             Background = fill,
             BorderBrush = Look.Ink(0.14),
             BorderThickness = new Thickness(0.5),
             HorizontalAlignment = HorizontalAlignment.Right,
             VerticalAlignment = VerticalAlignment.Bottom,
-            Margin = new Thickness(0, 0, wide ? -4 : 0, 0),
             Child = mark,
         };
     }
+
+    /// <summary>
+    /// 9 on 15 reads at a screen's own scale; 7.5 on 13 did not. The letters
+    /// are lowered 2 to sit on their ink's centre: at 1x 1 to 3 round to the
+    /// same pixel, within a quarter of one.
+    /// </summary>
+    private const double BadgeFont = 9;
+    private const double BadgeHeight = 15;
+    private const double BadgeLift = 2;
 
     // ---- Header and footer ----
 
