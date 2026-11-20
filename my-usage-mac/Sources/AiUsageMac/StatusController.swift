@@ -624,11 +624,11 @@ enum Showcase {
 
 /// The limits closest to running out, for the menu bar: each one a provider's
 /// mark the height of the bar, and beside it the limit's name over what is
-/// left. An account with a name of its own (a second Claude, "Work") says so
-/// before the limit's name, or two of one provider could not be told apart.
-/// One template image, without a hue: the menu bar can be any colour, and as a
-/// template the system draws it in the bar's own, as it draws its own icons.
-/// The name is drawn a little fainter than the figure.
+/// left. An account with a name of its own (a second Claude, "Work") wears its
+/// initials in a badge on the mark's corner, or two of one provider could not
+/// be told apart. One template image, without a hue: the menu bar can be any
+/// colour, and as a template the system draws it in the bar's own, as it draws
+/// its own icons. The name is drawn a little fainter than the figure.
 @MainActor
 enum MenuBarLimits {
     private static let height: CGFloat = 22
@@ -643,31 +643,33 @@ enum MenuBarLimits {
         // "Fable" rather than "Fable weekly"; but two windows of one model of
         // one account both showing keep their full names, so they can be told apart.
         let compact = entries.map { WindowName.compact($0.window.label) }
-        let laidOut = entries.enumerated().map { index, entry -> (NSImage?, String, String, Double, CGFloat) in
+        let laidOut = entries.enumerated().map { index, entry -> (NSImage?, String, String, String?, CGFloat) in
             let level = entry.window.remainingPercent ?? 0
             let clashes = entries.indices.contains { other in
                 other != index && entries[other].provider == entry.provider
                     && entries[other].account == entry.account && compact[other] == compact[index]
             }
-            let name = clashes ? entry.window.displayLabel : compact[index]
-            let label = entry.account.map { short("\(short($0, to: 6)) · \(name)", to: 15) } ?? short(name)
+            let label = short(clashes ? entry.window.displayLabel : compact[index])
             let figure = Format.percent(level)
             let width = max(
                 (label as NSString).size(withAttributes: [.font: labelFont]).width,
                 (figure as NSString).size(withAttributes: [.font: figureFont]).width
             ).rounded(.up)
-            return (Marks.image(entry.provider), label, figure, level, width)
+            return (Marks.image(entry.provider), label, figure, entry.account.map(AccountBadge.initials), width)
         }
         let total = laidOut.reduce(0) { $0 + mark + markGap + $1.4 } + entryGap * CGFloat(max(laidOut.count - 1, 0))
 
         let image = NSImage(size: NSSize(width: max(total, 1), height: height), flipped: true) { _ in
             let alpha: CGFloat = stale ? 0.55 : 1
             var x: CGFloat = 0
-            for (markImage, label, figure, _, width) in laidOut {
+            for (markImage, label, figure, initials, width) in laidOut {
                 // respectFlipped: this canvas is flipped, and the marks are not symmetric.
-                markImage?.draw(in: NSRect(x: x, y: (height - mark) / 2, width: mark, height: mark),
-                                from: .zero, operation: .sourceOver, fraction: alpha,
+                let markRect = NSRect(x: x, y: (height - mark) / 2, width: mark, height: mark)
+                markImage?.draw(in: markRect, from: .zero, operation: .sourceOver, fraction: alpha,
                                 respectFlipped: true, hints: nil)
+                if let initials {
+                    AccountBadge.draw(initials, onCornerOf: markRect, alpha: alpha)
+                }
                 let textX = x + mark + markGap
                 (label as NSString).draw(at: NSPoint(x: textX, y: 0), withAttributes: [
                     .font: labelFont,
@@ -696,6 +698,50 @@ enum MenuBarLimits {
     }
 }
 
+
+/// An account's initials in a small badge on a mark's bottom-right corner, as
+/// T3 marks a project: "RZ", "W" for "Work", "CP" for "Claude Pro". Drawn into
+/// a template image, so it is the bar's ink with the letters cut out of it,
+/// and a thin gap is cut round it so it stands apart from the mark.
+@MainActor
+enum AccountBadge {
+    private static let font = NSFont.systemFont(ofSize: 7, weight: .heavy)
+    private static let badgeHeight: CGFloat = 9
+
+    /// Up to two letters, in the case they were written in: the first of each
+    /// of the first two words, or of a single word its first two.
+    static func initials(_ name: String) -> String {
+        let words = name.split(whereSeparator: { $0 == " " || $0 == "-" || $0 == "_" || $0 == "·" }).map(String.init)
+        if words.count >= 2 { return String(words[0].prefix(1)) + String(words[1].prefix(1)) }
+        guard let word = words.first else { return "" }
+        return word.count <= 2 ? word : String(word.prefix(word.first?.isNumber == true || word.first == "#" ? 3 : 1))
+    }
+
+    static func draw(_ initials: String, onCornerOf mark: NSRect, alpha: CGFloat) {
+        guard !initials.isEmpty, let context = NSGraphicsContext.current?.cgContext else { return }
+        let text = initials as NSString
+        let textSize = text.size(withAttributes: [.font: font])
+        let width = max(badgeHeight, (textSize.width + 3.5).rounded(.up))
+        // Hangs a little past the mark's corner, as T3's does.
+        let rect = NSRect(x: mark.maxX - width + 3, y: mark.maxY - badgeHeight + 2.5, width: width, height: badgeHeight)
+        let shape = NSBezierPath(roundedRect: rect, xRadius: badgeHeight / 2, yRadius: badgeHeight / 2)
+
+        // The gap round it, then the badge, then the letters cut out of it.
+        context.saveGState()
+        context.setBlendMode(.clear)
+        NSBezierPath(roundedRect: rect.insetBy(dx: -1.2, dy: -1.2), xRadius: badgeHeight / 2 + 1.2, yRadius: badgeHeight / 2 + 1.2).fill()
+        context.restoreGState()
+
+        NSColor.black.withAlphaComponent(alpha).setFill()
+        shape.fill()
+
+        context.saveGState()
+        context.setBlendMode(.destinationOut)
+        text.draw(at: NSPoint(x: rect.midX - textSize.width / 2, y: rect.midY - textSize.height / 2 - 0.25),
+                  withAttributes: [.font: font, .foregroundColor: NSColor.black])
+        context.restoreGState()
+    }
+}
 
 /// What `--live-shot` puts behind the panel: a wallpaper, and over its top a
 /// menu bar of its own, with the app's real item in it and a few of the
