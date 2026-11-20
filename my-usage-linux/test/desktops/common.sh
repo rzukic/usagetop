@@ -65,3 +65,37 @@ differ() {
   convert "$1" -crop "$3" +repage /tmp/differ-a.png; convert "$2" -crop "$3" +repage /tmp/differ-b.png
   compare -metric MAE /tmp/differ-a.png /tmp/differ-b.png null: 2>&1 | sed 's/.*(\(.*\))/\1/'
 }
+
+# ---- The providers' marks as a font ----
+
+# As install.sh puts it in: the user's own fonts, and fontconfig told.
+install_marks() {
+  mkdir -p "$HOME/.local/share/fonts"
+  cp /src/fonts/usagetop-marks.otf "$HOME/.local/share/fonts/"
+  fc-cache -f "$HOME/.local/share/fonts"
+}
+# check_marks <what> <desktop> <markup>: with the font in, the bar's text has each
+# provider's mark in the font, and no provider's name; fontconfig knows the
+# font; and Pango draws its marks from it, not as boxes for characters it has
+# no font for: each mark comes out otherwise than with the font hidden from
+# fontconfig, when Pango draws its box with the code in it.
+check_marks() {
+  check "$1: each limit's mark in the marks' font" "$(grep -o 'font_family="usagetop marks"' <<< "$3" | wc -l)" "^$BAR_LIMITS$"
+  check "$1: and no provider's name" "$(grep -oE 'Claude|ChatGPT|Kimi|Mistral|Muse|Antigravity' <<< "$3" | tr '\n' ' ')" '^$'
+  check "fontconfig has the marks' font" "$(fc-list | grep -i 'usagetop marks' | sed 's/:.*//')" '/\.local/share/fonts/usagetop-marks\.otf$'
+  local code with without differ
+  # Fontconfig as it is, less the user's fonts: where the marks' font is.
+  printf '<fontconfig><dir>/usr/share/fonts</dir><cachedir>/tmp/fc-hidden</cachedir></fontconfig>' > /tmp/fonts-hidden.conf
+  for code in E000 E001 E002 E003 E004 E005; do
+    printf '<span font_family="usagetop marks">&#x%s;</span>' "$code" > /tmp/mark.txt
+    pango-view -q --markup --dpi 96 --font "Noto Sans 30" --margin 4 -o "/tmp/mark-$code.png" /tmp/mark.txt
+    FONTCONFIG_FILE=/tmp/fonts-hidden.conf pango-view -q --markup --dpi 96 --font "Noto Sans 30" --margin 4 -o "/tmp/mark-$code-hidden.png" /tmp/mark.txt
+    with=$(convert "/tmp/mark-$code.png" -trim -format '%wx%h' info:)
+    without=$(convert "/tmp/mark-$code-hidden.png" -trim -format '%wx%h' info:)
+    convert "/tmp/mark-$code.png" -background white -extent 120x80 /tmp/differ-a.png
+    convert "/tmp/mark-$code-hidden.png" -background white -extent 120x80 /tmp/differ-b.png
+    differ=$(compare -metric AE -fuzz 20% /tmp/differ-a.png /tmp/differ-b.png null: 2>&1 | cut -d' ' -f1)
+    check "Pango draws U+$code from the font, not as a box ($with with it, $without without)" "$differ" '^[1-9][0-9]{2,}'
+  done
+  montage /tmp/mark-E00?.png /tmp/mark-E00?-hidden.png -tile 6x2 -geometry +4+4 "/out/$2-marks.png" 2> /dev/null || true
+}

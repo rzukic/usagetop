@@ -14,6 +14,8 @@ cp /desktops/sway/waybar.json "$HOME/.config/waybar/config"
 cp /desktops/sway/waybar.css "$HOME/.config/waybar/style.css"
 # On the PATH, as the README's module expects.
 ln -s "$U" "$HOME/bin/usagetop"; export PATH="$HOME/bin:$PATH"
+# The providers' marks, as install.sh puts them in.
+install_marks
 start_bus
 sway -c /desktops/sway/config > /tmp/sway.log 2>&1 &
 wait_for 20 sh -c 'ls "$XDG_RUNTIME_DIR"/sway-ipc.*.sock'
@@ -36,7 +38,7 @@ if [ "$BAR_LIMITS" -gt 0 ]; then
   echo "      Waybar text: $waybar_text"
   n=$(sed 's/<[^>]*>//g' <<< "$waybar_text" | grep -oE '[0-9]+%' | wc -l)
   check "the Waybar form: the limits as text, $BAR_LIMITS or as many as there are" "$(( n >= (BAR_LIMITS < 2 ? BAR_LIMITS : 2) && n <= BAR_LIMITS )): $n" '^1:'
-  check "each with its provider's name" "$waybar_text" '^(Claude|ChatGPT|Kimi|Mistral|Muse|Antigravity) [^ ]'
+  check_marks "the Waybar text" sway "$waybar_text"
   # The class is the tightest limit's: the first figure.
   first=$(sed 's/<[^>]*>//g' <<< "$waybar_text" | grep -oE '[0-9]+%' | head -1 | tr -d %)
   check "a class to style it by, the tightest limit's, and limits" "$(usagetop status --waybar | jq -r '.class | join(" ")')" \
@@ -61,6 +63,8 @@ sleep 1; grim /tmp/waybar.png
 # shows limits, each a name and a figure, and none as long as its markup
 # would be if it were shown as it is ("Kimi <span alpha=...").
 read -r n spans <<< "$(python3 /desktops/count-items.py /tmp/waybar.png 300 0 1000 30 9)"
+# The module's text across the bar's height, three times the size.
+convert /tmp/waybar.png -crop "$(( ${spans##*-} - ${spans%%-*} + 17 ))x30+$(( ${spans%%-*} - 8 ))+0" +repage -filter point -resize 300% /out/sway-bar-closeup.png
 widest=0; for span in $spans; do a=${span%-*} b=${span#*-}; [ $((b - a)) -gt $widest ] && widest=$((b - a)); done
 if [ "$BAR_LIMITS" -gt 0 ]; then
   check "Waybar draws the $BAR_LIMITS limits, the markup taken as such" "$n $((widest < 170)): $spans" "^$BAR_LIMITS 1:"

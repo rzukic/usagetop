@@ -36,6 +36,8 @@ sleep 4
 check "doctor sees Xfce, compositing" "$("$U" doctor | tr -s ' ' | tr '\n' ';')" 'desktop XFCE;session X11;.*compositing yes'
 read -r _ tray_x _ tray_w _ <<< "$(tray)"
 
+# The providers' marks, as install.sh puts them in.
+install_marks
 start_app
 check "the app starts" "$("$U" status | head -1)" '% left$'
 items() { dbus-send --session --print-reply --dest=org.kde.StatusNotifierWatcher /StatusNotifierWatcher org.freedesktop.DBus.Properties.Get string:org.kde.StatusNotifierWatcher string:RegisteredStatusNotifierItems | grep -o '"[^"]*"' | tr '\n' ' '; }
@@ -98,6 +100,7 @@ echo "      its text: $text"
 if [ "$BAR_LIMITS" -gt 0 ]; then
   check "its text: the $BAR_LIMITS limits, each with its name and figure" "$(sed 's/<[^>]*>//g' <<< "$text" | grep -oE '[0-9]+%' | wc -l): $text" "^$BAR_LIMITS: "
   check "the names a little fainter, in Pango markup" "$text" '<span alpha="70%">[A-Za-z0-9]'
+  check_marks "its text" xfce "$text"
 else
   check "its text: the combined figure" "$text" '^[0-9]+%$'
 fi
@@ -108,7 +111,9 @@ check "the plugin asks, and the app's tray icon stands aside (--bar)" "$(items)"
 # place and size for a while after the panel makes room for the text. In the
 # panel's right half nothing else is drawn but the clock, at the end (the
 # pager's boxes are flat, the tray is empty now).
-sleep 3; shot /tmp/genmon.png
+# The pointer away from it: it was left on the tray, where the text now is,
+# and the plugin would show its hover frame.
+xdotool mousemove 700 500; sleep 3; shot /tmp/genmon.png
 read -r _ spans <<< "$(python3 /desktops/count-items.py /tmp/genmon.png $((W / 2)) 2 $((W / 2)) 22 9)"
 case "$spans" in *" "*) spans=${spans% *} ;; *) spans="" ;; esac
 n=$(wc -w <<< "$spans")
@@ -120,6 +125,8 @@ else
   check "the panel shows the figure" "$n: $spans" '^1:'
 fi
 closeup /tmp/genmon.png "$((gx + 24))" 12 /out/xfce-genmon-closeup.png
+# The plugin's text across the panel's height, three times the size.
+convert /tmp/genmon.png -crop "$((gw + 16))x${area_y}+$((gx - 8))+0" +repage -filter point -resize 300% /out/xfce-bar-closeup.png
 # A click on it runs its <txtclick>: usagetop toggle.
 xdotool mousemove "$((gx + gw / 2))" 12 click 1
 sleep 1; wait_for 5 mapped "$id"; sleep 1
