@@ -21,7 +21,17 @@ public static class ScrollBars
     private const double Width = 10;
     private const double Pill = 5;
 
-    public static Style Style() => new(x => x.OfType<ScrollBar>())
+    /// <summary>
+    /// Fluent sets its template under :vertical and :horizontal, which outranks a
+    /// style without a pseudo-class, so this one names them too.
+    /// </summary>
+    public static Styles Style() => new()
+    {
+        For(":vertical"),
+        For(":horizontal"),
+    };
+
+    private static Style For(string orientation) => new(x => x.OfType<ScrollBar>().Class(orientation))
     {
         Setters =
         {
