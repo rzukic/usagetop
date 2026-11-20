@@ -2,6 +2,7 @@ using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Layout;
 using Avalonia.Media;
+using Avalonia.Threading;
 using AiUsage.Data;
 using AiUsage.Ui;
 
@@ -20,6 +21,7 @@ public sealed class SettingsPage : StackPanel
     private readonly Action _saved;
     private readonly Action _applyLook;
     private readonly Action<Pane> _go;
+    private readonly Action _quit;
     private readonly StackPanel _sections = new() { Spacing = 10 };
     private AccountsSection? _accounts;
     private Border? _accountsCard;
@@ -28,14 +30,19 @@ public sealed class SettingsPage : StackPanel
     private readonly TextBlock _result;
     private readonly Border _test;
     private readonly Border _save;
+    private TextBlock? _updateVersion;
+    private TextBlock? _updateStatus;
+    private Border? _checkNow;
+    private StackPanel? _restartRow;
     private bool _busy;
 
-    public SettingsPage(AppModel model, Action saved, Action applyLook, Action<Pane> go)
+    public SettingsPage(AppModel model, Action saved, Action applyLook, Action<Pane> go, Action quit)
     {
         _model = model;
         _saved = saved;
         _applyLook = applyLook;
         _go = go;
+        _quit = quit;
         Spacing = 10;
         UseFieldLook(this);
 
@@ -77,8 +84,12 @@ public sealed class SettingsPage : StackPanel
         _token.TextChanged += (_, _) => UpdateButtons();
         _address.KeyDown += SaveOnEnter;
         _token.KeyDown += SaveOnEnter;
+        AttachedToVisualTree += (_, _) => Updater.Current.Changed += OnUpdaterChanged;
+        DetachedFromVisualTree += (_, _) => Updater.Current.Changed -= OnUpdaterChanged;
         Load();
     }
+
+    private void OnUpdaterChanged() => Dispatcher.UIThread.Post(ShowUpdateState);
 
     /// <summary>The field that wants the keyboard when the page opens: the first one still empty.</summary>
     public void FocusFirstEmpty()
@@ -243,9 +254,7 @@ public sealed class SettingsPage : StackPanel
         _sections.Children.Add(Section("Top bar", TopBar(prefs)));
         _sections.Children.Add(Section("Look", LookRows(prefs)));
         _sections.Children.Add(Section("General", General()));
-        _sections.Children.Add(Section("Updates", Bits.Paragraph(
-            $"usagetop {Program.Version}. This build does not update itself yet; new ones come with releases.",
-            11.5, Look.Secondary)));
+        _sections.Children.Add(Section("Updates", Updates(prefs)));
 
         var keys = Bits.Text("Ctrl+R refresh · Ctrl+1–9 accounts · Ctrl+, settings · Esc close", 10, FontWeight.Normal, Look.Secondary);
         keys.HorizontalAlignment = HorizontalAlignment.Center;
@@ -467,6 +476,89 @@ public sealed class SettingsPage : StackPanel
         stack.Children.Add(sample);
         return stack;
     }
+
+    // ---- Updates ----
+
+    private Control Updates(PanelPrefs prefs)
+    {
+        var updater = Updater.Current;
+        var stack = new StackPanel { Spacing = 10 };
+
+        var head = new Grid { ColumnDefinitions = new ColumnDefinitions("*,Auto") };
+        var words = new StackPanel { Spacing = 2, VerticalAlignment = VerticalAlignment.Center };
+        _updateVersion = Bits.Text("", 12, FontWeight.Normal, Look.Primary);
+        _updateStatus = Bits.Paragraph("", 11, Look.Secondary);
+        _updateStatus.Margin = new Thickness(0, 0, 10, 0);
+        words.Children.Add(_updateVersion);
+        words.Children.Add(_updateStatus);
+        head.Children.Add(words);
+
+        _checkNow = Bits.SoftButton("Check now", "Look for a newer version now", () => _ = updater.CheckAsync());
+        _checkNow.VerticalAlignment = VerticalAlignment.Center;
+        Grid.SetColumn(_checkNow, 1);
+        head.Children.Add(_checkNow);
+        stack.Children.Add(head);
+
+        var restart = Bits.SoftButton(
+            "Restart to update",
+            "Close usagetop, put the new version in and start it again",
+            () =>
+            {
+                if (updater.RestartToUpdate(App.Options.Hidden)) _quit();
+            },
+            prominent: true);
+        restart.HorizontalAlignment = HorizontalAlignment.Left;
+        _restartRow = new StackPanel { Spacing = 4 };
+        _restartRow.Children.Add(restart);
+        _restartRow.Children.Add(Note("Otherwise it goes in when usagetop next quits or starts."));
+        stack.Children.Add(_restartRow);
+
+        if (updater.IsInstalled)
+        {
+            var beta = new StackPanel { Spacing = 4 };
+            beta.Children.Add(new Switch("Beta versions", prefs.BetaUpdates, on =>
+            {
+                prefs.Update(p => p.BetaUpdates = on);
+            }));
+            beta.Children.Add(Note("Early builds as well as releases, whichever is newer."));
+            stack.Children.Add(beta);
+        }
+
+        ShowUpdateState();
+        return stack;
+    }
+
+    /// <summary>Rewrites the Updates card's lines in place so progress updates without losing typed fields.</summary>
+    public void ShowUpdateState()
+    {
+        if (_updateVersion == null || _updateStatus == null || _checkNow == null || _restartRow == null) return;
+        var updater = Updater.Current;
+
+        _updateVersion.Text = $"usagetop {updater.Version}";
+        _updateStatus.Text = UpdateStatus(updater);
+        _updateStatus.Foreground = updater.State == Updater.Phase.Ready ? Look.Solid(Look.Fresh) : Look.Secondary;
+        var tip = updater.State == Updater.Phase.Failed ? updater.FailureDetail
+            : updater.SourceOverride != null ? $"Updates from {updater.SourceOverride}"
+            : null;
+        ToolTip.SetTip(_updateStatus, tip);
+
+        _checkNow.IsVisible = updater.IsInstalled;
+        Enable(_checkNow, !updater.Busy);
+        _restartRow.IsVisible = updater.State == Updater.Phase.Ready;
+    }
+
+    private static string UpdateStatus(Updater updater) => updater.State switch
+    {
+        Updater.Phase.Off => updater.OffReason ?? "This build does not update itself",
+        Updater.Phase.Waiting => "Looks for updates shortly",
+        Updater.Phase.Checking => "Checking for updates…",
+        Updater.Phase.UpToDate when updater.CheckedAt is { } at => $"Up to date · checked {Format.Ago(at)}",
+        Updater.Phase.UpToDate => "Up to date",
+        Updater.Phase.Downloading when updater.Progress > 0 => $"Downloading {updater.Target}… {updater.Progress}%",
+        Updater.Phase.Downloading => $"Downloading {updater.Target}…",
+        Updater.Phase.Ready => $"{updater.Target} is ready",
+        _ => updater.Failure ?? "Couldn't check for updates",
+    };
 
     private static TextBlock Note(string text) => Bits.Paragraph(text, 11, Look.Secondary);
 

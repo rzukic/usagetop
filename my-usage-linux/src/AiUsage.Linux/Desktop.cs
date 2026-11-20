@@ -68,6 +68,7 @@ public static class Desktop
         $"compositing  {(IsComposited ? "yes" : "no: the panel is drawn square and opaque")}",
         $"blur         {(IsKde && IsComposited ? "asked of KWin" : "left to the compositor, if it blurs see-through windows")}",
         $"socket       {Ipc.SocketPath}",
+        $"updates      {Updater.Current.Describe()}",
     ]);
 
     /// <summary>

@@ -205,7 +205,12 @@ public sealed class PanelView : Border
             items.Children.Add(RailButton(new Pane.Account(usage.AccountKey), help, RailRing(usage)));
         }
 
-        var settings = RailButton(new Pane.Settings(), "Settings  Ctrl+,", Icons.Glyph(Icons.Gear, 16, Look.Primary));
+        var updateWaiting = Updater.Current.State == Updater.Phase.Ready;
+        var settings = RailButton(
+            new Pane.Settings(),
+            updateWaiting ? "Settings · an update is ready  Ctrl+," : "Settings  Ctrl+,",
+            Icons.Glyph(Icons.Gear, 16, Look.Primary),
+            dot: updateWaiting);
         settings.VerticalAlignment = VerticalAlignment.Bottom;
         settings.Margin = new Thickness(0, 12, 0, 12);
 
@@ -227,12 +232,32 @@ public sealed class PanelView : Border
         return rail;
     }
 
-    private Control RailButton(Pane target, string help, Control label)
+    private Control RailButton(Pane target, string help, Control label, bool dot = false)
     {
         var selected = Pane == target;
         label.Opacity = selected ? 1 : 0.62;
         label.HorizontalAlignment = HorizontalAlignment.Center;
         label.VerticalAlignment = VerticalAlignment.Center;
+
+        Control content = label;
+        if (dot)
+        {
+            // A downloaded update is a quiet green dot on the gear: it goes in by itself anyway.
+            var holder = new Panel { Width = 34, Height = 34 };
+            holder.Children.Add(label);
+            holder.Children.Add(new Ellipse
+            {
+                Width = 7,
+                Height = 7,
+                Fill = Look.Solid(Look.Fresh),
+                Stroke = Look.Solid(Look.Panel.Bottom),
+                StrokeThickness = 1.5,
+                HorizontalAlignment = HorizontalAlignment.Right,
+                VerticalAlignment = VerticalAlignment.Top,
+                Margin = new Thickness(0, 5, 5, 0),
+            });
+            content = holder;
+        }
 
         // No highlight of its own at rest: the soft disc is the selection.
         var disc = new Border
@@ -244,7 +269,7 @@ public sealed class PanelView : Border
             BorderBrush = selected ? Look.Ink(0.14) : Brushes.Transparent,
             BorderThickness = new Thickness(0.5),
             HorizontalAlignment = HorizontalAlignment.Center,
-            Child = label,
+            Child = content,
         };
         if (selected) Avalonia.Automation.AutomationProperties.SetItemStatus(disc, "Selected");
         return Bits.Clickable(disc, help, () => Show(target), over =>
@@ -419,7 +444,7 @@ public sealed class PanelView : Border
             case Pane.Settings:
                 if (_settings == null)
                 {
-                    _settings = new SettingsPage(_model, Rebuild, ApplyLook, Show);
+                    _settings = new SettingsPage(_model, Rebuild, ApplyLook, Show, () => QuitRequested?.Invoke());
                 }
                 else if (_settings.Parent is ContentControl holder)
                 {

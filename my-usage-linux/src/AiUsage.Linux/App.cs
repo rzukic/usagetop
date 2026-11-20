@@ -30,7 +30,9 @@ public sealed class App : Application
     private AppModel _model = null!;
     private PanelWindow? _panel;
     private TrayIcon? _tray;
+    private NativeMenuItem? _trayUpdate;
     private float? _trayPercent = -1;
+    private bool _railShowsUpdate;
     private IDisposable? _listener;
     private DispatcherTimer? _clock;
     private DispatcherTimer? _refresher;
@@ -56,6 +58,18 @@ public sealed class App : Application
                 return;
             }
             desktop.Exit += (_, _) => _listener?.Dispose();
+
+            // An update an earlier run downloaded goes in before anything is shown,
+            // and the new version takes over once this process exits.
+            if (!Options.Sample && Updater.Current.Start(Options.Hidden))
+            {
+                _listener?.Dispose();
+                _listener = null;
+                Dispatcher.UIThread.Post(() => desktop.Shutdown());
+                base.OnFrameworkInitializationCompleted();
+                return;
+            }
+            Updater.Current.Changed += () => Dispatcher.UIThread.Post(OnUpdaterChanged);
 
             Look.Dark = ActualThemeVariant == ThemeVariant.Dark;
             ActualThemeVariantChanged += (_, _) =>
@@ -94,6 +108,17 @@ public sealed class App : Application
         if (_panel is { IsVisible: true } && !_panel.View.Editing) _panel.View.Rebuild();
     }
 
+    private void OnUpdaterChanged()
+    {
+        UpdateTray();
+        var waiting = Updater.Current.State == Updater.Phase.Ready;
+        if (_railShowsUpdate != waiting)
+        {
+            _railShowsUpdate = waiting;
+            if (_panel is { IsVisible: true } && !_panel.View.Editing) _panel.View.Rebuild();
+        }
+    }
+
     // ---- Panel ----
 
     private PanelWindow Panel()
@@ -123,6 +148,7 @@ public sealed class App : Application
 
     private void Quit()
     {
+        Updater.Current.ApplyOnQuit();
         _tray?.Dispose();
         (ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown();
     }
@@ -137,12 +163,17 @@ public sealed class App : Application
             open.Click += (_, _) => Panel().Reveal();
             var refresh = new NativeMenuItem("Refresh now");
             refresh.Click += (_, _) => _ = _model.RefreshAsync(force: true);
+            _trayUpdate = new NativeMenuItem("Restart to update") { IsVisible = false };
+            _trayUpdate.Click += (_, _) =>
+            {
+                if (Updater.Current.RestartToUpdate(Options.Hidden)) Quit();
+            };
             var quit = new NativeMenuItem("Quit");
             quit.Click += (_, _) => Quit();
 
             _tray = new TrayIcon
             {
-                Menu = new NativeMenu { Items = { open, refresh, new NativeMenuItemSeparator(), quit } },
+                Menu = new NativeMenu { Items = { open, refresh, _trayUpdate, new NativeMenuItemSeparator(), quit } },
                 // Set before it is attached: a tray with no tooltip at all cannot be.
                 ToolTipText = "usagetop",
                 Icon = TrayArt.Icon(null),
@@ -152,6 +183,13 @@ public sealed class App : Application
             // click only ever opens the menu (GNOME's AppIndicator), "Open" does.
             _tray.Clicked += (_, _) => Panel().Toggle(null);
             TrayIcon.SetIcons(this, [_tray]);
+        }
+
+        if (_trayUpdate != null)
+        {
+            var ready = Updater.Current.State == Updater.Phase.Ready;
+            _trayUpdate.IsVisible = ready;
+            if (ready) _trayUpdate.Header = $"Restart to update ({Updater.Current.Target})";
         }
 
         var percent = Status.Headline(_model);
@@ -227,6 +265,22 @@ public sealed class App : Application
             case "quit":
                 Dispatcher.UIThread.Post(Quit);
                 return "";
+            case "update":
+                if (!Updater.Current.IsInstalled) return (Updater.Current.OffReason ?? "Updates are off.") + "\n";
+                if (Updater.Current.State == Updater.Phase.Ready) return $"usagetop {Updater.Current.Target} is ready; open Settings or quit to apply.\n";
+                _ = Updater.Current.CheckAsync();
+                return "Checking for updates…\n";
+            case "update-status":
+                return Updater.Current.State switch
+                {
+                    Updater.Phase.Off => "off\n",
+                    Updater.Phase.Waiting => "waiting\n",
+                    Updater.Phase.Checking => "checking\n",
+                    Updater.Phase.UpToDate => "up-to-date\n",
+                    Updater.Phase.Downloading => $"downloading {Updater.Current.Target} {Updater.Current.Progress}%\n",
+                    Updater.Phase.Ready => $"ready {Updater.Current.Target}\n",
+                    _ => $"failed {Updater.Current.Failure}\n",
+                };
             case "status":
                 return Status.Text(_model) + "\n";
             case "status --json":
