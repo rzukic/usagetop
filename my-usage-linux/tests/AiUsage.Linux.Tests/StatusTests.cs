@@ -127,6 +127,25 @@ public sealed class StatusTests
     }
 
     [Fact]
+    public void BarLabels_Slim_NameAPeriodByItsLength()
+    {
+        Assert.Equal("7d", Status.Slim("Weekly"));
+        Assert.Equal("1d", Status.Slim("Daily"));
+        Assert.Equal("Gemini 7d", Status.Slim("Gemini weekly"));
+        Assert.Equal("5h", Status.Slim("5h"));
+        Assert.Equal("Fable", Status.Slim("Fable"));
+        Assert.Equal("Vibe", Status.Slim("Vibe"));
+
+        var labels = Status.BarLabels(
+        [
+            Limit(ProviderId.Antigravity, "Gemini 5h", 50),
+            Limit(ProviderId.Antigravity, "Gemini 7d", 60),
+            Limit(ProviderId.Kimi, "7d", 11),
+        ], slim: true);
+        Assert.Equal(["Gemini 5h", "Gemini 7d", "7d"], labels);
+    }
+
+    [Fact]
     public void Compact_NamesAWindowByItsModel()
     {
         Assert.Equal("Fable", WindowName.Compact("Fable 7d"));

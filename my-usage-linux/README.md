@@ -78,7 +78,7 @@ the app looks at where it is and takes what is on offer:
   ```
 
   With Settings › Top bar on 1–4 limits it lists them as the GNOME bar does
-  (`Kimi Weekly 11%  Claude 5h 38%`), each figure in its own level's colour;
+  (`Kimi 7d 11%  Claude 5h 38%`), each figure in its own level's colour;
   on the combined ring it is the combined figure. The module's class is
   `normal`, `warning` or `critical` (the tightest limit's), to style it by;
   with limits it is also `limits`, since each figure has its colour already:

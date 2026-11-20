@@ -50,7 +50,7 @@ public static class Status
     /// one account that would read the same keep their full names; a long one is
     /// cut so it cannot crowd the bar. As the Mac's menu bar.
     /// </summary>
-    public static List<string> BarLabels(IReadOnlyList<Limit> limits)
+    public static List<string> BarLabels(IReadOnlyList<Limit> limits, bool slim = false)
     {
         var compact = limits.Select(l => WindowName.Compact(l.Window.Label)).ToList();
         return limits.Select((limit, i) =>
@@ -58,9 +58,26 @@ public static class Status
             var clashes = limits.Where((other, j) => j != i
                 && other.Usage.AccountKey == limit.Usage.AccountKey && compact[j] == compact[i]).Any();
             var label = clashes ? WindowName.Display(limit.Window.Label) : compact[i];
+            if (slim) label = Slim(label);
             return label.Length <= 12 ? label : label[..11] + "…";
         }).ToList();
     }
+
+    private static readonly System.Text.RegularExpressions.Regex Periods =
+        new(@"\b(daily|weekly|monthly)\b", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    /// <summary>
+    /// A period by its length rather than its word, for a bar of text, where the
+    /// limits sit side by side and every letter counts: "Weekly" is "7d", as
+    /// "5h" already is; "Gemini weekly" is "Gemini 7d".
+    /// </summary>
+    public static string Slim(string label) =>
+        Periods.Replace(label, match => match.Value.ToLowerInvariant() switch
+        {
+            "daily" => "1d",
+            "weekly" => "7d",
+            _ => "1mo",
+        });
 
     /// <summary>
     /// The limit a tray icon rings in place of the combined level: with Settings
@@ -147,7 +164,7 @@ public static class Status
 
     /// <summary>
     /// The limits Settings › Top bar asks for, as a bar of text shows them:
-    /// "Kimi" "Weekly" "11%", an account with a name of its own by its initials
+    /// "Kimi" "7d" "11%", an account with a name of its own by its initials
     /// ("Claude RZ"). Empty with the top bar on the combined ring.
     /// </summary>
     public static List<BarPart> BarParts(AppModel model)
@@ -155,7 +172,7 @@ public static class Status
         var count = PanelPrefs.Current.BarLimits;
         if (count == 0) return [];
         var limits = ForBar(model, count);
-        var labels = BarLabels(limits);
+        var labels = BarLabels(limits, slim: true);
         return limits.Select((limit, i) =>
         {
             var whose = ProviderCatalog.Of(limit.Usage.Id).DisplayName;
