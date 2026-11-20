@@ -26,6 +26,8 @@ dotnet publish src/AiUsage.Linux -c Release -r "$rid" --self-contained true --no
   -o "$tmp/v1/usagetop"
 cp install.sh "$tmp/v1/usagetop/install.sh"
 chmod 755 "$tmp/v1/usagetop/usagetop" "$tmp/v1/usagetop/install.sh"
+mkdir -p "$tmp/v1/usagetop/gnome-extension"
+cp -R gnome-extension/usagetop@rzukic.github.io "$tmp/v1/usagetop/gnome-extension/"
 
 dotnet publish src/AiUsage.Linux -c Release -r "$rid" --self-contained true --nologo -v q \
   -p:Version=9.9.9 -p:IncludeSourceRevisionInInformationalVersion=false -p:DebugType=none \
@@ -54,14 +56,15 @@ check() {
 
 check "raw build has updates off" "$(/src-v1/usagetop doctor | grep updates)" "^updates[[:space:]]+off"
 
-/src-v1/install.sh >/dev/null
+install_out="$(XDG_CURRENT_DESKTOP=GNOME /src-v1/install.sh)"
 BIN="$HOME/.local/bin/usagetop"
+EXT="$HOME/.local/share/gnome-shell/extensions/usagetop@rzukic.github.io"
+check "install puts the GNOME extension in" "$(test -f "$EXT/metadata.json" && echo yes || echo no)" "^yes$"
+check "install says to log in again" "$install_out" "log out and back in"
 check "installed version is 1.6.0" "$("$BIN" --version)" "^1\.6\.0$"
 check "installed copy has updates on" "$("$BIN" doctor | grep updates)" "^updates[[:space:]]+on"
 
-# Seed a fake installed GNOME extension (non-symlink) to verify sync on update.
-EXT="$HOME/.local/share/gnome-shell/extensions/usagetop@rzukic.github.io"
-mkdir -p "$EXT"
+# Make the installed extension look old, to see the update refresh it.
 echo "old" > "$EXT/extension.js"
 
 # Start mock GitHub Releases API server.
@@ -126,6 +129,7 @@ check "9.9.9 is up to date" "$again_out" "9\.9\.9 is up to date"
 # 4. Uninstall leaves settings intact and removes app + link.
 /src-v1/install.sh --uninstall >/dev/null
 check "uninstall removes link" "$(test -e "$BIN" && echo exists || echo gone)" "^gone$"
+check "uninstall removes the GNOME extension" "$(test -e "$EXT" && echo exists || echo gone)" "^gone$"
 
 echo "== $failed failed"
 exit $failed

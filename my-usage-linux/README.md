@@ -11,8 +11,11 @@ the GNOME top bar extension, self-updates, and the command line.
 
 Run `./install.sh` from an unpacked `usagetop-linux-<arch>.tar.gz` release
 archive (or `./package.sh` to build the archives locally). It installs the app
-into `~/.local/share/usagetop/app`, links `~/.local/bin/usagetop`, and writes a
-desktop entry.
+into `~/.local/share/usagetop/app`, links `~/.local/bin/usagetop`, writes a
+desktop entry, and on GNOME installs and enables the top bar extension (unless
+`~/.local/share/gnome-shell/extensions/usagetop@rzukic.github.io` is a symlink
+to a checkout). A release's archives are built by `release.ps1`;
+`./test/update-check.sh` installs and updates a copy in Docker.
 
 An installed copy (in `~/.local/share/usagetop`, `~/Applications/usagetop`, or a
 user-writable `/opt/usagetop`) checks GitHub releases a minute after startup and

@@ -17,6 +17,8 @@ BIN_DIR="$HOME/.local/bin"
 BIN_LINK="$BIN_DIR/usagetop"
 DESKTOP_DIR="$DATA_HOME/applications"
 DESKTOP_FILE="$DESKTOP_DIR/usagetop.desktop"
+EXT_UUID="usagetop@rzukic.github.io"
+EXT_DIR="$DATA_HOME/gnome-shell/extensions/$EXT_UUID"
 
 fail() {
 	echo "usagetop: $1" >&2
@@ -30,6 +32,11 @@ if [[ "${1:-}" == "--uninstall" ]]; then
 	rm -rf "$APP_DIR" "$INSTALL_ROOT/updates" "$INSTALL_ROOT/.usagetop-old"
 	rmdir "$INSTALL_ROOT" 2>/dev/null || true
 	rm -f "$BIN_LINK" "$DESKTOP_FILE"
+	# A linked extension is somebody's working copy: leave it.
+	if [[ -d "$EXT_DIR" && ! -L "$EXT_DIR" ]]; then
+		command -v gnome-extensions >/dev/null 2>&1 && gnome-extensions disable "$EXT_UUID" >/dev/null 2>&1 || true
+		rm -rf "$EXT_DIR"
+	fi
 	echo "Removed usagetop. Your settings in ${XDG_CONFIG_HOME:-$HOME/.config}/usagetop were left alone."
 	exit 0
 fi
@@ -98,6 +105,35 @@ Terminal=false
 Categories=Utility;
 EOF
 
+# On GNOME the top bar extension is how usagetop shows: put it in and switch
+# it on. The app refreshes this copy each time it updates itself. A linked
+# extension (a developer's checkout) is left as it is.
+GNOME_NOTE=""
+if [[ -d "$APP_DIR/gnome-extension/$EXT_UUID" && ! -L "$EXT_DIR" ]] &&
+	{ [[ "${XDG_CURRENT_DESKTOP:-}" == *GNOME* ]] || command -v gnome-shell >/dev/null 2>&1; }; then
+	NEW_EXT=1
+	[[ -d "$EXT_DIR" ]] && NEW_EXT=""
+	mkdir -p "$EXT_DIR"
+	cp -R "$APP_DIR/gnome-extension/$EXT_UUID/." "$EXT_DIR/"
+	if command -v gnome-extensions >/dev/null 2>&1; then
+		gnome-extensions enable "$EXT_UUID" >/dev/null 2>&1 || true
+	fi
+	# Also in the settings, which gnome-extensions cannot reach for an
+	# extension the running shell has not loaded yet.
+	if command -v gsettings >/dev/null 2>&1; then
+		ENABLED="$(gsettings get org.gnome.shell enabled-extensions 2>/dev/null || true)"
+		if [[ -n "$ENABLED" && "$ENABLED" != *"'$EXT_UUID'"* ]]; then
+			if [[ "$ENABLED" == "@as []" || "$ENABLED" == "[]" ]]; then
+				ENABLED="['$EXT_UUID']"
+			else
+				ENABLED="${ENABLED%]}, '$EXT_UUID']"
+			fi
+			gsettings set org.gnome.shell enabled-extensions "$ENABLED" >/dev/null 2>&1 || true
+		fi
+	fi
+	[[ -n "$NEW_EXT" ]] && GNOME_NOTE="GNOME: the top bar extension is installed; log out and back in once to see it."
+fi
+
 VERSION="$("$BIN_LINK" --version 2>/dev/null || echo "")"
 echo "Installed usagetop ${VERSION} to $APP_DIR"
 echo "Command: $BIN_LINK"
@@ -105,3 +141,4 @@ case ":${PATH:-}:" in
 *":$BIN_DIR:"*) ;;
 *) echo "Note: add $BIN_DIR to your PATH to run 'usagetop' from any shell." ;;
 esac
+if [[ -n "$GNOME_NOTE" ]]; then echo "$GNOME_NOTE"; fi

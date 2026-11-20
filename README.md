@@ -68,6 +68,7 @@ for updates.
 | **macOS** | A menu bar app with a Liquid Glass panel. macOS 26, Apple silicon and Intel. Signed and notarized; updates itself. |
 | **Windows** | A tray icon with a flyout panel and a full window. Windows 10 and 11. Updates itself. |
 | **Android** | An app and a home-screen widget. Android 8 and newer. Updates itself. |
+| **Linux** | The Mac's panel, opened from the GNOME top bar or a tray icon. x64 and arm64. Updates itself. |
 | **Server** | Optional: polls around the clock, keeps one history for all your devices and holds the sign-ins, with a web page of its own. Linux, Docker. |
 
 <p align="center">
@@ -140,6 +141,17 @@ These links always give the latest release; earlier ones and betas are on the
   Android asks whether usagetop may install apps and to confirm; after that,
   on Android 12 and newer, updates go in by themselves while the app is not
   on screen.
+- **Linux:** download
+  [`usagetop-linux-x64.tar.gz`](https://github.com/rzukic/usagetop/releases/latest/download/usagetop-linux-x64.tar.gz)
+  (or
+  [`-arm64`](https://github.com/rzukic/usagetop/releases/latest/download/usagetop-linux-arm64.tar.gz)),
+  unpack it and run `./usagetop/install.sh`. It installs for your user only
+  into `~/.local/share/usagetop/app`, links `~/.local/bin/usagetop`, adds a
+  launcher, and on GNOME puts in the top bar extension (log out and back in
+  once to see it). It brings its own runtime. From then on the app updates
+  itself: it downloads a new release in the background and puts it in when
+  you restart or quit (Settings → Updates). `./usagetop/install.sh --uninstall`
+  removes it again.
 - **Server:** unpack
   [`usagetop-server-linux-x64.tar.gz`](https://github.com/rzukic/usagetop/releases/latest/download/usagetop-server-linux-x64.tar.gz)
   (or
@@ -197,8 +209,8 @@ Release. For now a release is built on the maintainer's machine:
 
 `release.ps1` refuses a version that is not SemVer, runs the tests, and builds
 every app it can with that version: the Windows installer with a delta package
-against the previous release, the signed Android APK, and the server for Linux
-on x64 and arm64. Then it pushes the tag `v<version>` and publishes the release
+against the previous release, the signed Android APK, and the Linux app and
+the server for Linux on x64 and arm64. Then it pushes the tag `v<version>` and publishes the release
 with generated notes. `./release.ps1 -Version 1.2.1-beta.1` makes a pre-release
 instead: the apps offer it only to those who opted into betas, and the download
 links above keep pointing at the last stable release.
