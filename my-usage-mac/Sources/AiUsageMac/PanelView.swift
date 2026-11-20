@@ -381,13 +381,19 @@ private struct RailRing: View {
                     .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(.white, Palette.critical)
                     .offset(x: 3, y: 3)
-            } else if usage.accountLabel != nil {
-                Text(String(usage.accountLabel!.prefix(1)))
+            } else if let label = usage.accountLabel {
+                // The account's initials in a pill, as on the menu bar's marks:
+                // "RZ", "W" for "Work". A single letter keeps a round pill.
+                Text(AccountBadge.initials(label))
                     .font(.system(size: 7.5, weight: .heavy, design: .rounded))
                     .foregroundStyle(.primary)
-                    .frame(width: 12, height: 12)
-                    .background(.thickMaterial, in: Circle())
-                    .offset(x: 3, y: 3)
+                    .lineLimit(1)
+                    .fixedSize()
+                    .padding(.horizontal, 2.5)
+                    .frame(minWidth: 12, minHeight: 12)
+                    .background(.thickMaterial, in: Capsule())
+                    .overlay(Capsule().strokeBorder(.primary.opacity(0.14), lineWidth: 0.5))
+                    .offset(x: 4, y: 3)
             }
         }
     }

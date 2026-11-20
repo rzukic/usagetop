@@ -709,8 +709,9 @@ enum AccountBadge {
     private static let badgeHeight: CGFloat = 9
 
     /// Up to two letters, in the case they were written in: the first of each
-    /// of the first two words, or of a single word its first two.
-    static func initials(_ name: String) -> String {
+    /// of the first two words, a short name ("RZ") as it is, or of a single
+    /// word its first; "#2" stays as it is. The other apps follow the same rule.
+    nonisolated static func initials(_ name: String) -> String {
         let words = name.split(whereSeparator: { $0 == " " || $0 == "-" || $0 == "_" || $0 == "·" }).map(String.init)
         if words.count >= 2 { return String(words[0].prefix(1)) + String(words[1].prefix(1)) }
         guard let word = words.first else { return "" }
