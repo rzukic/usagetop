@@ -1472,12 +1472,13 @@ public sealed partial class PanelView : UserControl
     /// </summary>
     private static FrameworkElement RingBadge(string text, Color fill, Color ink)
     {
+        // 9 on 15: the Linux app's measure, readable at a screen's own scale.
         var badge = new Border
         {
-            MinWidth = 13,
-            Height = 13,
-            Padding = new Thickness(text.Length > 1 ? 3 : 0, 0, text.Length > 1 ? 3 : 0, 0),
-            CornerRadius = new CornerRadius(6.5),
+            MinWidth = 15,
+            Height = 15,
+            Padding = new Thickness(text.Length > 1 ? 3.5 : 0, 0, text.Length > 1 ? 3.5 : 0, 0),
+            CornerRadius = new CornerRadius(7.5),
             Background = new SolidColorBrush(fill),
             BorderBrush = new SolidColorBrush(Color.FromArgb(0x40, 0xFF, 0xFF, 0xFF)),
             BorderThickness = new Thickness(0.75),
@@ -1490,7 +1491,7 @@ public sealed partial class PanelView : UserControl
         {
             Text = text,
             FontFamily = Ui,
-            FontSize = 8,
+            FontSize = 9,
             FontWeight = FontWeights.Bold,
             Foreground = new SolidColorBrush(ink),
             HorizontalAlignment = HorizontalAlignment.Center,
