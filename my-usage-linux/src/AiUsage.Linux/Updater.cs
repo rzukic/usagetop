@@ -788,9 +788,13 @@ public sealed class Updater
             return null;
         }
 
+        // A Snap or an AppImage passes its variables on to everything it starts,
+        // so a copy started from a terminal inside one (T3 Code is an AppImage)
+        // would see them too: it counts only when this binary is in the package.
+        var binary = string.IsNullOrWhiteSpace(processPath) ? null : ResolveBinary(processPath);
         var sandboxed = isContainerized ?? (File.Exists("/.flatpak-info")
-            || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("SNAP"))
-            || !string.IsNullOrEmpty(Environment.GetEnvironmentVariable("APPIMAGE")));
+            || IsInside(binary, Environment.GetEnvironmentVariable("SNAP"))
+            || IsInside(binary, Environment.GetEnvironmentVariable("APPDIR")));
         if (sandboxed)
         {
             offReason = "Managed by its package format, so it does not update itself";
@@ -862,6 +866,14 @@ public sealed class Updater
             : Path.Combine(parentDir, ".usagetop-updates");
         var backupDir = Path.Combine(parentDir, ".usagetop-old");
         return new InstallLocation(appDir, updatesDir, backupDir);
+    }
+
+    /// <summary>True when <paramref name="path"/> lies inside the folder <paramref name="root"/>.</summary>
+    internal static bool IsInside(string? path, string? root)
+    {
+        if (string.IsNullOrEmpty(path) || string.IsNullOrWhiteSpace(root)) return false;
+        var folder = TrimSlash(Path.GetFullPath(root));
+        return path.StartsWith(folder + "/", StringComparison.Ordinal);
     }
 
     private static string ResolveBinary(string path)

@@ -104,6 +104,19 @@ public sealed class UpdaterTests : IDisposable
     }
 
     [Fact]
+    public void IsInside_CountsOnlyWhatIsInThePackage()
+    {
+        // Started from a terminal inside T3 Code's AppImage: APPDIR is T3's mount.
+        Assert.False(Updater.IsInside("/home/u/.local/share/usagetop/app/usagetop", "/tmp/.mount_T3-CoabcDE"));
+        Assert.True(Updater.IsInside("/tmp/.mount_usagetXYZ/usr/bin/usagetop", "/tmp/.mount_usagetXYZ"));
+        Assert.True(Updater.IsInside("/snap/usagetop/12/usagetop", "/snap/usagetop/12/"));
+        Assert.False(Updater.IsInside("/snap/usagetop-other/usagetop", "/snap/usagetop"));
+        Assert.False(Updater.IsInside("/home/u/.local/share/usagetop/app/usagetop", null));
+        Assert.False(Updater.IsInside("/home/u/.local/share/usagetop/app/usagetop", ""));
+        Assert.False(Updater.IsInside(null, "/snap/usagetop/12"));
+    }
+
+    [Fact]
     public void DetectInstall_RejectsSystemBuildDownloadsAndSandbox()
     {
         var home = Path.Combine(_temp, "home");
