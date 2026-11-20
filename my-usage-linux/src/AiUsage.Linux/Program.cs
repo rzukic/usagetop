@@ -18,6 +18,7 @@ public static class Program
           usagetop status --json   everything, for a script
           usagetop status --waybar a Waybar custom module's JSON
           usagetop quit
+          usagetop update          check for a newer release and install it
           usagetop doctor          what this desktop offers, as the app sees it
           usagetop server <address>  read from your usagetop server; asks for its token
                                    (or reads it from standard input); --off stops
@@ -88,6 +89,9 @@ public static class Program
             case "doctor":
                 Console.WriteLine(Desktop.Describe());
                 return 0;
+
+            case "update":
+                return RunUpdate(flags.Contains("--stage-only"));
 
             case "server":
                 return SetServer(words.ElementAtOrDefault(1), flags.Contains("--off"));
@@ -186,6 +190,47 @@ public static class Program
 
     public static string Version =>
         Assembly.GetExecutingAssembly().GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion ?? "";
+
+    private static int RunUpdate(bool stageOnly)
+    {
+        if (!stageOnly && Ipc.Send("update") is { } answer)
+        {
+            Console.Write(answer);
+            return 0;
+        }
+
+        var updater = Updater.Current;
+        if (!updater.IsInstalled)
+        {
+            Console.Error.WriteLine($"usagetop: {updater.OffReason ?? "updates are not enabled for this copy"}");
+            return 1;
+        }
+
+        updater.CheckAsync().GetAwaiter().GetResult();
+        switch (updater.State)
+        {
+            case Updater.Phase.UpToDate:
+                Console.WriteLine($"usagetop {updater.Version} is up to date.");
+                return 0;
+            case Updater.Phase.Ready:
+                var target = updater.Target;
+                if (stageOnly)
+                {
+                    Console.WriteLine($"usagetop {target} is staged; it will go in on the next start.");
+                    return 0;
+                }
+                if (updater.Install(relaunch: false, hidden: false))
+                {
+                    Console.WriteLine($"Updated usagetop to {target}.");
+                    return 0;
+                }
+                Console.Error.WriteLine($"usagetop: {updater.Failure ?? "couldn't install the update"} ({updater.FailureDetail})");
+                return 1;
+            default:
+                Console.Error.WriteLine($"usagetop: {updater.Failure ?? "couldn't check for updates"} ({updater.FailureDetail})");
+                return 1;
+        }
+    }
 
     /// <summary>Hands a command to the running copy and prints what it says.</summary>
     private static int Ask(string command)

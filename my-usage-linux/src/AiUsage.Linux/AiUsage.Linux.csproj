@@ -35,6 +35,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="AiUsage.Linux.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\..\my-usage-win\src\AiUsage.Core\AiUsage.Core.csproj" />
     <!-- What the Windows app has that is not tied to WPF, shared as it is. -->
     <Compile Include="..\..\..\my-usage-win\src\AiUsage\Ui\Format.cs" Link="Shared\Format.cs" />

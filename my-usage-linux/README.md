@@ -3,10 +3,23 @@
 A tray icon and the Mac app's panel, on the core the Windows app and the server
 share (`my-usage-win/src/AiUsage.Core`), drawn with [Avalonia](https://avaloniaui.net).
 
-**Not released yet.** What is here shows sample data: the overview and an
-account's page, light and dark, a tray icon, and the command line. Adding
-accounts, signing in, a server, Settings, and a package that updates itself are
-still to come.
+**Not released yet.** What is here shows your usagetop server's reading (or
+sample data): the overview, account pages and charts, Settings, the tray icon,
+the GNOME top bar extension, self-updates, and the command line.
+
+## Installing and updates
+
+Run `./install.sh` from an unpacked `usagetop-linux-<arch>.tar.gz` release
+archive (or `./package.sh` to build the archives locally). It installs the app
+into `~/.local/share/usagetop/app`, links `~/.local/bin/usagetop`, and writes a
+desktop entry.
+
+An installed copy (in `~/.local/share/usagetop`, `~/Applications/usagetop`, or a
+user-writable `/opt/usagetop`) checks GitHub releases a minute after startup and
+every six hours, or when asked in Settings › Updates. New releases are verified
+by SHA-256 and `usagetop --version` before staging, and go in on "Restart to
+update", on quit, or on the next start. Builds run from a build folder or
+installed under `/usr` do not update themselves.
 
 ## Building and running
 
