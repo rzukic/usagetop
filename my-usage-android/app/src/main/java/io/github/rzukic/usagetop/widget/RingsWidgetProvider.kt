@@ -71,6 +71,7 @@ class RingsWidgetProvider : AppWidgetProvider() {
             val percent = ring.window?.remainingPercent
             WidgetArt.setRing(context, views, R.id.ring_track, R.id.ring_level, 104f, 7f, percent)
             logo(ring)?.let { views.setImageViewResource(R.id.one_logo, it) }
+            badge(views, R.id.one_badge, ring)
             views.setTextViewText(R.id.hero_value, percent?.let { "${it.roundToInt()}%" } ?: "—")
             WidgetArt.textColor(context, views, R.id.hero_value, percent?.let { WidgetArt.figureColor(it) } ?: R.color.widget_ink_secondary)
 
@@ -97,13 +98,13 @@ class RingsWidgetProvider : AppWidgetProvider() {
         }
 
         private val CELLS = listOf(
-            Cell(R.id.cell1, R.id.cell1_track, R.id.cell1_level, R.id.cell1_value, R.id.cell1_logo, R.id.cell1_name),
-            Cell(R.id.cell2, R.id.cell2_track, R.id.cell2_level, R.id.cell2_value, R.id.cell2_logo, R.id.cell2_name),
-            Cell(R.id.cell3, R.id.cell3_track, R.id.cell3_level, R.id.cell3_value, R.id.cell3_logo, R.id.cell3_name),
-            Cell(R.id.cell4, R.id.cell4_track, R.id.cell4_level, R.id.cell4_value, R.id.cell4_logo, R.id.cell4_name),
+            Cell(R.id.cell1, R.id.cell1_track, R.id.cell1_level, R.id.cell1_value, R.id.cell1_logo, R.id.cell1_name, R.id.cell1_badge),
+            Cell(R.id.cell2, R.id.cell2_track, R.id.cell2_level, R.id.cell2_value, R.id.cell2_logo, R.id.cell2_name, R.id.cell2_badge),
+            Cell(R.id.cell3, R.id.cell3_track, R.id.cell3_level, R.id.cell3_value, R.id.cell3_logo, R.id.cell3_name, R.id.cell3_badge),
+            Cell(R.id.cell4, R.id.cell4_track, R.id.cell4_level, R.id.cell4_value, R.id.cell4_logo, R.id.cell4_name, R.id.cell4_badge),
         )
 
-        private data class Cell(val root: Int, val track: Int, val level: Int, val value: Int, val logo: Int, val name: Int)
+        private data class Cell(val root: Int, val track: Int, val level: Int, val value: Int, val logo: Int, val name: Int, val badge: Int)
 
         private fun grid(context: Context, rings: List<RingPicks.Ring>, stale: Boolean, compact: Boolean): RemoteViews {
             val views = RemoteViews(context.packageName, if (compact) R.layout.widget_rings_compact else R.layout.widget_rings)
@@ -121,6 +122,7 @@ class RingsWidgetProvider : AppWidgetProvider() {
                 views.setTextViewText(cell.value, percent?.let { "${it.roundToInt()}%" } ?: "—")
                 WidgetArt.textColor(context, views, cell.value, percent?.let { WidgetArt.figureColor(it) } ?: R.color.widget_ink_secondary)
                 logo(ring)?.let { views.setImageViewResource(cell.logo, it) }
+                badge(views, cell.badge, ring)
                 views.setTextViewText(cell.name, ring.window?.let { WidgetModel.shortName(it) } ?: ring.pick.label)
             }
             views.setViewVisibility(R.id.row2, if (rings.size > 2) View.VISIBLE else View.GONE)
@@ -128,6 +130,13 @@ class RingsWidgetProvider : AppWidgetProvider() {
             views.setFloat(R.id.grid, "setAlpha", if (stale) 0.42f else 1f)
             views.setOnClickPendingIntent(R.id.widget_root, WidgetRenderer.openIntent(context))
             return views
+        }
+
+        /** The account's initials on its ring, for an account with a name or a slot of its own. */
+        private fun badge(views: RemoteViews, id: Int, ring: RingPicks.Ring) {
+            val label = ring.usage?.let { AccountBadge.label(it) } ?: AccountBadge.label(ring.pick.account)
+            views.setViewVisibility(id, if (label == null) View.GONE else View.VISIBLE)
+            views.setTextViewText(id, label?.let { AccountBadge.initials(it) }.orEmpty())
         }
 
         private fun logo(ring: RingPicks.Ring): Int? {

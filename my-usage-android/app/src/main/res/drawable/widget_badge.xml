@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- An account's initials in a pill on its ring's lower right, as the other apps'
+     rails show them; one letter keeps it round (minWidth = height). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/widget_badge_fill" />
+    <stroke android:width="0.75dp" android:color="@color/widget_badge_edge" />
+    <corners android:radius="99dp" />
+</shape>

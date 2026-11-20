@@ -19,14 +19,19 @@ import kotlin.math.roundToInt
  * Draws both widgets at the sizes a phone's launcher gives them, from the cached
  * reading, on a wallpaper-like backdrop: the rings at one and four picks, then
  * the usage widget at 2x2, 4x2 and 4x4. One theme at a time, for screenshots:
- * `adb shell am start -n <package>/io.github.rzukic.usagetop.widget.WidgetPreviewActivity --ez dark true`.
+ * `adb shell am start -n <package>/io.github.rzukic.usagetop.widget.WidgetPreviewActivity --ez dark true`,
+ * and `--es state <file>` draws a server's /api/state answer instead of the cached reading.
  * With `--ez export true` it writes the widget list's preview pictures instead.
  */
 class WidgetPreviewActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val snapshot = UsageRepository(this).cached()
+        // `--es state <file>`: a server's /api/state answer in place of the cached
+        // reading, for pictures of a case the cache does not hold (two named accounts).
+        val snapshot = intent.getStringExtra("state")
+            ?.let { path -> runCatching { io.github.rzukic.usagetop.data.ServerState.parse(java.io.File(path).readText())?.snapshot }.getOrNull() }
+            ?: UsageRepository(this).cached()
         val dark = intent.getBooleanExtra("dark", isDark())
         val themed = themed(dark)
         if (intent.getBooleanExtra("export", false)) {

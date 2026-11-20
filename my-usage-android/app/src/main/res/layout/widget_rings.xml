@@ -65,6 +65,22 @@
                         android:fontFeatureSettings="tnum"
                         android:textColor="@color/widget_ink"
                         android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/cell1_badge"
+                        android:layout_width="wrap_content"
+                        android:layout_height="14dp"
+                        android:layout_gravity="bottom|end"
+                        android:background="@drawable/widget_badge"
+                        android:fontFamily="sans-serif-black"
+                        android:gravity="center"
+                        android:includeFontPadding="false"
+                        android:maxLines="1"
+                        android:minWidth="14dp"
+                        android:paddingHorizontal="3dp"
+                        android:textColor="@color/widget_ink"
+                        android:textSize="7.5sp"
+                        android:visibility="gone" />
                 </FrameLayout>
 
                 <LinearLayout
@@ -125,6 +141,22 @@
                         android:fontFeatureSettings="tnum"
                         android:textColor="@color/widget_ink"
                         android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/cell2_badge"
+                        android:layout_width="wrap_content"
+                        android:layout_height="14dp"
+                        android:layout_gravity="bottom|end"
+                        android:background="@drawable/widget_badge"
+                        android:fontFamily="sans-serif-black"
+                        android:gravity="center"
+                        android:includeFontPadding="false"
+                        android:maxLines="1"
+                        android:minWidth="14dp"
+                        android:paddingHorizontal="3dp"
+                        android:textColor="@color/widget_ink"
+                        android:textSize="7.5sp"
+                        android:visibility="gone" />
                 </FrameLayout>
 
                 <LinearLayout
@@ -194,6 +226,22 @@
                         android:fontFeatureSettings="tnum"
                         android:textColor="@color/widget_ink"
                         android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/cell3_badge"
+                        android:layout_width="wrap_content"
+                        android:layout_height="14dp"
+                        android:layout_gravity="bottom|end"
+                        android:background="@drawable/widget_badge"
+                        android:fontFamily="sans-serif-black"
+                        android:gravity="center"
+                        android:includeFontPadding="false"
+                        android:maxLines="1"
+                        android:minWidth="14dp"
+                        android:paddingHorizontal="3dp"
+                        android:textColor="@color/widget_ink"
+                        android:textSize="7.5sp"
+                        android:visibility="gone" />
                 </FrameLayout>
 
                 <LinearLayout
@@ -254,6 +302,22 @@
                         android:fontFeatureSettings="tnum"
                         android:textColor="@color/widget_ink"
                         android:textSize="14sp" />
+
+                    <TextView
+                        android:id="@+id/cell4_badge"
+                        android:layout_width="wrap_content"
+                        android:layout_height="14dp"
+                        android:layout_gravity="bottom|end"
+                        android:background="@drawable/widget_badge"
+                        android:fontFamily="sans-serif-black"
+                        android:gravity="center"
+                        android:includeFontPadding="false"
+                        android:maxLines="1"
+                        android:minWidth="14dp"
+                        android:paddingHorizontal="3dp"
+                        android:textColor="@color/widget_ink"
+                        android:textSize="7.5sp"
+                        android:visibility="gone" />
                 </FrameLayout>
 
                 <LinearLayout

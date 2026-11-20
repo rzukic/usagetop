@@ -23,4 +23,7 @@
     <color name="widget_ring_warning">#FFC98A20</color>
     <color name="widget_ring_critical">#FFCC4B40</color>
     <color name="widget_line">#FF4F7DBE</color>
+    <!-- An account's initials on a ring: the pill the other apps' rails show. -->
+    <color name="widget_badge_fill">#FFE9E9EE</color>
+    <color name="widget_badge_edge">#1F000000</color>
 </resources>
