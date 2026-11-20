@@ -3,6 +3,7 @@ using Avalonia.Controls;
 using Avalonia.Controls.Platform;
 using Avalonia.Input;
 using Avalonia.Media;
+using Avalonia.Threading;
 using AiUsage.Ui;
 
 namespace AiUsage.Views;
@@ -114,6 +115,7 @@ public sealed class PanelWindow : Window
         {
             Fit();
             Place();
+            Blur();
             if (Environment.GetEnvironmentVariable("USAGETOP_DEBUG") is { Length: > 0 })
             {
                 Console.Error.WriteLine($"panel: shaped {_shaped}, transparency {ActualTransparencyLevel}, at {Position}, size {Bounds.Size}");
@@ -122,6 +124,7 @@ public sealed class PanelWindow : Window
         SizeChanged += (_, _) =>
         {
             if (IsVisible) Place();
+            Blur();
         };
         Deactivated += (_, _) =>
         {
@@ -133,6 +136,22 @@ public sealed class PanelWindow : Window
     }
 
     public PanelView View { get; }
+
+    /// <summary>
+    /// KWin blurs behind the panel's rounded rectangle alone. Said again after
+    /// each show, as the toolkit may say "the whole window" when it maps it.
+    /// </summary>
+    private void Blur()
+    {
+        if (!_shaped || !Desktop.IsKde || TryGetPlatformHandle() is not { HandleDescriptor: "XID" } handle) return;
+        int Pixels(double units) => (int)Math.Round(units * RenderScaling);
+        var x = Pixels(ShadowRoom);
+        var y = Pixels(ShadowAbove);
+        var width = Pixels(ClientSize.Width) - 2 * x;
+        var height = Pixels(ClientSize.Height) - y - Pixels(ShadowBelow);
+        if (width <= 0 || height <= 0) return;
+        Desktop.SetBlurRegion(handle.Handle, Desktop.RoundedRect(x, y, width, height, Pixels(PanelView.Radius)));
+    }
 
     /// <summary>
     /// What the panel hangs under, in screen pixels: the item in a desktop's
@@ -178,6 +197,7 @@ public sealed class PanelWindow : Window
         Fit();
         Show();
         Activate();
+        Dispatcher.UIThread.Post(Blur, DispatcherPriority.Background);
     }
 
     /// <summary>

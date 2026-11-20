@@ -21,9 +21,10 @@ public static class TrayArt
         var bitmap = new RenderTargetBitmap(new PixelSize(Size, Size), new Vector(96, 96));
         using var context = bitmap.CreateDrawingContext();
 
-        // Trays are dark far more often than not, and a ring in the label
-        // colour of a dark panel still reads on a light one.
-        var ink = Color.FromRgb(0xF2, 0xF2, 0xF4);
+        // In the label colour of the desktop's light or dark setting, which a
+        // tray's own colour follows on KDE, Xfce and the like: a light ring was
+        // all but lost on their light panels.
+        var ink = Look.InkColor;
         const double stroke = 9;
         var centre = new Point(Size / 2.0, Size / 2.0);
         var radius = (Size - stroke) / 2 - 3;
@@ -49,7 +50,7 @@ public static class TrayArt
         }
 
         var fraction = Math.Clamp(percent.Value / 100, 0.001, 1);
-        var colour = percent <= 40 ? Look.LightOf(percent.Value) : ink;
+        var colour = percent <= 40 ? (Look.Dark ? Look.LightOf(percent.Value) : Look.ColorOf(percent.Value)) : ink;
         var pen = new Pen(new SolidColorBrush(colour), stroke, lineCap: PenLineCap.Round);
         if (fraction >= 0.999)
         {

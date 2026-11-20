@@ -73,6 +73,28 @@ public sealed class StatusTests
     }
 
     [Fact]
+    public void RoundedRect_CoversThePanelAndCutsItsCorners()
+    {
+        var rows = Desktop.RoundedRect(30, 22, 400, 600, 18);
+
+        // Every pixel inside, none outside: counted against the circle's own test.
+        var covered = new HashSet<(int, int)>();
+        foreach (var (x, y, w, h) in rows)
+            for (var i = x; i < x + w; i++)
+                for (var j = y; j < y + h; j++)
+                    Assert.True(covered.Add((i, j)), $"({i},{j}) covered twice");
+        Assert.DoesNotContain((30, 22), covered);         // the very corner is cut
+        Assert.Contains((30 + 18, 22), covered);           // where the curve meets the top edge
+        Assert.Contains((30, 22 + 18), covered);           // and the side
+        Assert.Contains((229, 321), covered);              // the middle
+        Assert.DoesNotContain((29, 300), covered);         // the shadow's room left of it
+        Assert.DoesNotContain((430, 300), covered);        // and right of it
+        Assert.All(covered, p => Assert.InRange(p.Item2, 22, 621));
+        // Few rectangles, not one per row.
+        Assert.InRange(rows.Count, 3, 2 * 18 + 1);
+    }
+
+    [Fact]
     public void Compact_NamesAWindowByItsModel()
     {
         Assert.Equal("Fable", WindowName.Compact("Fable 7d"));

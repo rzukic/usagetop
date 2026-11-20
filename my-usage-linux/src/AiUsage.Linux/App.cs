@@ -80,6 +80,7 @@ public sealed class App : Application
                 var visible = _panel?.IsVisible ?? false;
                 ReplacePanel();
                 if (visible) Panel().Reveal();
+                UpdateTray();
             };
 
             SecretKey.EnsureFolder();
@@ -197,7 +198,7 @@ public sealed class App : Application
         // to running out, with its provider's mark inside the ring.
         var limit = Status.ForTray(_model);
         var percent = limit?.Window.RemainingPercent ?? Status.Headline(_model);
-        var drawn = $"{(percent is { } p ? MathF.Round(p) : -1)}/{limit?.Usage.Id}";
+        var drawn = $"{(percent is { } p ? MathF.Round(p) : -1)}/{limit?.Usage.Id}/{Look.Dark}";
         if (drawn != _trayDrawn)
         {
             // Drawn again only when what it shows has moved.

@@ -105,6 +105,72 @@ public static class Desktop
         }
     }
 
+    /// <summary>
+    /// Where KWin blurs behind the panel: its rounded rectangle, not the whole
+    /// window. Asked to blur, the toolkit names no region, which KWin takes as
+    /// all of it, shadow's room and all, so a blurred box showed round the
+    /// panel. Sizes are in pixels.
+    /// </summary>
+    public static void SetBlurRegion(IntPtr window, IReadOnlyList<(int X, int Y, int Width, int Height)> region)
+    {
+        if (!OperatingSystem.IsLinux() || window == IntPtr.Zero || region.Count == 0) return;
+        try
+        {
+            var display = XOpenDisplay(null);
+            if (display == IntPtr.Zero) return;
+            try
+            {
+                var property = XInternAtom(display, "_KDE_NET_WM_BLUR_BEHIND_REGION", false);
+                var values = region.SelectMany(r => new nint[] { r.X, r.Y, r.Width, r.Height }).ToArray();
+                XChangeProperty(display, window, property, XaCardinal, 32, PropModeReplace, values, values.Length);
+                XFlush(display);
+            }
+            finally
+            {
+                XCloseDisplay(display);
+            }
+        }
+        catch (Exception exception) when (exception is DllNotFoundException or EntryPointNotFoundException)
+        {
+        }
+    }
+
+    /// <summary>
+    /// A rounded rectangle as rectangles, since a region is nothing else: the
+    /// middle in one piece, and above and below it a strip for each row of the
+    /// corners, as wide as the curve allows there. Rows of the same width go
+    /// together.
+    /// </summary>
+    public static List<(int X, int Y, int Width, int Height)> RoundedRect(int x, int y, int width, int height, int radius)
+    {
+        radius = Math.Clamp(radius, 0, Math.Min(width, height) / 2);
+        var rows = new List<(int X, int Y, int Width, int Height)>();
+        var insets = new int[radius];
+        for (var i = 0; i < radius; i++)
+        {
+            // How far in the curve is at the middle of row i from the top.
+            var dy = radius - i - 0.5;
+            insets[i] = (int)Math.Ceiling(radius - Math.Sqrt(radius * (double)radius - dy * dy));
+        }
+        void Add(int top, int inset, int rowsHigh) => rows.Add((x + inset, top, width - 2 * inset, rowsHigh));
+        void Corners(bool above)
+        {
+            var i = 0;
+            while (i < radius)
+            {
+                var j = i;
+                while (j + 1 < radius && insets[j + 1] == insets[i]) j++;
+                var count = j - i + 1;
+                Add(above ? y + i : y + height - 1 - j, insets[i], count);
+                i = j + 1;
+            }
+        }
+        Corners(above: true);
+        if (height - 2 * radius > 0) rows.Add((x, y + radius, width, height - 2 * radius));
+        Corners(above: false);
+        return rows;
+    }
+
     private static readonly IntPtr XaCardinal = 6;
     private const int PropModeReplace = 0;
 
