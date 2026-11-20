@@ -80,12 +80,12 @@ for updates.
 <p align="center"><sub>The Windows tray panel: everything at once, and one account with its history and forecast.</sub></p>
 
 <p align="center">
-<img src="docs/screenshots/linux-overview.png" width="330" alt="The Linux panel on GNOME: the combined figure and every account's limits, over the desktop">
+<img src="docs/screenshots/linux-overview.png" width="330" alt="The Linux panel on GNOME, opened from the top bar, which shows the four limits closest to empty with their names; the panel shows the combined figure and every account's limits">
 &nbsp;&nbsp;
 <img src="docs/screenshots/linux-account.png" width="330" alt="The Linux panel opened from the GNOME top bar, which shows the four limits closest to empty: Claude's 5-hour, weekly and Fable limits, each with its history and pace">
 </p>
 
-<p align="center"><sub>Linux on GNOME: the panel, and one account opened from the top bar, which shows the limits closest to empty.</sub></p>
+<p align="center"><sub>Linux on GNOME: the limits closest to empty in the top bar, and the panel that opens under it; one account with its history and forecast.</sub></p>
 
 <p align="center">
 <img src="docs/screenshots/android-app.png" width="270" alt="The Android app: every account's limits as bars, with what is left and when each resets">
